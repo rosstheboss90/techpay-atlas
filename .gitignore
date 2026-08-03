@@ -4,3 +4,5 @@ data/raw/*
 data/reports/*
 !data/reports/.gitkeep
 .next/
+site/out/
+*.tsbuildinfo
