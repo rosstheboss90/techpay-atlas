@@ -1,1 +1,1 @@
-{"cbsa":"48680","roles":{"15-1252":{"employers":[{"name":"Kanap Systems LLC","filings":1,"median":61000}],"sample":[61000],"n":1},"15-2051":{"employers":[{"name":"Villages Health System, LLC","filings":1,"median":82056}],"sample":[82056],"n":1}}}
+{"cbsa":"48680","roles":{"15-1252":{"employers":[{"name":"Kanap Systems LLC","filings":1,"median":61000}],"sample":[61000],"n":1,"p99":61000},"15-2051":{"employers":[{"name":"Villages Health System, LLC","filings":1,"median":82056}],"sample":[82056],"n":1,"p99":82056}}}

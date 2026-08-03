@@ -1,1 +1,1 @@
-{"cbsa":"20580","roles":{"15-1244":{"employers":[{"name":"Orasi Software, Inc.","filings":1,"median":84956}],"sample":[84956],"n":1},"15-1252":{"employers":[{"name":"Veeva Systems Inc.","filings":1,"median":233000}],"sample":[233000],"n":1}}}
+{"cbsa":"20580","roles":{"15-1244":{"employers":[{"name":"Orasi Software, Inc.","filings":1,"median":84956}],"sample":[84956],"n":1,"p99":84956},"15-1252":{"employers":[{"name":"Veeva Systems Inc.","filings":1,"median":233000}],"sample":[233000],"n":1,"p99":233000}}}

@@ -1,1 +1,1 @@
-{"cbsa":"45500","roles":{"15-1242":{"employers":[{"name":"VAPE VORTEX LLC","filings":1,"median":56500}],"sample":[56500],"n":1},"15-1252":{"employers":[{"name":"Concentrix CVG Customer Management Group Inc.","filings":1,"median":111415}],"sample":[111415],"n":1}}}
+{"cbsa":"45500","roles":{"15-1242":{"employers":[{"name":"VAPE VORTEX LLC","filings":1,"median":56500}],"sample":[56500],"n":1,"p99":56500},"15-1252":{"employers":[{"name":"Concentrix CVG Customer Management Group Inc.","filings":1,"median":111415}],"sample":[111415],"n":1,"p99":111415}}}

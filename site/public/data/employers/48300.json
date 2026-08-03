@@ -1,1 +1,1 @@
-{"cbsa":"48300","roles":{"15-1252":{"employers":[{"name":"Applied Innovation, Inc.","filings":1,"median":83346},{"name":"mPulse Mobile, Inc.","filings":1,"median":140327}],"sample":[83346,140327],"n":2}}}
+{"cbsa":"48300","roles":{"15-1252":{"employers":[{"name":"Applied Innovation, Inc.","filings":1,"median":83346},{"name":"mPulse Mobile, Inc.","filings":1,"median":140327}],"sample":[83346,140327],"n":2,"p99":140327}}}

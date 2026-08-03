@@ -1,1 +1,1 @@
-{"cbsa":"23900","roles":{"15-2051":{"employers":[{"name":"Knouse Foods Cooperative, Inc.","filings":1,"median":100000}],"sample":[100000],"n":1}}}
+{"cbsa":"23900","roles":{"15-2051":{"employers":[{"name":"Knouse Foods Cooperative, Inc.","filings":1,"median":100000}],"sample":[100000],"n":1,"p99":100000}}}

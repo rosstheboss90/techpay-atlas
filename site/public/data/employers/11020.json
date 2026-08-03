@@ -1,1 +1,1 @@
-{"cbsa":"11020","roles":{"15-2051":{"employers":[{"name":"Sheetz, Inc.","filings":3,"median":68201}],"sample":[60042,68201,102900],"n":3}}}
+{"cbsa":"11020","roles":{"15-2051":{"employers":[{"name":"Sheetz, Inc.","filings":3,"median":68201}],"sample":[60042,68201,102900],"n":3,"p99":102900}}}

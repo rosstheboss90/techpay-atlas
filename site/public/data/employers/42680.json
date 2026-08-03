@@ -1,1 +1,1 @@
-{"cbsa":"42680","roles":{"15-1211":{"employers":[{"name":"MBV ENGINEERING, INC","filings":2,"median":95000}],"sample":[95000,95000],"n":2}}}
+{"cbsa":"42680","roles":{"15-1211":{"employers":[{"name":"MBV ENGINEERING, INC","filings":2,"median":95000}],"sample":[95000,95000],"n":2,"p99":95000}}}

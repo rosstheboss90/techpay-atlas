@@ -1,1 +1,1 @@
-{"cbsa":"20740","roles":{"15-1252":{"employers":[{"name":"Lippert Components, Inc.","filings":1,"median":95000}],"sample":[95000],"n":1}}}
+{"cbsa":"20740","roles":{"15-1252":{"employers":[{"name":"Lippert Components, Inc.","filings":1,"median":95000}],"sample":[95000],"n":1,"p99":95000}}}

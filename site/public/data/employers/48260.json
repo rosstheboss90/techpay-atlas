@@ -1,1 +1,1 @@
-{"cbsa":"48260","roles":{"15-1252":{"employers":[{"name":"Form Energy, Inc.","filings":1,"median":220000}],"sample":[220000],"n":1},"15-2051":{"employers":[{"name":"Form Energy, Inc.","filings":1,"median":115000}],"sample":[115000],"n":1}}}
+{"cbsa":"48260","roles":{"15-1252":{"employers":[{"name":"Form Energy, Inc.","filings":1,"median":220000}],"sample":[220000],"n":1,"p99":220000},"15-2051":{"employers":[{"name":"Form Energy, Inc.","filings":1,"median":115000}],"sample":[115000],"n":1,"p99":115000}}}

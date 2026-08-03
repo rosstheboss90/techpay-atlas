@@ -1,1 +1,1 @@
-{"cbsa":"30140","roles":{"15-2051":{"employers":[{"name":"Exel, Inc.","filings":2,"median":75500}],"sample":[72500,78500],"n":2}}}
+{"cbsa":"30140","roles":{"15-2031":{"employers":[{"name":"Exel, Inc.","filings":1,"median":100000}],"sample":[100000],"n":1,"p99":100000},"15-2051":{"employers":[{"name":"Exel, Inc.","filings":2,"median":75500}],"sample":[72500,78500],"n":2,"p99":78500}}}

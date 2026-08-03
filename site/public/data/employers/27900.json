@@ -1,1 +1,1 @@
-{"cbsa":"27900","roles":{"15-1252":{"employers":[{"name":"Nebraska Furniture Mart, Inc.","filings":1,"median":139474}],"sample":[139474],"n":1},"15-2051":{"employers":[{"name":"Teladoc Health, Inc.","filings":1,"median":92600}],"sample":[92600],"n":1}}}
+{"cbsa":"27900","roles":{"15-1252":{"employers":[{"name":"Nebraska Furniture Mart, Inc.","filings":1,"median":139474}],"sample":[139474],"n":1,"p99":139474},"15-2051":{"employers":[{"name":"Teladoc Health, Inc.","filings":1,"median":92600}],"sample":[92600],"n":1,"p99":92600}}}

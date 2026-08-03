@@ -1,1 +1,1 @@
-{"cbsa":"44420","roles":{"15-1252":{"employers":[{"name":"Birlasoft Solutions, Inc.","filings":1,"median":89149},{"name":"Cira Tek Inc","filings":1,"median":89149}],"sample":[89149,89149],"n":2}}}
+{"cbsa":"44420","roles":{"15-1252":{"employers":[{"name":"Birlasoft Solutions, Inc.","filings":1,"median":89149},{"name":"Cira Tek Inc","filings":1,"median":89149}],"sample":[89149,89149],"n":2,"p99":89149}}}

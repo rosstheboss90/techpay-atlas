@@ -1,1 +1,1 @@
-{"cbsa":"47460","roles":{"15-1252":{"employers":[{"name":"Federal Express Corporation","filings":2,"median":114954}],"sample":[113360,116548],"n":2}}}
+{"cbsa":"47460","roles":{"15-1252":{"employers":[{"name":"Federal Express Corporation","filings":2,"median":114954}],"sample":[113360,116548],"n":2,"p99":116548}}}
