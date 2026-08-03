@@ -1,0 +1,110 @@
+# TechPay Atlas — Design Spec
+
+**Date:** 2026-08-03
+**Status:** Approved (brainstorming session, visual companion used for centerpiece + structure choices)
+
+## Purpose
+
+A data-analytics portfolio piece that is also personally useful: analyze the US tech job
+market — salaries, employment, and role equivalency — across metros, with cost-of-living
+adjustment. Portfolio-first: publicly hosted, shareable link, public source code. Personal
+payoff: answers "where do my skills pay best in real terms?" during an active job search.
+
+## Decisions made
+
+| Question | Decision |
+|---|---|
+| Purpose | Both portfolio and personal tool, **portfolio-first** |
+| Data sources | **BLS OEWS** (backbone) + **DOL H-1B LCA disclosures** (employer layer) + **BEA RPP** (cost-of-living) |
+| Deliverable | **Static site + offline pipeline** (no runtime server, free public hosting) |
+| Role scope | **Core tech + adjacent**: all SOC 15-xxxx occupations plus 11-3021 (Computer & IS Managers) and 41-9031 (Sales Engineers) — ~20 occupations total |
+| COL adjustment | **Yes** — nominal ↔ RPP-adjusted toggle on every salary view |
+| Centerpiece | **Metro Salary Map** (bubble map; size = employment, color = pay) |
+| Site structure | **One-page dashboard**: map hero + drill-down panel + sections below, shared filters |
+
+## Architecture
+
+Two independent halves in one repo (`C:\projects\techpay-atlas`, public GitHub recommended —
+all data is public government data; nothing sensitive can enter the repo):
+
+```
+techpay-atlas/
+├── pipeline/          # TypeScript (tsx) offline ETL scripts
+├── data/
+│   ├── raw/           # downloaded source files — GITIGNORED (large)
+│   └── reports/       # pipeline run reports (match rates, dropped rows)
+├── site/              # Next.js static export (output: 'export'), React + D3
+│   └── public/data/   # derived JSON emitted by pipeline — COMMITTED
+└── docs/
+```
+
+- **Pipeline:** download (scripted, pinned URLs) → streaming parse → filter to target SOC
+  codes → join on CBSA + SOC → aggregate → emit JSON. One command reruns everything;
+  annual refresh = rerun + commit.
+- **Site:** Next.js static export, React owns the DOM, D3 for projection/scales. Deploys
+  to Vercel or GitHub Pages. Zero runtime server; nothing runs on the home box.
+
+## Data sources & joins
+
+| Source | Gives | Notes |
+|---|---|---|
+| BLS OEWS, latest metro file (May 2025 expected available; verify at implementation) | wage percentiles (10/25/50/75/90), employment, location quotient per metro × occupation | one XLSX, ~530 metros, keyed by CBSA + SOC |
+| DOL H-1B LCA disclosures, FY24–25 | employer, job title, SOC, worksite city/state, actual wage | quarterly XLSX, large; filter to certified + full-time + target SOCs |
+| BEA Regional Price Parities | COL index per metro | one small table, keyed by CBSA |
+
+**Joins.** OEWS ⋈ RPP on CBSA is clean. H-1B has worksite city/state, not CBSA → use a
+city→CBSA crosswalk (HUD's, with a fallback of matching principal cities of target metros).
+Unmatched worksites are logged, and the run fails if the match rate drops below a threshold.
+
+**Derived JSON (what the site loads):**
+- `meta.json` — metros (name, CBSA, lat/lng, RPP) + roles (SOC, label); loaded once
+- `salaries.json` — metro × role × {percentiles, employment, LQ}; ~a few hundred KB gzipped
+- `employers/{cbsa}.json` — top H-1B employers + salary distributions; lazy-loaded on metro click
+
+Adjusted pay = nominal / (RPP / 100), computed client-side so the toggle is instant.
+
+## UI
+
+One page, top to bottom:
+
+1. **Filter bar** (one row): role dropdown · metric (median pay / employment / concentration)
+   · **nominal ↔ COL-adjusted toggle**. Filters drive every section.
+2. **Hero map**: D3 `albersUsa`, muted state outlines, one bubble per metro (size =
+   employment, color = single-hue sequential of selected metric). Hover tooltip; click
+   slides in the **drill-down panel**: headline stats (median, adjusted, rank, job count),
+   per-role table with percentile mini-bars, top H-1B employers with median filed salaries.
+   The COL toggle animates the map recolor.
+3. **Rank-flip slopegraph**: pick a role, cities animate between nominal and adjusted rank.
+4. **City × role heatmap**: sortable matrix, cell color = selected metric.
+5. **Head-to-head compare**: two metro pickers + role; side-by-side percentile bands, a
+   "your target salary" input overlaid, and an employer beeswarm from H-1B data.
+
+**URL state:** role/metric/metro/compare pair in query params — deep-linkable on a static host.
+
+**Charts follow the dataviz skill method:** palette run through its validator (light and
+dark modes), sequential = single hue, legends + table-view fallback, tooltips on all marks,
+text in ink tokens not series colors.
+
+## Error handling
+
+- zod schema validation at parse time; fail loudly on shape drift.
+- OEWS suppressed values (`*`, `#`) → explicit nulls; UI renders "insufficient data", never 0.
+- Row-count and join-match-rate assertions; failures write a report to `data/reports/`.
+- Site: missing metro × role combos render as em-dash; failed lazy chunk fetch shows an
+  inline error in the panel, page stays usable.
+
+## Testing
+
+- **Pipeline (vitest):** unit tests for parsers/joins/aggregators against small checked-in
+  fixture slices of each raw format; one end-to-end golden test (fixture in → JSON out).
+  Golden tests are paired with a line-by-line review pass (they only pin what fixtures cover).
+- **Site:** component smoke tests; one Playwright happy path (load → click metro → toggle COL).
+- **Visual:** real screenshot check of the map before calling any visual work done.
+- **Palette:** `validate_palette.js` from the dataviz skill, light + dark, before shipping.
+
+## Out of scope (v1)
+
+- Live job-postings layer (Adzuna) — data model shouldn't preclude it, but not built.
+- Time-series / year-over-year trends (single-year snapshot first; schema keeps a `year` field).
+- Non-US markets; non-tech occupations beyond the ~20 selected.
+- Any server-side features (accounts, saved comparisons).
