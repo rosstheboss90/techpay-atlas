@@ -3,7 +3,8 @@ import { targetSoc } from './soc'
 
 export interface LcaRecord { soc: string; employer: string; zip: string; annualWage: number; caseNumber: string }
 
-export type DropReason = 'status' | 'partTime' | 'soc' | 'unit' | 'wage' | 'range' | 'zip' | 'employer'
+export type DropReason =
+  'status' | 'certifiedWithdrawn' | 'partTime' | 'soc' | 'unit' | 'wage' | 'range' | 'zip' | 'employer'
 
 const norm = (v: unknown) => String(v ?? '').trim().toUpperCase()
 
@@ -14,9 +15,13 @@ const WAGE_MIN = 20_000, WAGE_MAX = 2_000_000
  *  for every row that didn't make it (so schema drift shows up as numbers, not silence). */
 export function lcaRowsToRecords(rows: Record<string, unknown>[]): { records: LcaRecord[]; drops: Record<DropReason, number> } {
   const out: LcaRecord[] = []
-  const drops: Record<DropReason, number> = { status: 0, partTime: 0, soc: 0, unit: 0, wage: 0, range: 0, zip: 0, employer: 0 }
+  const drops: Record<DropReason, number> = {
+    status: 0, certifiedWithdrawn: 0, partTime: 0, soc: 0, unit: 0, wage: 0, range: 0, zip: 0, employer: 0,
+  }
   for (const r of rows) {
-    if (norm(r.CASE_STATUS) !== 'CERTIFIED') { drops.status++; continue }
+    const status = norm(r.CASE_STATUS)
+    if (status === 'CERTIFIED - WITHDRAWN') { drops.certifiedWithdrawn++; continue }
+    if (status !== 'CERTIFIED') { drops.status++; continue }
     if (!/^Y/.test(norm(r.FULL_TIME_POSITION))) { drops.partTime++; continue }
     const soc = targetSoc(r.SOC_CODE)
     if (!soc) { drops.soc++; continue }

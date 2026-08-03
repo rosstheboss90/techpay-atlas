@@ -76,6 +76,7 @@ describe('lcaRowsToRecords', () => {
       const rows = [
         row(),                                                    // accepted
         row({ CASE_STATUS: 'Denied' }),                           // status
+        row({ CASE_STATUS: 'Certified - Withdrawn' }),            // certifiedWithdrawn
         row({ FULL_TIME_POSITION: 'N' }),                         // partTime
         row({ SOC_CODE: '29-1141' }),                             // soc
         row({ WAGE_UNIT_OF_PAY: 'Fortnight' }),                   // unit
@@ -86,8 +87,15 @@ describe('lcaRowsToRecords', () => {
       const { records, drops } = lcaRowsToRecords(rows)
       expect(records).toHaveLength(1)
       expect(drops).toEqual({
-        status: 1, partTime: 1, soc: 1, unit: 1, wage: 1, range: 1, zip: 0, employer: 1,
+        status: 1, certifiedWithdrawn: 1, partTime: 1, soc: 1, unit: 1, wage: 1, range: 1, zip: 0, employer: 1,
       })
+    })
+    it.each([
+      ['Certified - Withdrawn', true], ['CERTIFIED - WITHDRAWN', true], ['certified - withdrawn', true],
+    ])('gives %s its own certifiedWithdrawn bucket, not the generic status bucket', (status) => {
+      const { drops } = lcaRowsToRecords([row({ CASE_STATUS: status })])
+      expect(drops.certifiedWithdrawn).toBe(1)
+      expect(drops.status).toBe(0)
     })
   })
 })
