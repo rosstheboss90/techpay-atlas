@@ -1,0 +1,13 @@
+:root {
+  --bg: #f7f8fa; --surface: #ffffff; --ink: #1a2330; --ink-muted: #5a6675;
+  --line: #d9dee5; --accent: #1c5292;
+  --font: ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #10151c; --surface: #1a212b; --ink: #e8ecf1; --ink-muted: #9aa5b1;
+    --line: #333d49; --accent: #7fb0e0;
+  }
+}
+* { box-sizing: border-box; margin: 0; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font); }
