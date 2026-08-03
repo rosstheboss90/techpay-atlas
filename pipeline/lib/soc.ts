@@ -17,6 +17,8 @@ export const ROLES: Role[] = [
   { soc: '15-1254', label: 'Web Developers', short: 'Web Dev' },
   { soc: '15-1255', label: 'Web & Digital Interface Designers', short: 'UX/UI' },
   { soc: '15-1299', label: 'Computer Occupations, All Other', short: 'Other IT' },
+  { soc: '15-2031', label: 'Operations Research Analysts', short: 'Ops Research' },
+  { soc: '15-2041', label: 'Statisticians', short: 'Statistician' },
   { soc: '15-2051', label: 'Data Scientists', short: 'Data Sci' },
   { soc: '41-9031', label: 'Sales Engineers', short: 'Sales Eng' },
 ]

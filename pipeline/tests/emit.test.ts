@@ -20,7 +20,7 @@ describe('golden: fixtures in -> site JSON out', () => {
   it('buildMeta joins areas, coords, rpp; missing rpp -> null; metros without coords are dropped and reported', () => {
     const { meta, droppedNoArea, droppedNoCoords } = buildMeta(salaries, areas, coords, rpp, 2025)
     expect(meta.year).toBe(2025)
-    expect(meta.roles).toHaveLength(18)
+    expect(meta.roles).toHaveLength(20)
     expect(meta.capValue).toBe(TOP_CODE)
     expect(meta.rppYear).toBe(2023)
     expect(meta.metros).toEqual([
