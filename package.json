@@ -2,7 +2,9 @@
   "name": "techpay-atlas",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "download": "tsx pipeline/download.ts",
     "pipeline": "tsx --max-old-space-size=6144 pipeline/run.ts",
@@ -18,6 +20,7 @@
   "dependencies": {
     "adm-zip": "^0.6.0",
     "csv-parse": "^7.0.2",
+    "exceljs": "^4.4.0",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
     "zod": "^4.4.3"
   }
