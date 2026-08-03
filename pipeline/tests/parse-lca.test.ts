@@ -1,0 +1,36 @@
+// pipeline/tests/parse-lca.test.ts
+import { describe, expect, it } from 'vitest'
+import { lcaRowsToRecords } from '../lib/parse-lca'
+
+const row = (over: Record<string, unknown> = {}) => ({
+  CASE_STATUS: 'Certified', FULL_TIME_POSITION: 'Y',
+  EMPLOYER_NAME: '  Acme   Corp ', SOC_CODE: '15-1252.00', JOB_TITLE: 'Software Engineer II',
+  WORKSITE_POSTAL_CODE: 78701, WAGE_RATE_OF_PAY_FROM: '$145,000.00', WAGE_UNIT_OF_PAY: 'Year',
+  ...over,
+})
+
+describe('lcaRowsToRecords', () => {
+  it('maps a certified full-time target row, normalizing employer whitespace and ZIP', () => {
+    expect(lcaRowsToRecords([row()])).toEqual([
+      { soc: '15-1252', employer: 'Acme Corp', zip: '78701', annualWage: 145000 },
+    ])
+  })
+  it('annualizes hourly/weekly/bi-weekly/monthly wages', () => {
+    expect(lcaRowsToRecords([row({ WAGE_RATE_OF_PAY_FROM: '70', WAGE_UNIT_OF_PAY: 'Hour' })])[0].annualWage).toBe(145600)
+    expect(lcaRowsToRecords([row({ WAGE_RATE_OF_PAY_FROM: '3000', WAGE_UNIT_OF_PAY: 'Week' })])[0].annualWage).toBe(156000)
+    expect(lcaRowsToRecords([row({ WAGE_RATE_OF_PAY_FROM: '6000', WAGE_UNIT_OF_PAY: 'Bi-Weekly' })])[0].annualWage).toBe(156000)
+    expect(lcaRowsToRecords([row({ WAGE_RATE_OF_PAY_FROM: '12000', WAGE_UNIT_OF_PAY: 'Month' })])[0].annualWage).toBe(144000)
+  })
+  it('drops withdrawn, part-time, non-target-SOC, unknown-unit, and implausible-wage rows', () => {
+    expect(lcaRowsToRecords([row({ CASE_STATUS: 'Certified - Withdrawn' })])).toEqual([])
+    expect(lcaRowsToRecords([row({ FULL_TIME_POSITION: 'N' })])).toEqual([])
+    expect(lcaRowsToRecords([row({ SOC_CODE: '29-1141' })])).toEqual([])
+    expect(lcaRowsToRecords([row({ WAGE_UNIT_OF_PAY: 'Fortnight' })])).toEqual([])
+    expect(lcaRowsToRecords([row({ WAGE_RATE_OF_PAY_FROM: '12' })])).toEqual([])        // $12/yr
+    expect(lcaRowsToRecords([row({ WAGE_RATE_OF_PAY_FROM: '9,000,000' })])).toEqual([])  // $9M/yr
+  })
+  it('restores leading zeros on ZIPs and trims ZIP+4', () => {
+    expect(lcaRowsToRecords([row({ WORKSITE_POSTAL_CODE: '02139-4307' })])[0].zip).toBe('02139')
+    expect(lcaRowsToRecords([row({ WORKSITE_POSTAL_CODE: 2139 })])[0].zip).toBe('02139')
+  })
+})
