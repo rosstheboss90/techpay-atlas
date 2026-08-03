@@ -13,7 +13,7 @@ describe('oewsRowsToRecords', () => {
     const [r] = oewsRowsToRecords([row({ AREA: 9999 })])
     expect(r).toEqual({
       cbsa: '09999', soc: '15-1252', emp: 31590, lq: 2.19,
-      p10: 75000, p25: 96000, p50: 132000, p75: 168000, p90: 205000,
+      p10: 75000, p25: 96000, p50: 132000, p75: 168000, p90: 205000, capped: [],
     })
   })
   it('drops non-target SOC rows (including 00-0000 rollups)', () => {
@@ -21,8 +21,15 @@ describe('oewsRowsToRecords', () => {
     expect(oewsRowsToRecords([row({ OCC_CODE: '29-1141' })])).toEqual([])
   })
   it('turns suppression markers into nulls, never zeros', () => {
-    const [r] = oewsRowsToRecords([row({ A_MEDIAN: '#', TOT_EMP: '**', LOC_QUOTIENT: '*' })])
-    expect(r.p50).toBeNull(); expect(r.emp).toBeNull(); expect(r.lq).toBeNull()
+    const [r] = oewsRowsToRecords([row({ TOT_EMP: '**', LOC_QUOTIENT: '*' })])
+    expect(r.emp).toBeNull(); expect(r.lq).toBeNull()
+    expect(r.p10).toBe(75000)
+  })
+  it('treats # as a top-code (>= $239,200), not suppression, and records which percentiles were capped', () => {
+    const [r] = oewsRowsToRecords([row({ A_MEDIAN: '#', A_PCT90: '#' })])
+    expect(r.p50).toBe(239200)
+    expect(r.p90).toBe(239200)
+    expect(r.capped).toEqual(['p50', 'p90'])
     expect(r.p10).toBe(75000)
   })
   it('throws on a target row missing required columns (schema drift fails loudly)', () => {
