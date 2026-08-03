@@ -1,4 +1,3 @@
-// pipeline/lib/parse-lca.ts
 import { num } from './num'
 import { targetSoc } from './soc'
 

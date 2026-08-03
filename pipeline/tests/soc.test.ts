@@ -26,6 +26,15 @@ describe('num', () => {
     expect(num('')).toBeNull()
     expect(num(null)).toBeNull()
   })
+  it('rejects values Number() would otherwise mis-parse (scientific notation, stray letters, multiple decimals)', () => {
+    expect(num('5e10')).toBeNull()       // Number('5e10') is 50_000_000_000 -- not a real wage/count cell
+    expect(num('123abc')).toBeNull()
+    expect(num('1.2.3')).toBeNull()
+    expect(num('+45')).toBeNull()
+  })
+  it('still accepts legitimately comma-grouped numbers', () => {
+    expect(num('1,234,567')).toBe(1234567)
+  })
 })
 
 describe('cell', () => {

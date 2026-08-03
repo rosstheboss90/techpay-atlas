@@ -15,16 +15,18 @@ export function buildMeta(
   coords: Map<string, { lat: number; lng: number }>,
   rpp: { year: number; values: Map<string, number> },
   year: number,
-): { meta: Meta; dropped: string[] } {
+): { meta: Meta; droppedNoArea: string[]; droppedNoCoords: string[] } {
   const cbsas = [...new Set(salaries.map(s => s.cbsa))].sort()
   const metros: MetroMeta[] = []
-  const dropped: string[] = []
+  const droppedNoArea: string[] = []
+  const droppedNoCoords: string[] = []
   for (const cbsa of cbsas) {
     const area = areas.get(cbsa), c = coords.get(cbsa)
-    if (!area || !c) { dropped.push(cbsa); continue } // no name or no coords -> cannot render on the map
+    if (!area) { droppedNoArea.push(cbsa); continue }
+    if (!c) { droppedNoCoords.push(cbsa); continue } // no coords -> cannot render on the map
     metros.push({ cbsa, name: area.name, state: area.state, lat: c.lat, lng: c.lng, rpp: rpp.values.get(cbsa) ?? null })
   }
-  return { meta: { year, generated: null, metros, roles: ROLES, capValue: TOP_CODE, rppYear: rpp.year }, dropped }
+  return { meta: { year, generated: null, metros, roles: ROLES, capValue: TOP_CODE, rppYear: rpp.year }, droppedNoArea, droppedNoCoords }
 }
 
 export function buildSalaries(salaries: SalaryRecord[], keep: Set<string>): { salaries: SalariesJson; excluded: number } {

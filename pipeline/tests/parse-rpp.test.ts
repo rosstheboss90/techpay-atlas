@@ -65,4 +65,14 @@ describe('rppRowsToMap', () => {
     const { values } = rppRowsToMap([metroRow('12420', { '2023': '103.6' })])
     expect(values.get('12420')).toBe(103.6)
   })
+
+  it('ignores the BEA footnote tail row', () => {
+    const rows = [
+      metroRow('12420', { '2023': '103.6' }),
+      { GeoFIPS: 'Legend / Footnotes:', GeoName: '', LineCode: '', Description: '' },
+    ]
+    const { values } = rppRowsToMap(rows)
+    expect(values.get('12420')).toBe(103.6)
+    expect(values.size).toBe(1)
+  })
 })

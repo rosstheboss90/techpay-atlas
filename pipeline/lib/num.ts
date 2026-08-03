@@ -1,10 +1,15 @@
-/** Currency/number cell -> number, or null for blank/suppressed (*, **, #) / unparseable. Never 0-defaults. */
+const NUM_SHAPE = /^\$?-?[\d,]+(\.\d+)?$/
+
+/** Currency/number cell -> number, or null for blank/suppressed (*, **, #) / unparseable. Never 0-defaults.
+ *  Validates cell shape before stripping $/commas so Number()'s permissive parsing (scientific
+ *  notation, stray trailing garbage, etc.) can't sneak an unintended value through. */
 export function num(v: unknown): number | null {
   if (v === null || v === undefined) return null
   if (typeof v === 'number') return Number.isFinite(v) ? v : null
-  const s = String(v).replace(/[$,]/g, '').trim()
+  const s = String(v).trim()
   if (s === '' || s === '*' || s === '**' || s === '#') return null
-  const n = Number(s)
+  if (!NUM_SHAPE.test(s)) return null
+  const n = Number(s.replace(/[$,]/g, ''))
   return Number.isFinite(n) ? n : null
 }
 

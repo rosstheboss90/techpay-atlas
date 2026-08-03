@@ -1,4 +1,3 @@
-// pipeline/tests/parse-lca.test.ts
 import { describe, expect, it } from 'vitest'
 import { lcaRowsToRecords } from '../lib/parse-lca'
 

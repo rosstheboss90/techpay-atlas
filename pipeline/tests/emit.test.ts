@@ -18,7 +18,7 @@ const rpp = { year: 2023, values: new Map([['12420', 103.6]]) } // Dallas intent
 
 describe('golden: fixtures in -> site JSON out', () => {
   it('buildMeta joins areas, coords, rpp; missing rpp -> null; metros without coords are dropped and reported', () => {
-    const { meta, dropped } = buildMeta(salaries, areas, coords, rpp, 2025)
+    const { meta, droppedNoArea, droppedNoCoords } = buildMeta(salaries, areas, coords, rpp, 2025)
     expect(meta.year).toBe(2025)
     expect(meta.roles).toHaveLength(18)
     expect(meta.capValue).toBe(TOP_CODE)
@@ -27,12 +27,21 @@ describe('golden: fixtures in -> site JSON out', () => {
       { cbsa: '12420', name: 'Austin-Round Rock-San Marcos, TX', state: 'TX', lat: 30.3, lng: -97.7, rpp: 103.6 },
       { cbsa: '19100', name: 'Dallas-Fort Worth-Arlington, TX', state: 'TX', lat: 32.8, lng: -97.0, rpp: null },
     ])
-    expect(dropped).toEqual([])
+    expect(droppedNoArea).toEqual([])
+    expect(droppedNoCoords).toEqual([])
   })
   it('buildMeta drops (and reports) a metro with no coordinates', () => {
-    const { meta, dropped } = buildMeta(salaries, areas, new Map([['12420', { lat: 30.3, lng: -97.7 }]]), rpp, 2025)
+    const { meta, droppedNoArea, droppedNoCoords } = buildMeta(salaries, areas, new Map([['12420', { lat: 30.3, lng: -97.7 }]]), rpp, 2025)
     expect(meta.metros.map(m => m.cbsa)).toEqual(['12420'])
-    expect(dropped).toEqual(['19100'])
+    expect(droppedNoArea).toEqual([])
+    expect(droppedNoCoords).toEqual(['19100'])
+  })
+  it('buildMeta drops (and reports) a metro present in salaries but absent from areas', () => {
+    const { meta, droppedNoArea, droppedNoCoords } = buildMeta(
+      salaries, new Map([['12420', { name: 'Austin-Round Rock-San Marcos, TX', state: 'TX' }]]), coords, rpp, 2025)
+    expect(meta.metros.map(m => m.cbsa)).toEqual(['12420'])
+    expect(droppedNoArea).toEqual(['19100'])
+    expect(droppedNoCoords).toEqual([])
   })
   it('buildSalaries nests cbsa -> soc, omitting capped when empty and including it when set', () => {
     const keep = new Set(['12420', '19100'])
