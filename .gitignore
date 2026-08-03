@@ -6,3 +6,5 @@ data/reports/*
 .next/
 site/out/
 *.tsbuildinfo
+site/AGENTS.md
+site/CLAUDE.md
