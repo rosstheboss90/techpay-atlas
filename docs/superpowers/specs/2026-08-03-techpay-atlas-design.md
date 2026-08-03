@@ -17,7 +17,7 @@ payoff: answers "where do my skills pay best in real terms?" during an active jo
 | Purpose | Both portfolio and personal tool, **portfolio-first** |
 | Data sources | **BLS OEWS** (backbone) + **DOL H-1B LCA disclosures** (employer layer) + **BEA RPP** (cost-of-living) |
 | Deliverable | **Static site + offline pipeline** (no runtime server, free public hosting) |
-| Role scope | **Core tech + adjacent**: all SOC 15-xxxx occupations plus 11-3021 (Computer & IS Managers) and 41-9031 (Sales Engineers) — ~20 occupations total |
+| Role scope | **Core tech + adjacent**, 20 occupations: all SOC 15-12xx (Computer Occupations) + 15-2031 (Operations Research Analysts), 15-2041 (Statisticians), 15-2051 (Data Scientists), plus 11-3021 (Computer & IS Managers) and 41-9031 (Sales Engineers). Excluded as not IT-adjacent: the rest of the 15-2000 Mathematical Science group — 15-2011 (Actuaries), 15-2021 (Mathematicians), 15-2099 (Mathematical Science Occupations, All Other) |
 | COL adjustment | **Yes** — nominal ↔ RPP-adjusted toggle on every salary view |
 | Centerpiece | **Metro Salary Map** (bubble map; size = employment, color = pay) |
 | Site structure | **One-page dashboard**: map hero + drill-down panel + sections below, shared filters |
@@ -63,6 +63,22 @@ Unmatched worksites are logged, and the run fails if the match rate drops below 
 
 Adjusted pay = nominal / (RPP / 100), computed client-side so the toggle is instant.
 
+**Data-contract notes (site-consuming code should assume these):**
+- Each `MetroMeta` carries `lcaFilings: number` (count of matched H-1B filings for that metro
+  across all roles). A metro with `lcaFilings: 0` has no employer JSON file — the site can
+  render "no H-1B filings for this metro" directly from `meta.json` without attempting the
+  `employers/{cbsa}.json` fetch.
+- Each `EmployerBundle`'s beeswarm `sample` deliberately includes the bucket's true max wage,
+  which can be a multi-million-dollar data-entry artifact. The beeswarm axis should clamp at
+  the bundle's `p99` (exact nearest-rank 99th percentile of the full wage list, not the sample)
+  instead of the sample max.
+- Bundles with `n ≤ 2` filings are statistically thin; the site should present them with a
+  small-sample caveat. This is a site-side rendering decision (not enforced by the pipeline) —
+  left for site design.
+- A known DOL source-data quirk: roughly 16 employer names per quarterly LCA file carry
+  mojibake from DOL double-encoding UTF-8 as Latin-1 (or similar) at export time. This is not
+  repaired by the pipeline — the raw (garbled) name is passed through as-is.
+
 ## UI
 
 One page, top to bottom:
@@ -88,7 +104,12 @@ text in ink tokens not series colors.
 ## Error handling
 
 - zod schema validation at parse time; fail loudly on shape drift.
-- OEWS suppressed values (`*`, `#`) → explicit nulls; UI renders "insufficient data", never 0.
+- OEWS suppressed values: `*`/`**` → explicit null (UI renders "insufficient data", never 0).
+  `#` is different — it is a **top-code**, not a suppression: OEWS substitutes the percentile
+  wage with a fixed ceiling (`Meta.topCodeValue`, currently $239,200) rather than withholding it.
+  Those cells emit the substituted `topCodeValue` plus a `capped` marker (the percentile's key,
+  e.g. `'p90'`, listed in the row's `capped` array) — never null. The site should render a "≥"
+  prefix on any percentile whose key appears in `capped`.
 - Row-count and join-match-rate assertions; failures write a report to `data/reports/`.
 - Site: missing metro × role combos render as em-dash; failed lazy chunk fetch shows an
   inline error in the panel, page stays usable.
