@@ -54,6 +54,20 @@ describe('lcaRowsToRecords', () => {
   it('retains CASE_NUMBER, trimmed', () => {
     expect(lcaRowsToRecords([row({ CASE_NUMBER: ' I-200-12345-678901 ' })]).records[0].caseNumber).toBe('I-200-12345-678901')
   })
+  describe('wage band midpoint', () => {
+    it('uses the midpoint of FROM/TO when TO parses and exceeds FROM', () => {
+      const r = lcaRowsToRecords([row({ WAGE_RATE_OF_PAY_FROM: '100000', WAGE_RATE_OF_PAY_TO: '150000', WAGE_UNIT_OF_PAY: 'Year' })]).records[0]
+      expect(r.annualWage).toBe(125000)
+    })
+    it('uses FROM alone when TO is absent', () => {
+      const r = lcaRowsToRecords([row({ WAGE_RATE_OF_PAY_FROM: '100000', WAGE_UNIT_OF_PAY: 'Year' })]).records[0]
+      expect(r.annualWage).toBe(100000)
+    })
+    it('uses FROM alone when TO is junk (less than FROM)', () => {
+      const r = lcaRowsToRecords([row({ WAGE_RATE_OF_PAY_FROM: '100000', WAGE_RATE_OF_PAY_TO: '50000', WAGE_UNIT_OF_PAY: 'Year' })]).records[0]
+      expect(r.annualWage).toBe(100000)
+    })
+  })
 
   describe('drop accounting', () => {
     // NOTE: WORKSITE_POSTAL_CODE is digit-stripped then padded/sliced to exactly 5 digits (see

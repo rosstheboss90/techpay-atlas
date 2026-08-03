@@ -25,7 +25,9 @@ export function lcaRowsToRecords(rows: Record<string, unknown>[]): { records: Lc
     if (!factor) { drops.unit++; continue }
     const base = num(r.WAGE_RATE_OF_PAY_FROM)
     if (base === null) { drops.wage++; continue }
-    const annualWage = Math.round(base * factor)
+    const to = num(r.WAGE_RATE_OF_PAY_TO)
+    const rate = to !== null && to > base ? (base + to) / 2 : base
+    const annualWage = Math.round(rate * factor)
     if (annualWage < WAGE_MIN || annualWage > WAGE_MAX) { drops.range++; continue }
     const d = String(r.WORKSITE_POSTAL_CODE ?? '').replace(/\D/g, '')
     const zip = d.length > 5 ? d.padStart(9, '0').slice(0, 5) : d.padStart(5, '0')
