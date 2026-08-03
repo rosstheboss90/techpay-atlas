@@ -15,4 +15,17 @@ describe('hudRowsToZipCbsa', () => {
     const m = hudRowsToZipCbsa([{ ZIP: 99801, CBSA: '99999', BUS_RATIO: '1.0', TOT_RATIO: '1.0' }])
     expect(m.has('99801')).toBe(false)
   })
+  it.each([
+    [null], [''], ['Total'],
+  ])('rejects junk CBSA cells (%j)', (cbsa) => {
+    const m = hudRowsToZipCbsa([{ ZIP: 78701, CBSA: cbsa, BUS_RATIO: '1.0', TOT_RATIO: '1.0' }])
+    expect(m.has('78701')).toBe(false)
+  })
+  it('breaks ties on equal score by keeping the lexicographically smaller cbsa', () => {
+    const m = hudRowsToZipCbsa([
+      { ZIP: 78701, CBSA: '41700', BUS_RATIO: '0.5', TOT_RATIO: '0.5' },
+      { ZIP: 78701, CBSA: '12420', BUS_RATIO: '0.5', TOT_RATIO: '0.5' },
+    ])
+    expect(m.get('78701')).toBe('12420')
+  })
 })
