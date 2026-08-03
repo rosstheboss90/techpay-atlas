@@ -4,32 +4,35 @@ import { targetSoc } from './soc'
 
 export interface LcaRecord { soc: string; employer: string; zip: string; annualWage: number; caseNumber: string }
 
+export type DropReason = 'status' | 'partTime' | 'soc' | 'unit' | 'wage' | 'range' | 'zip' | 'employer'
+
 const norm = (v: unknown) => String(v ?? '').trim().toUpperCase()
 
 const UNIT_FACTOR: Record<string, number> = { YEAR: 1, HOUR: 2080, WEEK: 52, BIWEEKLY: 26, MONTH: 12 }
 const WAGE_MIN = 20_000, WAGE_MAX = 2_000_000
 
-/** Certified, full-time, target-SOC LCA rows -> normalized records. Everything else is dropped;
- *  drop accounting is the orchestrator's job (input minus output). */
-export function lcaRowsToRecords(rows: Record<string, unknown>[]): LcaRecord[] {
+/** Certified, full-time, target-SOC LCA rows -> normalized records, plus a per-reason drop count
+ *  for every row that didn't make it (so schema drift shows up as numbers, not silence). */
+export function lcaRowsToRecords(rows: Record<string, unknown>[]): { records: LcaRecord[]; drops: Record<DropReason, number> } {
   const out: LcaRecord[] = []
+  const drops: Record<DropReason, number> = { status: 0, partTime: 0, soc: 0, unit: 0, wage: 0, range: 0, zip: 0, employer: 0 }
   for (const r of rows) {
-    if (norm(r.CASE_STATUS) !== 'CERTIFIED') continue
-    if (!/^Y/.test(norm(r.FULL_TIME_POSITION))) continue
+    if (norm(r.CASE_STATUS) !== 'CERTIFIED') { drops.status++; continue }
+    if (!/^Y/.test(norm(r.FULL_TIME_POSITION))) { drops.partTime++; continue }
     const soc = targetSoc(r.SOC_CODE)
-    if (!soc) continue
+    if (!soc) { drops.soc++; continue }
     const factor = UNIT_FACTOR[norm(r.WAGE_UNIT_OF_PAY).replace(/[^A-Z]/g, '')]
-    if (!factor) continue
+    if (!factor) { drops.unit++; continue }
     const base = num(r.WAGE_RATE_OF_PAY_FROM)
-    if (base === null) continue
+    if (base === null) { drops.wage++; continue }
     const annualWage = Math.round(base * factor)
-    if (annualWage < WAGE_MIN || annualWage > WAGE_MAX) continue
+    if (annualWage < WAGE_MIN || annualWage > WAGE_MAX) { drops.range++; continue }
     const zip = String(r.WORKSITE_POSTAL_CODE ?? '').trim().split('-')[0].padStart(5, '0')
-    if (!/^\d{5}$/.test(zip)) continue
+    if (!/^\d{5}$/.test(zip)) { drops.zip++; continue }
     const employer = String(r.EMPLOYER_NAME ?? '').replace(/\s+/g, ' ').trim()
-    if (!employer) continue
+    if (!employer) { drops.employer++; continue }
     const caseNumber = String(r.CASE_NUMBER ?? '').trim()
     out.push({ soc, employer, zip, annualWage, caseNumber })
   }
-  return out
+  return { records: out, drops }
 }
