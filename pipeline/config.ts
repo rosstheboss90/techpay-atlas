@@ -11,4 +11,5 @@ export const THRESHOLDS = {
   minSalaryRows: 2000,   // metro x role combos with data
   minZipMatchRate: 0.85, // LCA worksite ZIP -> CBSA join
   minRppCoverage: 0.8,   // share of salary metros with an RPP value
+  minLcaRecords: 50_000, // usable LCA filings across all quarters before ZIP join
 }

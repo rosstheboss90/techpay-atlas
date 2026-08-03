@@ -19,7 +19,7 @@ export function attachCbsa(records: LcaRecord[], zipCbsa: Map<string, string>):
     if (cbsa) matched.push({ ...r, cbsa })
     else unmatchedZips.set(r.zip, (unmatchedZips.get(r.zip) ?? 0) + 1)
   }
-  return { matched, matchRate: records.length ? matched.length / records.length : 1, unmatchedZips }
+  return { matched, matchRate: records.length ? matched.length / records.length : 0, unmatchedZips }
 }
 
 /** cbsa -> soc -> { top-N employers by filing count (case-insensitive merge, most common casing kept),

@@ -3,7 +3,7 @@ import { aggregateEmployers, attachCbsa, median } from '../lib/aggregate'
 import type { LcaRecord } from '../lib/parse-lca'
 
 const rec = (employer: string, annualWage: number, soc = '15-1252', zip = '78701'): LcaRecord =>
-  ({ soc, employer, zip, annualWage })
+  ({ soc, employer, zip, annualWage, caseNumber: '' })
 
 describe('median', () => {
   it('handles odd and even lengths', () => {
@@ -18,6 +18,11 @@ describe('attachCbsa', () => {
     const { matched, matchRate } = attachCbsa([rec('A', 100000), rec('B', 100000, '15-1252', '00000')], xwalk)
     expect(matched).toEqual([{ ...rec('A', 100000), cbsa: '12420' }])
     expect(matchRate).toBe(0.5)
+  })
+  it('reports matchRate 0 (not 1) for empty input — an empty join is failed, not perfect', () => {
+    const { matched, matchRate } = attachCbsa([], new Map([['78701', '12420']]))
+    expect(matched).toEqual([])
+    expect(matchRate).toBe(0)
   })
 })
 

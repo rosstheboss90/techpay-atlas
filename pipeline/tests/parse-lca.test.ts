@@ -12,8 +12,24 @@ const row = (over: Record<string, unknown> = {}) => ({
 describe('lcaRowsToRecords', () => {
   it('maps a certified full-time target row, normalizing employer whitespace and ZIP', () => {
     expect(lcaRowsToRecords([row()])).toEqual([
-      { soc: '15-1252', employer: 'Acme Corp', zip: '78701', annualWage: 145000 },
+      { soc: '15-1252', employer: 'Acme Corp', zip: '78701', annualWage: 145000, caseNumber: '' },
     ])
+  })
+  it.each([
+    ['Certified', true], ['CERTIFIED', true], ['certified', true],
+  ])('accepts CASE_STATUS drift: %s', (status, accepted) => {
+    expect(lcaRowsToRecords([row({ CASE_STATUS: status })]).length > 0).toBe(accepted)
+  })
+  it.each([
+    ['Year', '145000'], ['year', '145000'], ['YEAR', '145000'],
+    ['Bi-Weekly', '6000'], ['Bi-weekly', '6000'], ['BI-WEEKLY', '6000'],
+  ])('accepts WAGE_UNIT_OF_PAY drift: %s', (unit, wage) => {
+    expect(lcaRowsToRecords([row({ WAGE_UNIT_OF_PAY: unit, WAGE_RATE_OF_PAY_FROM: wage })]).length).toBe(1)
+  })
+  it.each([
+    ['Y', true], ['Yes', true],
+  ])('accepts FULL_TIME_POSITION drift: %s', (v) => {
+    expect(lcaRowsToRecords([row({ FULL_TIME_POSITION: v })]).length).toBe(1)
   })
   it('annualizes hourly/weekly/bi-weekly/monthly wages', () => {
     expect(lcaRowsToRecords([row({ WAGE_RATE_OF_PAY_FROM: '70', WAGE_UNIT_OF_PAY: 'Hour' })])[0].annualWage).toBe(145600)
@@ -32,5 +48,8 @@ describe('lcaRowsToRecords', () => {
   it('restores leading zeros on ZIPs and trims ZIP+4', () => {
     expect(lcaRowsToRecords([row({ WORKSITE_POSTAL_CODE: '02139-4307' })])[0].zip).toBe('02139')
     expect(lcaRowsToRecords([row({ WORKSITE_POSTAL_CODE: 2139 })])[0].zip).toBe('02139')
+  })
+  it('retains CASE_NUMBER, trimmed', () => {
+    expect(lcaRowsToRecords([row({ CASE_NUMBER: ' I-200-12345-678901 ' })])[0].caseNumber).toBe('I-200-12345-678901')
   })
 })
