@@ -1,0 +1,6 @@
+node_modules/
+data/raw/*
+!data/raw/.gitkeep
+data/reports/*
+!data/reports/.gitkeep
+.next/

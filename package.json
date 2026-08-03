@@ -1,0 +1,23 @@
+{
+  "name": "techpay-atlas",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "download": "tsx pipeline/download.ts",
+    "pipeline": "tsx --max-old-space-size=6144 pipeline/run.ts",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/adm-zip": "^0.5.8",
+    "@types/node": "^26.1.2",
+    "tsx": "^4.23.5",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.10"
+  },
+  "dependencies": {
+    "adm-zip": "^0.6.0",
+    "csv-parse": "^7.0.2",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
+    "zod": "^4.4.3"
+  }
+}
