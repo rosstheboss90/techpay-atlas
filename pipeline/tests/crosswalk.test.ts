@@ -28,4 +28,10 @@ describe('hudRowsToZipCbsa', () => {
     ])
     expect(m.get('78701')).toBe('12420')
   })
+  it('accepts 2024+ vintage lowercase headers with geoid in place of CBSA', () => {
+    const m = hudRowsToZipCbsa([
+      { zip: '00501', geoid: '35620', res_ratio: 0, bus_ratio: 1, oth_ratio: 0, tot_ratio: 1 },
+    ])
+    expect(m.get('00501')).toBe('35620')
+  })
 })

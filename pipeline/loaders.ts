@@ -19,7 +19,11 @@ export function readSheetRows(file: string): Record<string, unknown>[] {
 
 export function readDelimitedRows(file: string, delimiter = ','): Record<string, string>[] {
   return parse(readFileSync(file), {
-    columns: true, delimiter, bom: true, relax_column_count: true, skip_empty_lines: true,
+    // trim: BEA's MARPP CSV export pads fields with a leading space before the opening quote
+    // (e.g. ` "00000"`), which csv-parse's strict quote state machine otherwise rejects as
+    // INVALID_OPENING_QUOTE. trim strips that whitespace before quote detection, so it both
+    // fixes the parse and yields clean unquoted values.
+    columns: true, delimiter, bom: true, relax_column_count: true, skip_empty_lines: true, trim: true,
   })
 }
 
