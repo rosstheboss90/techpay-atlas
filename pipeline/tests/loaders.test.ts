@@ -9,7 +9,7 @@ describe('isBlankLcaRecord', () => {
     expect(isBlankLcaRecord(blank)).toBe(true)
   })
   it('is false when at least one LCA_COLUMNS value is non-null', () => {
-    const partial = Object.fromEntries(LCA_COLUMNS.map(c => [c, null]))
+    const partial: Record<string, unknown> = Object.fromEntries(LCA_COLUMNS.map(c => [c, null]))
     partial[LCA_COLUMNS[0]] = 'CERTIFIED'
     expect(isBlankLcaRecord(partial)).toBe(false)
   })
