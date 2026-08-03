@@ -3,18 +3,26 @@ import type { EmployerBundle } from './aggregate'
 import { ROLES, type Role } from './soc'
 import { TOP_CODE } from './num'
 
-export interface MetroMeta { cbsa: string; name: string; state: string; lat: number; lng: number; rpp: number | null }
-export interface Meta { year: number; generated: string | null; metros: MetroMeta[]; roles: Role[]; capValue: number; rppYear: number }
+export interface MetroMeta { cbsa: string; name: string; state: string; lat: number; lng: number; rpp: number | null; lcaFilings: number }
+export interface Meta {
+  year: number; generated: string | null; metros: MetroMeta[]; roles: Role[]
+  topCodeValue: number; rppYear: number
+  lcaPeriod: string
+  sources: { oews: string; lca: string[]; hud: string; zipMatchRate: number }
+}
 type SalaryRow = Omit<SalaryRecord, 'cbsa' | 'soc' | 'capped'> & { capped?: Pct[] }
 export type SalariesJson = Record<string, Record<string, SalaryRow>>
 
-/** `generated` is stamped by run.ts at write time — builders stay pure and tests stay time-free. */
+/** `generated`, `lcaPeriod`, and `sources` are stamped by run.ts at write time — those are
+ *  pipeline-run provenance (filenames, timestamps, final match rate), not derivable from the
+ *  salary/area/rpp inputs buildMeta receives. Builders stay pure and tests stay time-free. */
 export function buildMeta(
   salaries: SalaryRecord[],
   areas: Map<string, { name: string; state: string }>,
   coords: Map<string, { lat: number; lng: number }>,
   rpp: { year: number; values: Map<string, number> },
   year: number,
+  filingsByCbsa: Map<string, number>,
 ): { meta: Meta; droppedNoArea: string[]; droppedNoCoords: string[] } {
   const cbsas = [...new Set(salaries.map(s => s.cbsa))].sort()
   const metros: MetroMeta[] = []
@@ -24,9 +32,18 @@ export function buildMeta(
     const area = areas.get(cbsa), c = coords.get(cbsa)
     if (!area) { droppedNoArea.push(cbsa); continue }
     if (!c) { droppedNoCoords.push(cbsa); continue } // no coords -> cannot render on the map
-    metros.push({ cbsa, name: area.name, state: area.state, lat: c.lat, lng: c.lng, rpp: rpp.values.get(cbsa) ?? null })
+    metros.push({
+      cbsa, name: area.name, state: area.state, lat: c.lat, lng: c.lng,
+      rpp: rpp.values.get(cbsa) ?? null, lcaFilings: filingsByCbsa.get(cbsa) ?? 0,
+    })
   }
-  return { meta: { year, generated: null, metros, roles: ROLES, capValue: TOP_CODE, rppYear: rpp.year }, droppedNoArea, droppedNoCoords }
+  return {
+    meta: {
+      year, generated: null, metros, roles: ROLES, topCodeValue: TOP_CODE, rppYear: rpp.year,
+      lcaPeriod: '', sources: { oews: '', lca: [], hud: '', zipMatchRate: 0 },
+    },
+    droppedNoArea, droppedNoCoords,
+  }
 }
 
 export function buildSalaries(salaries: SalaryRecord[], keep: Set<string>): { salaries: SalariesJson; excluded: number } {

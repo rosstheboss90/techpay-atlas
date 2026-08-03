@@ -13,7 +13,10 @@ export function num(v: unknown): number | null {
   return Number.isFinite(n) ? n : null
 }
 
-/** OEWS top-codes annual percentile wages at this value instead of suppressing them. */
+/** Substitution value OEWS writes into a `#` cell instead of the true percentile wage (its
+ *  top-coding threshold). This is NOT a ceiling on emitted data: only percentile cells that
+ *  were literally `#` in the source get this value, so nothing downstream should assume no
+ *  emitted number exceeds TOP_CODE. */
 export const TOP_CODE = 239_200
 
 /** Like num(), but recognizes '#' as a top-code (>= TOP_CODE) rather than suppression. */

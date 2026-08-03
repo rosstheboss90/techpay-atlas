@@ -16,29 +16,36 @@ const areas = new Map([
 const coords = new Map([['12420', { lat: 30.3, lng: -97.7 }], ['19100', { lat: 32.8, lng: -97.0 }]])
 const rpp = { year: 2023, values: new Map([['12420', 103.6]]) } // Dallas intentionally missing
 
+const filingsByCbsa = new Map([['12420', 42]]) // Dallas (19100) intentionally absent -> lcaFilings 0
+
 describe('golden: fixtures in -> site JSON out', () => {
   it('buildMeta joins areas, coords, rpp; missing rpp -> null; metros without coords are dropped and reported', () => {
-    const { meta, droppedNoArea, droppedNoCoords } = buildMeta(salaries, areas, coords, rpp, 2025)
+    const { meta, droppedNoArea, droppedNoCoords } = buildMeta(salaries, areas, coords, rpp, 2025, filingsByCbsa)
     expect(meta.year).toBe(2025)
     expect(meta.roles).toHaveLength(20)
-    expect(meta.capValue).toBe(TOP_CODE)
+    expect(meta.topCodeValue).toBe(TOP_CODE)
     expect(meta.rppYear).toBe(2023)
     expect(meta.metros).toEqual([
-      { cbsa: '12420', name: 'Austin-Round Rock-San Marcos, TX', state: 'TX', lat: 30.3, lng: -97.7, rpp: 103.6 },
-      { cbsa: '19100', name: 'Dallas-Fort Worth-Arlington, TX', state: 'TX', lat: 32.8, lng: -97.0, rpp: null },
+      { cbsa: '12420', name: 'Austin-Round Rock-San Marcos, TX', state: 'TX', lat: 30.3, lng: -97.7, rpp: 103.6, lcaFilings: 42 },
+      { cbsa: '19100', name: 'Dallas-Fort Worth-Arlington, TX', state: 'TX', lat: 32.8, lng: -97.0, rpp: null, lcaFilings: 0 },
     ])
     expect(droppedNoArea).toEqual([])
     expect(droppedNoCoords).toEqual([])
   })
+  it('buildMeta stamps placeholder lcaPeriod/sources for run.ts to fill in at write time', () => {
+    const { meta } = buildMeta(salaries, areas, coords, rpp, 2025, filingsByCbsa)
+    expect(meta.lcaPeriod).toBe('')
+    expect(meta.sources).toEqual({ oews: '', lca: [], hud: '', zipMatchRate: 0 })
+  })
   it('buildMeta drops (and reports) a metro with no coordinates', () => {
-    const { meta, droppedNoArea, droppedNoCoords } = buildMeta(salaries, areas, new Map([['12420', { lat: 30.3, lng: -97.7 }]]), rpp, 2025)
+    const { meta, droppedNoArea, droppedNoCoords } = buildMeta(salaries, areas, new Map([['12420', { lat: 30.3, lng: -97.7 }]]), rpp, 2025, filingsByCbsa)
     expect(meta.metros.map(m => m.cbsa)).toEqual(['12420'])
     expect(droppedNoArea).toEqual([])
     expect(droppedNoCoords).toEqual(['19100'])
   })
   it('buildMeta drops (and reports) a metro present in salaries but absent from areas', () => {
     const { meta, droppedNoArea, droppedNoCoords } = buildMeta(
-      salaries, new Map([['12420', { name: 'Austin-Round Rock-San Marcos, TX', state: 'TX' }]]), coords, rpp, 2025)
+      salaries, new Map([['12420', { name: 'Austin-Round Rock-San Marcos, TX', state: 'TX' }]]), coords, rpp, 2025, filingsByCbsa)
     expect(meta.metros.map(m => m.cbsa)).toEqual(['12420'])
     expect(droppedNoArea).toEqual(['19100'])
     expect(droppedNoCoords).toEqual([])
