@@ -3,6 +3,7 @@ import ExcelJS from 'exceljs'
 import { parse } from 'csv-parse/sync'
 import { readFileSync } from 'node:fs'
 import * as fs from 'node:fs'
+import path from 'node:path'
 
 // The ESM build (xlsx.mjs, which this project's "type": "module" resolves to) never
 // auto-detects Node's fs -- XLSX.readFile throws "Cannot access file ..." for every
@@ -30,11 +31,28 @@ export function readDelimitedRows(file: string, delimiter = ','): Record<string,
 // The LCA quarterly disclosure workbooks are too large for SheetJS: decompressing a single
 // worksheet's XML into one JS string blows past Node's ~536M char string limit (ERR_STRING_TOO_LONG)
 // for the FY2025 Q1/Q3 files. exceljs's streaming reader SAX-parses the worksheet XML in chunks
-// and yields one Row at a time, so peak memory stays bounded regardless of file size.
+// and yields one Row at a time, keeping the per-row working set small -- but DOL pads these
+// sheets with ~445k trailing blank rows past the real data, and without an explicit skip those
+// rows were being collected too, so actual peak memory was O(sheet rows including padding), not
+// O(real rows). readLcaRows now drops all-null rows before they reach the output array, so peak
+// memory is O(real rows) as intended.
 export const LCA_COLUMNS = [
   'CASE_NUMBER', 'CASE_STATUS', 'SOC_CODE', 'FULL_TIME_POSITION', 'EMPLOYER_NAME',
   'WORKSITE_POSTAL_CODE', 'WAGE_RATE_OF_PAY_FROM', 'WAGE_RATE_OF_PAY_TO', 'WAGE_UNIT_OF_PAY',
 ] as const
+
+/** True when every LCA_COLUMNS value on this record is null -- DOL's trailing padding rows. */
+export function isBlankLcaRecord(record: Record<string, unknown>): boolean {
+  return LCA_COLUMNS.every(col => record[col] === null)
+}
+
+/** Throws with the filename + every missing column name if the header row is missing any
+ *  LCA_COLUMNS entry, so schema drift fails loudly at the first row instead of silently
+ *  producing all-null values for that column across the whole file. */
+export function assertLcaHeader(headerIndex: Map<string, number>, file: string): void {
+  const missing = LCA_COLUMNS.filter(col => !headerIndex.has(col))
+  if (missing.length) throw new Error(`${file}: LCA header missing column(s): ${missing.join(', ')}`)
+}
 
 /** Reduce an exceljs cell value to a JSON-safe primitive (rich text / formula results / dates). */
 function normalizeCellValue(value: ExcelJS.CellValue): unknown {
@@ -63,6 +81,7 @@ export async function readLcaRows(file: string): Promise<Record<string, unknown>
           const header = normalizeCellValue(cell.value)
           if (typeof header === 'string') headerIndex!.set(header, colNumber)
         })
+        assertLcaHeader(headerIndex, path.basename(file))
         continue
       }
       if (!headerIndex) continue // defensive: never saw a header row
@@ -71,6 +90,7 @@ export async function readLcaRows(file: string): Promise<Record<string, unknown>
         const colNumber = headerIndex.get(col)
         record[col] = colNumber === undefined ? null : normalizeCellValue(row.getCell(colNumber).value)
       }
+      if (isBlankLcaRecord(record)) continue // DOL trailing padding row
       rows.push(record)
     }
     break // first worksheet only
