@@ -43,7 +43,7 @@ describe('golden: fixtures in -> site JSON out', () => {
     expect(Object.keys(out)).toEqual(['12420', '19100'])
   })
   it('buildEmployerFiles emits one file body per cbsa', () => {
-    const bundle: EmployerBundle = { employers: [{ name: 'Acme Corp', count: 3, median: 160000 }], sample: [150000, 160000, 170000] }
+    const bundle: EmployerBundle = { employers: [{ name: 'Acme Corp', filings: 3, median: 160000 }], sample: [150000, 160000, 170000], n: 3 }
     const files = buildEmployerFiles(new Map([['12420', new Map([['15-1252', bundle]])]]))
     expect(files).toEqual([{ cbsa: '12420', body: { cbsa: '12420', roles: { '15-1252': bundle } } }])
   })

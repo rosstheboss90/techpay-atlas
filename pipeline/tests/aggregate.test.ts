@@ -10,6 +10,9 @@ describe('median', () => {
     expect(median([3, 1, 2])).toBe(2)
     expect(median([4, 1, 3, 2])).toBe(2.5)
   })
+  it('throws on empty input', () => {
+    expect(() => median([])).toThrow()
+  })
 })
 
 describe('attachCbsa', () => {
@@ -27,15 +30,27 @@ describe('attachCbsa', () => {
 })
 
 describe('aggregateEmployers', () => {
-  it('groups by cbsa+soc, merging employer names case-insensitively, ranking by count', () => {
+  it('groups by cbsa+soc, merging employer names case-insensitively, ranking by filings', () => {
     const rows = [
       rec('Acme Corp', 150000), rec('ACME CORP', 160000), rec('Acme Corp', 170000),
       rec('Beta LLC', 200000),
     ].map(r => ({ ...r, cbsa: '12420' }))
     const bundle = aggregateEmployers(rows).get('12420')!.get('15-1252')!
-    expect(bundle.employers[0]).toEqual({ name: 'Acme Corp', count: 3, median: 160000 })
-    expect(bundle.employers[1]).toEqual({ name: 'Beta LLC', count: 1, median: 200000 })
+    expect(bundle.employers[0]).toEqual({ name: 'Acme Corp', filings: 3, median: 160000 })
+    expect(bundle.employers[1]).toEqual({ name: 'Beta LLC', filings: 1, median: 200000 })
     expect(bundle.sample).toEqual([150000, 160000, 170000, 200000]) // sorted
+    expect(bundle.n).toBe(4)
+  })
+  it('merges punctuation/whitespace variants of one employer without stripping legal suffixes', () => {
+    const rows = [
+      rec('Acme Corp.', 150000), rec('ACME, CORP', 160000), rec('Acme   Corp', 170000),
+      rec('Acme Inc', 180000), // different legal suffix -> NOT merged with "Acme Corp"
+    ].map(r => ({ ...r, cbsa: '12420' }))
+    const bundle = aggregateEmployers(rows).get('12420')!.get('15-1252')!
+    const acmeCorp = bundle.employers.find(e => e.name.toUpperCase().includes('CORP'))!
+    const acmeInc = bundle.employers.find(e => e.name.toUpperCase().includes('INC'))!
+    expect(acmeCorp.filings).toBe(3)
+    expect(acmeInc.filings).toBe(1)
   })
   it('caps employers at topN and samples wages deterministically at sampleMax', () => {
     const rows = Array.from({ length: 500 }, (_, i) => ({ ...rec(`E${i % 20}`, 100000 + i * 100), cbsa: '12420' }))
@@ -44,5 +59,26 @@ describe('aggregateEmployers', () => {
     expect(bundle.sample.length).toBeLessThanOrEqual(200)
     const again = aggregateEmployers(rows, { topN: 15, sampleMax: 200 }).get('12420')!.get('15-1252')!
     expect(again.sample).toEqual(bundle.sample) // deterministic
+  })
+  it('appends the true max wage to the sample when every-kth sampling would otherwise miss it', () => {
+    const rows = Array.from({ length: 500 }, (_, i) => ({ ...rec(`E${i % 20}`, 100000 + i * 100), cbsa: '12420' }))
+    const bundle = aggregateEmployers(rows, { topN: 15, sampleMax: 200 }).get('12420')!.get('15-1252')!
+    const trueMax = Math.max(...rows.map(r => r.annualWage))
+    expect(bundle.sample.at(-1)).toBe(trueMax)
+  })
+  it('produces identical output regardless of input order (no O(n^2) accumulation quirks)', () => {
+    const rows = [
+      rec('Acme Corp', 150000), rec('ACME CORP', 160000), rec('Acme Corp', 170000),
+      rec('Beta LLC', 200000), rec('Gamma Inc', 130000),
+    ].map(r => ({ ...r, cbsa: '12420' }))
+    const forward = aggregateEmployers(rows).get('12420')!.get('15-1252')!
+    const reversed = aggregateEmployers([...rows].reverse()).get('12420')!.get('15-1252')!
+    expect(reversed).toEqual(forward)
+  })
+  it('uses default topN/sampleMax when opts is omitted or partial', () => {
+    const rows = [rec('Acme Corp', 150000)].map(r => ({ ...r, cbsa: '12420' }))
+    expect(() => aggregateEmployers(rows)).not.toThrow()
+    expect(() => aggregateEmployers(rows, {})).not.toThrow()
+    expect(() => aggregateEmployers(rows, { topN: 5 })).not.toThrow()
   })
 })
