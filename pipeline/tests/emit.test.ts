@@ -68,14 +68,14 @@ describe('golden: fixtures in -> site JSON out', () => {
     expect(excluded).toBe(1) // the one 19100 row
   })
   it('buildEmployerFiles emits one file body per cbsa', () => {
-    const bundle: EmployerBundle = { employers: [{ name: 'Acme Corp', filings: 3, median: 160000 }], sample: [150000, 160000, 170000], n: 3 }
+    const bundle: EmployerBundle = { employers: [{ name: 'Acme Corp', filings: 3, median: 160000 }], sample: [150000, 160000, 170000], n: 3, p99: 170000 }
     const agg = new Map([['12420', new Map([['15-1252', bundle]])]])
     const { files, excluded } = buildEmployerFiles(agg, new Set(['12420']))
     expect(files).toEqual([{ cbsa: '12420', body: { cbsa: '12420', roles: { '15-1252': bundle } } }])
     expect(excluded).toBe(0)
   })
   it('buildEmployerFiles filters to the accepted CBSA set and reports how many were excluded', () => {
-    const bundle: EmployerBundle = { employers: [{ name: 'Acme Corp', filings: 3, median: 160000 }], sample: [150000, 160000, 170000], n: 3 }
+    const bundle: EmployerBundle = { employers: [{ name: 'Acme Corp', filings: 3, median: 160000 }], sample: [150000, 160000, 170000], n: 3, p99: 170000 }
     const agg = new Map([['12420', new Map([['15-1252', bundle]])], ['19100', new Map([['15-1252', bundle]])]])
     const { files, excluded } = buildEmployerFiles(agg, new Set(['12420']))
     expect(files.map(f => f.cbsa)).toEqual(['12420'])

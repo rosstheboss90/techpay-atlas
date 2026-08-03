@@ -2,7 +2,14 @@ import type { LcaRecord } from './parse-lca'
 
 export type LocatedLca = LcaRecord & { cbsa: string }
 export interface EmployerStat { name: string; filings: number; median: number }
-export interface EmployerBundle { employers: EmployerStat[]; sample: number[]; n: number }
+export interface EmployerBundle { employers: EmployerStat[]; sample: number[]; n: number; p99: number }
+
+/** Exact 99th percentile via nearest-rank on a value already sorted ascending. The beeswarm
+ *  sample deliberately keeps the true max (which can be a $2M data-entry artifact); the site
+ *  clamps its axis at p99 instead of max. */
+function p99Of(sorted: number[]): number {
+  return sorted[Math.min(sorted.length - 1, Math.ceil(0.99 * sorted.length) - 1)]
+}
 
 export function median(xs: number[]): number {
   if (xs.length === 0) throw new Error('median of empty array')
@@ -65,7 +72,7 @@ export function aggregateEmployers(
       const step = Math.max(1, Math.ceil(sorted.length / sampleMax))
       const sample = sorted.filter((_, i) => i % step === 0).slice(0, sampleMax)
       if (sorted.length && sample.at(-1) !== sorted.at(-1)) sample.push(sorted.at(-1)!)
-      bundles.set(soc, { employers, sample, n: recs.length })
+      bundles.set(soc, { employers, sample, n: recs.length, p99: p99Of(sorted) })
     }
     out.set(cbsa, bundles)
   }

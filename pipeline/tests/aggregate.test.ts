@@ -40,6 +40,7 @@ describe('aggregateEmployers', () => {
     expect(bundle.employers[1]).toEqual({ name: 'Beta LLC', filings: 1, median: 200000 })
     expect(bundle.sample).toEqual([150000, 160000, 170000, 200000]) // sorted
     expect(bundle.n).toBe(4)
+    expect(bundle.p99).toBe(200000) // n=4: ceil(0.99*4)-1 = 3 -> last element
   })
   it('merges punctuation/whitespace variants of one employer without stripping legal suffixes', () => {
     const rows = [
@@ -80,5 +81,18 @@ describe('aggregateEmployers', () => {
     expect(() => aggregateEmployers(rows)).not.toThrow()
     expect(() => aggregateEmployers(rows, {})).not.toThrow()
     expect(() => aggregateEmployers(rows, { topN: 5 })).not.toThrow()
+  })
+  it('computes p99 as the nearest-rank 99th percentile of the full wage list, not the sample', () => {
+    // 100 wages 100000..109900 step 100, plus one $2M data-entry artifact (the true max).
+    const rows = Array.from({ length: 100 }, (_, i) => rec(`E${i}`, 100000 + i * 100))
+      .concat([rec('Outlier LLC', 2_000_000)])
+      .map(r => ({ ...r, cbsa: '12420' }))
+    const bundle = aggregateEmployers(rows).get('12420')!.get('15-1252')!
+    expect(bundle.n).toBe(101)
+    // sorted index: ceil(0.99*101)-1 = 99 -> the 100th smallest value (100000 + 99*100 = 109900),
+    // one below the $2M outlier at index 100.
+    const sorted = rows.map(r => r.annualWage).sort((a, b) => a - b)
+    expect(bundle.p99).toBe(sorted[99])
+    expect(bundle.p99).toBeLessThan(bundle.sample.at(-1)!) // sample still carries the true max
   })
 })
