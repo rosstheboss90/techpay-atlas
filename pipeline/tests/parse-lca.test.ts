@@ -45,15 +45,20 @@ describe('lcaRowsToRecords', () => {
     expect(lcaRowsToRecords([row({ WAGE_RATE_OF_PAY_FROM: '12' })]).records).toEqual([])        // $12/yr
     expect(lcaRowsToRecords([row({ WAGE_RATE_OF_PAY_FROM: '9,000,000' })]).records).toEqual([])  // $9M/yr
   })
-  it('restores leading zeros on ZIPs and trims ZIP+4', () => {
+  it('restores leading zeros on ZIPs and trims ZIP+4 (hyphenated, unhyphenated, and numeric cells)', () => {
     expect(lcaRowsToRecords([row({ WORKSITE_POSTAL_CODE: '02139-4307' })]).records[0].zip).toBe('02139')
     expect(lcaRowsToRecords([row({ WORKSITE_POSTAL_CODE: 2139 })]).records[0].zip).toBe('02139')
+    expect(lcaRowsToRecords([row({ WORKSITE_POSTAL_CODE: '021394307' })]).records[0].zip).toBe('02139')
+    expect(lcaRowsToRecords([row({ WORKSITE_POSTAL_CODE: 21394307 })]).records[0].zip).toBe('02139')
   })
   it('retains CASE_NUMBER, trimmed', () => {
     expect(lcaRowsToRecords([row({ CASE_NUMBER: ' I-200-12345-678901 ' })]).records[0].caseNumber).toBe('I-200-12345-678901')
   })
 
   describe('drop accounting', () => {
+    // NOTE: WORKSITE_POSTAL_CODE is digit-stripped then padded/sliced to exactly 5 digits (see
+    // the ZIP-handling test above), so the /^\d{5}$/ guard can never actually fail — there is no
+    // "zip" bucket trigger left. The guard and the bucket stay for defense/shape stability.
     it('buckets every dropped row by the reason it was dropped, and accepted rows drop nothing', () => {
       const rows = [
         row(),                                                    // accepted
@@ -63,13 +68,12 @@ describe('lcaRowsToRecords', () => {
         row({ WAGE_UNIT_OF_PAY: 'Fortnight' }),                   // unit
         row({ WAGE_RATE_OF_PAY_FROM: 'garbage' }),                // wage (unparseable)
         row({ WAGE_RATE_OF_PAY_FROM: '9,000,000' }),              // range (implausible)
-        row({ WORKSITE_POSTAL_CODE: 'garbage-zip' }),             // zip
         row({ EMPLOYER_NAME: '   ' }),                            // employer
       ]
       const { records, drops } = lcaRowsToRecords(rows)
       expect(records).toHaveLength(1)
       expect(drops).toEqual({
-        status: 1, partTime: 1, soc: 1, unit: 1, wage: 1, range: 1, zip: 1, employer: 1,
+        status: 1, partTime: 1, soc: 1, unit: 1, wage: 1, range: 1, zip: 0, employer: 1,
       })
     })
   })

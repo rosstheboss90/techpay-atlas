@@ -27,7 +27,8 @@ export function lcaRowsToRecords(rows: Record<string, unknown>[]): { records: Lc
     if (base === null) { drops.wage++; continue }
     const annualWage = Math.round(base * factor)
     if (annualWage < WAGE_MIN || annualWage > WAGE_MAX) { drops.range++; continue }
-    const zip = String(r.WORKSITE_POSTAL_CODE ?? '').trim().split('-')[0].padStart(5, '0')
+    const d = String(r.WORKSITE_POSTAL_CODE ?? '').replace(/\D/g, '')
+    const zip = d.length > 5 ? d.padStart(9, '0').slice(0, 5) : d.padStart(5, '0')
     if (!/^\d{5}$/.test(zip)) { drops.zip++; continue }
     const employer = String(r.EMPLOYER_NAME ?? '').replace(/\s+/g, ' ').trim()
     if (!employer) { drops.employer++; continue }
