@@ -14,7 +14,7 @@ const areas = new Map([
   ['19100', { name: 'Dallas-Fort Worth-Arlington, TX', state: 'TX' }],
 ])
 const coords = new Map([['12420', { lat: 30.3, lng: -97.7 }], ['19100', { lat: 32.8, lng: -97.0 }]])
-const rpp = new Map([['12420', 103.6]]) // Dallas intentionally missing
+const rpp = { year: 2023, values: new Map([['12420', 103.6]]) } // Dallas intentionally missing
 
 describe('golden: fixtures in -> site JSON out', () => {
   it('buildMeta joins areas, coords, rpp; missing rpp -> null; metros without coords are dropped and reported', () => {
@@ -22,6 +22,7 @@ describe('golden: fixtures in -> site JSON out', () => {
     expect(meta.year).toBe(2025)
     expect(meta.roles).toHaveLength(18)
     expect(meta.capValue).toBe(TOP_CODE)
+    expect(meta.rppYear).toBe(2023)
     expect(meta.metros).toEqual([
       { cbsa: '12420', name: 'Austin-Round Rock-San Marcos, TX', state: 'TX', lat: 30.3, lng: -97.7, rpp: 103.6 },
       { cbsa: '19100', name: 'Dallas-Fort Worth-Arlington, TX', state: 'TX', lat: 32.8, lng: -97.0, rpp: null },
@@ -34,17 +35,34 @@ describe('golden: fixtures in -> site JSON out', () => {
     expect(dropped).toEqual(['19100'])
   })
   it('buildSalaries nests cbsa -> soc, omitting capped when empty and including it when set', () => {
-    const out = buildSalaries(salaries)
+    const keep = new Set(['12420', '19100'])
+    const { salaries: out, excluded } = buildSalaries(salaries, keep)
     expect(out['12420']['15-2051']).toEqual(
       { emp: 2100, lq: 1.4, p10: 80000, p25: 100000, p50: 125000, p75: 150000, p90: 190000, capped: ['p90'] })
     expect(out['12420']['15-1252']).toEqual(
       { emp: 31590, lq: 2.19, p10: 75000, p25: 96000, p50: 132000, p75: 168000, p90: 205000 })
     expect('capped' in out['12420']['15-1252']).toBe(false)
     expect(Object.keys(out)).toEqual(['12420', '19100'])
+    expect(excluded).toBe(0)
+  })
+  it('buildSalaries filters rows to the accepted CBSA set and reports how many were excluded', () => {
+    const keep = new Set(['12420']) // Dallas (19100) is not in the accepted metro set
+    const { salaries: out, excluded } = buildSalaries(salaries, keep)
+    expect(Object.keys(out)).toEqual(['12420'])
+    expect(excluded).toBe(1) // the one 19100 row
   })
   it('buildEmployerFiles emits one file body per cbsa', () => {
     const bundle: EmployerBundle = { employers: [{ name: 'Acme Corp', filings: 3, median: 160000 }], sample: [150000, 160000, 170000], n: 3 }
-    const files = buildEmployerFiles(new Map([['12420', new Map([['15-1252', bundle]])]]))
+    const agg = new Map([['12420', new Map([['15-1252', bundle]])]])
+    const { files, excluded } = buildEmployerFiles(agg, new Set(['12420']))
     expect(files).toEqual([{ cbsa: '12420', body: { cbsa: '12420', roles: { '15-1252': bundle } } }])
+    expect(excluded).toBe(0)
+  })
+  it('buildEmployerFiles filters to the accepted CBSA set and reports how many were excluded', () => {
+    const bundle: EmployerBundle = { employers: [{ name: 'Acme Corp', filings: 3, median: 160000 }], sample: [150000, 160000, 170000], n: 3 }
+    const agg = new Map([['12420', new Map([['15-1252', bundle]])], ['19100', new Map([['15-1252', bundle]])]])
+    const { files, excluded } = buildEmployerFiles(agg, new Set(['12420']))
+    expect(files.map(f => f.cbsa)).toEqual(['12420'])
+    expect(excluded).toBe(1)
   })
 })
