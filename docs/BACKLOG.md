@@ -2,6 +2,15 @@
 
 Newest decisions first. v1 (map + panel) shipped 2026-08-03.
 
+## Title lens follow-ups (from final-review, 2026-08-04)
+
+pmo bucket too thin (61 filings, consider minBucketFilings) · tiny-segment conflation-bar
+click targets · unused topEmployers payload in titles.json (wire into the site or drop
+from emit) · tier `'V'` suffix in the IC-marker regex is inconsistent with the rest of the
+seniority parser (only I/II/III/IV are real title suffixes seen in the scan) · zipMatchRate
+population-change note (title lens widened the LCA population the match rate is computed
+over — re-check THRESHOLDS.minZipMatchRate still means what it did pre-title-lens).
+
 ## v2 candidates (unordered, unscoped)
 
 - **Spec-owed sections**: rank-flip slopegraph · city × role heatmap (doubles as the

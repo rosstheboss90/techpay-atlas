@@ -27,6 +27,12 @@ because we hold the raw filings; directly useful to the user's own search.
   Tier stats are NATIONAL-ONLY (per-metro × tier would shred sample sizes) and a tier is
   emitted only with ≥ 25 filings. Tier parsing is independent of bucket matching (the
   bucket regexes must therefore tolerate seniority prefixes/suffixes).
+  **VP-demotion rule** (post-launch review fix, 2026-08-04): financial-services titles use
+  "VP"/"VICE PRESIDENT" as an IC rank, not people-management (e.g. "VICE PRESIDENT, LEAD
+  SITE RELIABILITY ENGINEER"). A `director+` match sourced from VP/VICE PRESIDENT — never
+  from a plain DIRECTOR match — is demoted to `lead` when the title also carries an IC
+  marker (LEAD, or a roman-numeral level suffix) or opens with ASSISTANT (ASSISTANT VICE
+  PRESIDENT ranks below VP). See `pipeline/lib/titles.ts` `parseSeniority`.
 
 ## Pipeline extension
 

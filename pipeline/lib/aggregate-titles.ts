@@ -17,6 +17,12 @@ const q = (sorted: number[], p: number): number =>
 
 const EMPTY_STATS: TitleStats = { filings: 0, p25: 0, median: 0, p75: 0 }
 
+// Fixed iteration order for the emitted `tiers` object — metros are already sorted
+// (localeCompare on the CBSA key); without this, JSON key order followed first-seen-in-input
+// order via the byTier Map, which flipped under input reordering (e.g. re-running against a
+// re-sorted LCA extract) even though the tier *set* was identical.
+const TIER_KEY_ORDER: Tier[] = ['base', 'senior', 'staffPlus', 'lead', 'directorPlus']
+
 const stats = (wages: number[]): TitleStats => {
   if (wages.length === 0) return EMPTY_STATS
   const s = [...wages].sort((a, b) => a - b)
@@ -74,7 +80,10 @@ export function aggregateTitles(
       if (ws.length >= metroMin) metros[cbsa] = stats(ws)
 
     const tiers: TitleBucketAgg['tiers'] = {}
-    for (const [tier, ws] of byTier) if (ws.length >= tierMin) tiers[tier] = stats(ws)
+    for (const tier of TIER_KEY_ORDER) {
+      const ws = byTier.get(tier)
+      if (ws && ws.length >= tierMin) tiers[tier] = stats(ws)
+    }
 
     const socSorted = [...bySoc.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
     const top4 = socSorted.slice(0, 4)

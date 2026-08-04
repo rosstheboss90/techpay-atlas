@@ -120,6 +120,8 @@ for (const r of lcaRecords) {
   dedupedLcaRecords.push(r)
 }
 console.log(`  ${duplicateCaseNumbers} duplicate CASE_NUMBERs dropped (cross-quarter overlap)`)
+// All-SOC population since the title lens (Task 3b below reads `matched`, unfiltered); the
+// employer-layer-specific gate on `employerRecords` (target-SOC only) lives further down.
 if (dedupedLcaRecords.length < THRESHOLDS.minLcaRecords) fail(`only ${dedupedLcaRecords.length} usable LCA records after dedupe (< ${THRESHOLDS.minLcaRecords})`)
 
 const { matched, matchRate, unmatchedZips } = attachCbsa(dedupedLcaRecords, zipCbsa)
@@ -130,6 +132,7 @@ if (matchRate < THRESHOLDS.minZipMatchRate) fail(`ZIP match rate ${matchRate.toF
 // still wants only target-SOC filings, so filter here (moved from parse-time in parse-lca.ts).
 const employerRecords = matched.filter(r => r.targetSoc).map(r => ({ ...r, soc: r.targetSoc! }))
 const lcaNonTargetSoc = matched.length - employerRecords.length
+if (employerRecords.length < THRESHOLDS.minLcaRecords) fail(`only ${employerRecords.length} target-SOC LCA records for the employer layer (< ${THRESHOLDS.minLcaRecords})`)
 
 // meta.metros[].lcaFilings must stay scoped to target-SOC (registry-role) filings, NOT all of
 // `matched` — the site treats lcaFilings > 0 as "an employers/<cbsa>.json file exists" (it skips

@@ -48,7 +48,20 @@ const TIER_RES: [Tier, RegExp][] = [
   ['senior', /\b(SENIOR|SR\.?)\b|\bI{3}\b|\bIV\b/],
 ]
 
+// Financial-services "VP"/"VICE PRESIDENT" (unlike DIRECTOR) is often an IC rank rather than
+// people-management (e.g. "VICE PRESIDENT, LEAD SITE RELIABILITY ENGINEER"). A directorPlus
+// match is demoted to 'lead' when it came from VP/VICE PRESIDENT — never from DIRECTOR itself —
+// and the title also carries an IC marker (LEAD, or a roman-numeral level suffix) or opens
+// with ASSISTANT (ASSISTANT VICE PRESIDENT ranks below VP).
+const VP_RE = /\b(VP|VICE\s+PRESIDENT)\b/
+const IC_MARKER_RE = /\b(LEAD|I{1,3}|IV|V)\b/
+
 export function parseSeniority(title: string): Tier {
-  for (const [tier, re] of TIER_RES) if (re.test(title)) return tier
+  for (const [tier, re] of TIER_RES) {
+    if (!re.test(title)) continue
+    const isIcVp = tier === 'directorPlus' && !/\bDIRECTOR\b/.test(title) && VP_RE.test(title)
+      && (IC_MARKER_RE.test(title) || /^ASSISTANT\b/.test(title))
+    return isIcVp ? 'lead' : tier
+  }
   return 'base'
 }

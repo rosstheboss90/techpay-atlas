@@ -106,7 +106,28 @@ describe('golden: aggregateTitles output -> titles.json shape (buildTitles)', ()
   it('maps aggregateTitles families/buckets verbatim and stamps lcaPeriod', () => {
     const out = buildTitles(agg, 'FY2025 Q1–Q4')
     expect(out.lcaPeriod).toBe('FY2025 Q1–Q4')
-    expect(out.families).toEqual(agg.families)
+    // Literal expected structure — not `agg.families` by reference — so this actually
+    // exercises buildTitles's mapping instead of comparing a value to itself.
+    expect(out.families).toEqual([
+      {
+        key: 'pm', label: 'PM & Product',
+        buckets: [
+          {
+            key: 'tpm', label: 'Technical Program Manager',
+            national: { filings: 5, p25: 150000, median: 172000, p75: 200000 },
+            metros: { '12420': { filings: 8, p25: 150000, median: 172000, p75: 200000 } },
+            tiers: { senior: { filings: 25, p25: 160000, median: 185000, p75: 210000 } },
+            socMix: [{ soc: '15-1299', share: 1 }],
+            topEmployers: [{ name: 'Acme Corp', filings: 5, median: 172000 }],
+          },
+          {
+            key: 'pmo', label: 'PMO',
+            national: { filings: 3, p25: 90000, median: 95000, p75: 100000 },
+            metros: {}, tiers: {}, socMix: [], topEmployers: [],
+          },
+        ],
+      },
+    ])
   })
 
   it('does not leak matchedTotal (not part of the emitted contract)', () => {

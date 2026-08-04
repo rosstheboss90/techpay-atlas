@@ -119,6 +119,15 @@ describe('aggregateTitles', () => {
     expect(out.matchedTotal).toBe(0)
   })
 
+  it('emits tier keys in a fixed order regardless of input order (toEqual cannot catch key order — compare via JSON.stringify)', () => {
+    const forward = aggregateTitles(allRecords, { metroMin: 2, tierMin: 2 })
+    const reversed = aggregateTitles([...allRecords].reverse(), { metroMin: 2, tierMin: 2 })
+    const tpmForward = findBucket(forward, 'pm', 'tpm')
+    const tpmReversed = findBucket(reversed, 'pm', 'tpm')
+    expect(Object.keys(tpmForward.tiers)).toEqual(['base', 'senior', 'staffPlus'])
+    expect(JSON.stringify(tpmForward.tiers)).toBe(JSON.stringify(tpmReversed.tiers))
+  })
+
   it('uses default metroMin/tierMin thresholds when opts is omitted', () => {
     expect(() => aggregateTitles(allRecords)).not.toThrow()
     const out = aggregateTitles(allRecords)

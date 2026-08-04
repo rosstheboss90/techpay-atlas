@@ -64,6 +64,13 @@ describe('parseSeniority', () => {
     ['VP OF ENGINEERING', 'directorPlus'],
     ['SENIOR DIRECTOR OF PRODUCT', 'directorPlus'],  // precedence over senior
     ['PRODUCT MANAGER', 'base'],
+    // Financial-services "VP"/"VICE PRESIDENT" is often an IC rank, not people-management —
+    // demote to 'lead' when the title also carries an IC marker or opens with ASSISTANT.
+    // A plain DIRECTOR match is never demoted (see 'DIRECTOR, PMO' / 'SENIOR DIRECTOR OF
+    // PRODUCT' above, unchanged).
+    ['VICE PRESIDENT, LEAD SITE RELIABILITY ENGINEER', 'lead'],
+    ['VICE PRESIDENT; DATA ENGINEER III', 'lead'],
+    ['ASSISTANT VICE PRESIDENT, FULL-STACK ENGINEER II', 'lead'],
   ] as const)('%s -> %s', (title, tier) => {
     expect(parseSeniority(title)).toBe(tier)
   })
