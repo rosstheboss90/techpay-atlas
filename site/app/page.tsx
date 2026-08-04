@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { FilterBar } from '../components/FilterBar'
 import { MetroPanel } from '../components/MetroPanel'
 import { SalaryMap } from '../components/SalaryMap'
+import { TitleLens } from '../components/TitleLens'
 import { loadMeta, loadSalaries } from '../lib/data'
 import type { Meta, Salaries } from '../lib/types'
 import { DEFAULT_STATE, parseState, serializeState, type UrlState } from '../lib/url-state'
@@ -75,6 +76,8 @@ export default function Page() {
                       adjusted={state.adjusted} onClose={() => update({ metro: null })} />
         )}
       </div>
+      <TitleLens meta={meta} cbsa={state.metro} adjusted={state.adjusted}
+                 onSelectRole={soc => update({ role: soc })} />
       <footer className="provenance">
         Sources: BLS OEWS {meta.year} · BEA RPP {meta.rppYear} · DOL H-1B LCA {meta.lcaPeriod} · generated {meta.generated.slice(0, 10)}
       </footer>
