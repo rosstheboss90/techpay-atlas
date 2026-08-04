@@ -39,14 +39,20 @@ body { background: var(--bg); color: var(--ink); font-family: var(--font); }
 .map-bubble { stroke: var(--surface); stroke-width: 1; cursor: pointer; transition: fill 400ms ease; }
 .map-bubble:hover { stroke: var(--ink); }
 .map-bubble.is-selected { stroke: var(--ink); stroke-width: 2; }
+.map-bubble:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .map-tooltip {
   position: fixed; z-index: 10; pointer-events: none; background: var(--surface); color: var(--ink);
   border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; font-size: 12px;
   display: flex; flex-direction: column; gap: 2px; box-shadow: 0 4px 14px rgb(0 0 0 / 0.15);
 }
-.map-legend { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 12px; color: var(--ink-muted); }
+.map-legend { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 12px; color: var(--ink-muted); flex-wrap: wrap; }
+.legend-scale { display: inline-flex; align-items: center; gap: 4px; }
+.legend-value { font-variant-numeric: tabular-nums; }
 .legend-ramp { display: inline-flex; }
 .legend-ramp i { width: 18px; height: 10px; display: inline-block; }
+.legend-size { display: inline-flex; align-items: center; gap: 6px; }
+.legend-bubbles { flex-shrink: 0; }
+.legend-bubble { fill: none; stroke: var(--ink-muted); stroke-width: 1; }
 
 .metro-panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; align-self: start; }
 .panel-head { display: flex; justify-content: space-between; align-items: start; gap: 8px; }

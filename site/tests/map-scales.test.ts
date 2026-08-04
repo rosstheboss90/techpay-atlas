@@ -12,4 +12,7 @@ describe('map scales', () => {
     expect(bubbleColor(100, [0, 100], RAMP_LIGHT)).toBe(RAMP_LIGHT[RAMP_LIGHT.length - 1])
     expect(bubbleColor(null, [0, 100], RAMP_LIGHT)).toBe('var(--line)')
   })
+  it('degenerate domain (every metro tied) maps to the middle ramp step', () => {
+    expect(bubbleColor(5, [5, 5], RAMP_LIGHT)).toBe(RAMP_LIGHT[Math.floor(RAMP_LIGHT.length / 2)])
+  })
 })

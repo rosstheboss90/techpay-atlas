@@ -28,11 +28,25 @@ interface Props {
 
 interface Hover { cbsa: string; x: number; y: number }
 
+/** Same text for the hover tooltip and the bubble's accessible name. */
+function formatMetricValue(v: number | null, metric: Metric, rppMissing: boolean, adjusted: boolean): string {
+  if (metric === 'pay') return v != null ? fmtUsdCompact(v) : rppMissing && adjusted ? 'no RPP data' : 'no data'
+  if (metric === 'emp') return fmtNum(v)
+  return v != null ? `${v.toFixed(2)}× nat'l avg` : 'no data'
+}
+
+/** Legend-scale endpoint label, matching each metric's own unit convention. */
+function formatLegendValue(v: number, metric: Metric): string {
+  if (metric === 'pay') return fmtUsdCompact(v)
+  if (metric === 'emp') return fmtNum(v)
+  return `${v.toFixed(1)}×`
+}
+
 export function SalaryMap({ meta, salaries, soc, metric, adjusted, selected, dark, onSelect }: Props) {
   const [hover, setHover] = useState<Hover | null>(null)
   const ramp = dark ? RAMP_DARK : RAMP_LIGHT
 
-  const bubbles = useMemo(() => {
+  const { bubbles, domain, maxEmp } = useMemo(() => {
     const placed = meta.metros
       .map(m => {
         const xy = projection([m.lng, m.lat])
@@ -42,42 +56,62 @@ export function SalaryMap({ meta, salaries, soc, metric, adjusted, selected, dar
       })
       .filter((b): b is NonNullable<typeof b> => b !== null)
     const maxEmp = Math.max(1, ...placed.map(b => b.emp ?? 0))
-    const dom = extent(placed.map(b => b.v).filter((v): v is number => v != null)) as [number, number]
+    const [lo, hi] = extent(placed.map(b => b.v).filter((v): v is number => v != null))
+    const domain: [number, number] = lo == null || hi == null ? [0, 1] : [lo, hi]
     // Large bubbles render first so small metros stay hoverable on top.
-    return placed
-      .map(b => ({ ...b, r: bubbleRadius(b.emp, maxEmp), fill: bubbleColor(b.v, dom ?? [0, 1], ramp) }))
+    const bubbles = placed
+      .map(b => ({ ...b, r: bubbleRadius(b.emp, maxEmp), fill: bubbleColor(b.v, domain, ramp) }))
       .sort((a, b) => b.r - a.r)
+    return { bubbles, domain, maxEmp }
   }, [meta, salaries, soc, metric, adjusted, ramp])
 
   const hovered = hover ? bubbles.find(b => b.m.cbsa === hover.cbsa) : null
+  const smallEmp = Math.round(maxEmp / 10)
+
+  const select = (cbsa: string) => onSelect(selected === cbsa ? null : cbsa)
 
   return (
     <figure className="map-figure">
-      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="US metro map of tech pay" className="salary-map">
+      <svg viewBox={`0 0 ${W} ${H}`} role="group" aria-label="US metro map of tech pay" className="salary-map">
         <path d={statesD} className="map-states" />
         {bubbles.map(b => (
           <circle
             key={b.m.cbsa} cx={b.x} cy={b.y} r={b.r} fill={b.fill}
+            tabIndex={0} role="button"
+            aria-label={`${b.m.name}: ${formatMetricValue(b.v, metric, b.m.rpp == null, adjusted)}`}
             className={`map-bubble${selected === b.m.cbsa ? ' is-selected' : ''}`}
             onMouseEnter={e => setHover({ cbsa: b.m.cbsa, x: e.clientX, y: e.clientY })}
             onMouseMove={e => setHover({ cbsa: b.m.cbsa, x: e.clientX, y: e.clientY })}
             onMouseLeave={() => setHover(null)}
-            onClick={() => onSelect(selected === b.m.cbsa ? null : b.m.cbsa)}
+            onClick={() => select(b.m.cbsa)}
+            onKeyDown={e => {
+              if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(b.m.cbsa) }
+            }}
           />
         ))}
       </svg>
-      {hovered && (
-        <div className="map-tooltip" style={{ left: hover!.x + 12, top: hover!.y + 12 }}>
+      {hover && hovered && (
+        <div className="map-tooltip" style={{
+          left: Math.min(hover.x + 12, window.innerWidth - 180),
+          top: Math.min(hover.y + 12, window.innerHeight - 70),
+        }}>
           <strong>{hovered.m.name}</strong>
-          <span>
-            {metric === 'pay' && (hovered.v != null ? fmtUsdCompact(hovered.v) : hovered.m.rpp == null && adjusted ? 'no RPP data' : 'no data')}
-            {metric === 'emp' && fmtNum(hovered.v)}
-            {metric === 'lq' && (hovered.v != null ? `${hovered.v.toFixed(2)}× nat'l avg` : 'no data')}
-          </span>
+          <span>{formatMetricValue(hovered.v, metric, hovered.m.rpp == null, adjusted)}</span>
         </div>
       )}
       <figcaption className="map-legend">
-        <span className="legend-ramp">{ramp.map(c => <i key={c} style={{ background: c }} />)}</span>
+        <span className="legend-scale">
+          <span className="legend-value">{formatLegendValue(domain[0], metric)}</span>
+          <span className="legend-ramp">{ramp.map(c => <i key={c} style={{ background: c }} />)}</span>
+          <span className="legend-value">{formatLegendValue(domain[1], metric)}</span>
+        </span>
+        <span className="legend-size" aria-hidden="true">
+          <svg width="60" height="28" className="legend-bubbles">
+            <circle cx="14" cy="21" r={bubbleRadius(smallEmp, maxEmp)} className="legend-bubble" />
+            <circle cx="42" cy="14" r={bubbleRadius(maxEmp, maxEmp)} className="legend-bubble" />
+          </svg>
+          <span>{fmtNum(smallEmp)}–{fmtNum(maxEmp)} jobs</span>
+        </span>
         <span>{metric === 'pay' ? (adjusted ? 'median pay, COL-adjusted' : 'median pay') : metric === 'emp' ? 'employment' : 'concentration'} · bubble size = jobs</span>
       </figcaption>
     </figure>
