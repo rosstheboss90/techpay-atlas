@@ -23,8 +23,9 @@ over — re-check THRESHOLDS.minZipMatchRate still means what it did pre-title-l
   3. O*NET skill-vector similarity per SOC (new small data source)
 - **Map zoom/pan to select areas** (user-requested 2026-08-03; browser zoom is the
   accepted workaround for now)
-- **Deploy target decision** (Vercel vs GitHub Pages) — decide BEFORE more absolute
-  `/data/...` paths accumulate (`site/lib/data.ts` is the only affected file today)
+- ~~Deploy target decision~~ — DONE 2026-08-04: GitHub Pages via Actions
+  (https://rosstheboss90.github.io/techpay-atlas/). New absolute paths must use the
+  `NEXT_PUBLIC_BASE_PATH` prefix pattern in `site/lib/data.ts`.
 - Playwright run against the static export (config currently tests `next dev` only)
 - Employer-name mojibake repair (DOL double-encoding, ~16 names/quarter, cosmetic)
 
