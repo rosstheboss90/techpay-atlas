@@ -12,15 +12,15 @@ export function FilterBar({ roles, state, onChange }: Props) {
   return (
     <div className="filter-bar">
       <label className="filter-field">
-        <span className="filter-label" id="role-label">Role</span>
-        <select aria-labelledby="role-label" aria-label="Role" value={state.role}
+        <span className="filter-label">Role</span>
+        <select aria-label="Role" value={state.role}
                 onChange={e => onChange({ role: e.target.value })}>
           {roles.map(r => <option key={r.soc} value={r.soc}>{r.label}</option>)}
         </select>
       </label>
       <label className="filter-field">
-        <span className="filter-label" id="metric-label">Color by</span>
-        <select aria-labelledby="metric-label" aria-label="Color by" value={state.metric}
+        <span className="filter-label">Color by</span>
+        <select aria-label="Color by" value={state.metric}
                 onChange={e => onChange({ metric: e.target.value as UrlState['metric'] })}>
           <option value="pay">Median pay</option>
           <option value="emp">Employment</option>

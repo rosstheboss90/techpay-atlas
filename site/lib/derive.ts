@@ -17,7 +17,7 @@ export function metricValue(row: SalaryRow | undefined, metro: MetroMeta, metric
   return row.lq
 }
 
-/** 1-based dense ranking by metric desc; metros with null metric are absent from the map. */
+/** 1-based ordinal ranking by metric desc (no shared ranks on ties); metros with null metric are absent from the map. */
 export function rankMetros(metros: MetroMeta[], salaries: Salaries, soc: string, metric: Metric, adjusted: boolean): Map<string, number> {
   const scored = metros
     .map(m => ({ cbsa: m.cbsa, v: metricValue(salaries[m.cbsa]?.[soc], m, metric, adjusted) }))
