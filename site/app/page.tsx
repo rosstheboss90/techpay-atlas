@@ -32,13 +32,14 @@ export default function Page() {
   }, [])
 
   const update = useCallback((patch: Partial<UrlState>) => {
-    setState(prev => {
-      const next = { ...prev, ...patch }
-      const q = serializeState(next)
-      window.history.replaceState(null, '', q ? `?${q}` : window.location.pathname)
-      return next
-    })
+    setState(prev => ({ ...prev, ...patch }))
   }, [])
+
+  useEffect(() => {
+    if (!meta) return
+    const q = serializeState(state)
+    window.history.replaceState(null, '', q ? `?${q}` : window.location.pathname)
+  }, [state, meta])
 
   const role = useMemo(() => meta?.roles.find(r => r.soc === state.role) ?? null, [meta, state.role])
 
