@@ -1,6 +1,7 @@
 'use client'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { FilterBar } from '../components/FilterBar'
+import { MetroPanel } from '../components/MetroPanel'
 import { SalaryMap } from '../components/SalaryMap'
 import { loadMeta, loadSalaries } from '../lib/data'
 import type { Meta, Salaries } from '../lib/types'
@@ -60,7 +61,10 @@ export default function Page() {
         <SalaryMap meta={meta} salaries={salaries} soc={state.role} metric={state.metric}
                    adjusted={state.adjusted} selected={state.metro} dark={dark}
                    onSelect={cbsa => update({ metro: cbsa })} />
-        {/* Task 6 mounts <MetroPanel/> here */}
+        {state.metro && (
+          <MetroPanel meta={meta} salaries={salaries} cbsa={state.metro} soc={state.role}
+                      adjusted={state.adjusted} onClose={() => update({ metro: null })} />
+        )}
       </div>
       <footer className="provenance">
         Sources: BLS OEWS {meta.year} · BEA RPP {meta.rppYear} · DOL H-1B LCA {meta.lcaPeriod} · generated {meta.generated.slice(0, 10)}

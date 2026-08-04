@@ -47,3 +47,25 @@ body { background: var(--bg); color: var(--ink); font-family: var(--font); }
 .map-legend { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 12px; color: var(--ink-muted); }
 .legend-ramp { display: inline-flex; }
 .legend-ramp i { width: 18px; height: 10px; display: inline-block; }
+
+.metro-panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; align-self: start; }
+.panel-head { display: flex; justify-content: space-between; align-items: start; gap: 8px; }
+.panel-head h2 { font-size: 17px; line-height: 1.25; }
+.panel-close { background: none; border: none; color: var(--ink-muted); font-size: 20px; cursor: pointer; }
+.headline-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; margin: 14px 0; }
+.headline-stats dt { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-muted); }
+.headline-stats dd { font-size: 18px; font-weight: 600; }
+.panel-sub { font-size: 13px; margin: 16px 0 8px; }
+.role-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.role-table th[scope="col"] { text-align: left; color: var(--ink-muted); font-weight: 500; padding-bottom: 4px; }
+.role-table th[scope="row"] { text-align: left; font-weight: 500; padding: 3px 8px 3px 0; white-space: nowrap; }
+.role-table tr.is-current { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.cell-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.band-outer { fill: color-mix(in srgb, var(--accent) 30%, transparent); }
+.band-inner { fill: var(--accent); opacity: 0.75; }
+.band-median { stroke: var(--ink); stroke-width: 2; }
+.employer-list { margin: 0; padding-left: 18px; font-size: 13px; display: flex; flex-direction: column; gap: 6px; }
+.employer-list li { display: flex; justify-content: space-between; gap: 12px; }
+.employer-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.employer-facts { color: var(--ink-muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.panel-note { font-size: 12px; color: var(--ink-muted); margin: 8px 0; }
