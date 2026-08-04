@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { buildEmployerFiles, buildMeta, buildSalaries } from '../lib/emit'
+import { buildEmployerFiles, buildMeta, buildSalaries, buildTitles } from '../lib/emit'
 import type { SalaryRecord } from '../lib/parse-oews'
 import type { EmployerBundle } from '../lib/aggregate'
+import type { TitleBucketAgg } from '../lib/aggregate-titles'
 import { TOP_CODE } from '../lib/num'
 
 const salaries: SalaryRecord[] = [
@@ -80,5 +81,44 @@ describe('golden: fixtures in -> site JSON out', () => {
     const { files, excluded } = buildEmployerFiles(agg, new Set(['12420']))
     expect(files.map(f => f.cbsa)).toEqual(['12420'])
     expect(excluded).toBe(1)
+  })
+})
+
+describe('golden: aggregateTitles output -> titles.json shape (buildTitles)', () => {
+  const tpmBucket: TitleBucketAgg = {
+    key: 'tpm', label: 'Technical Program Manager',
+    national: { filings: 5, p25: 150000, median: 172000, p75: 200000 },
+    metros: { '12420': { filings: 8, p25: 150000, median: 172000, p75: 200000 } },
+    tiers: { senior: { filings: 25, p25: 160000, median: 185000, p75: 210000 } },
+    socMix: [{ soc: '15-1299', share: 1 }],
+    topEmployers: [{ name: 'Acme Corp', filings: 5, median: 172000 }],
+  }
+  const pmoBucket: TitleBucketAgg = {
+    key: 'pmo', label: 'PMO',
+    national: { filings: 3, p25: 90000, median: 95000, p75: 100000 },
+    metros: {}, tiers: {}, socMix: [], topEmployers: [],
+  }
+  const agg = {
+    matchedTotal: 8,
+    families: [{ key: 'pm', label: 'PM & Product', buckets: [tpmBucket, pmoBucket] }],
+  }
+
+  it('maps aggregateTitles families/buckets verbatim and stamps lcaPeriod', () => {
+    const out = buildTitles(agg, 'FY2025 Q1–Q4')
+    expect(out.lcaPeriod).toBe('FY2025 Q1–Q4')
+    expect(out.families).toEqual(agg.families)
+  })
+
+  it('does not leak matchedTotal (not part of the emitted contract)', () => {
+    const out = buildTitles(agg, 'FY2025 Q1–Q4')
+    expect('matchedTotal' in out).toBe(false)
+  })
+
+  it('an empty-tier bucket serializes with no tier keys present', () => {
+    const out = buildTitles(agg, 'FY2025 Q1–Q4')
+    const pmo = out.families[0].buckets.find(b => b.key === 'pmo')!
+    expect(Object.keys(pmo.tiers)).toEqual([])
+    const roundTripped = JSON.parse(JSON.stringify(out))
+    expect(Object.keys(roundTripped.families[0].buckets[1].tiers)).toEqual([])
   })
 })

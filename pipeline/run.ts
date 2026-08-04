@@ -9,7 +9,9 @@ import { gazetteerRowsToMap } from './lib/parse-gazetteer'
 import { hudRowsToZipCbsa } from './lib/crosswalk'
 import { lcaRowsToRecords, type DropReason, type LcaRecord } from './lib/parse-lca'
 import { aggregateEmployers, attachCbsa } from './lib/aggregate'
-import { buildEmployerFiles, buildMeta, buildSalaries } from './lib/emit'
+import { aggregateTitles } from './lib/aggregate-titles'
+import { FAMILIES } from './lib/titles'
+import { buildEmployerFiles, buildMeta, buildSalaries, buildTitles } from './lib/emit'
 
 // Raw files can live one level deep (e.g. data/raw/oesm25ma/MSA_M2025_dl.xlsx) as well as flat
 // in data/raw/. Regexes below match against the basename only, so a subdirectory never needs to
@@ -124,13 +126,46 @@ const { matched, matchRate, unmatchedZips } = attachCbsa(dedupedLcaRecords, zipC
 console.log(`  ZIP->CBSA match rate ${(matchRate * 100).toFixed(1)}%`)
 if (matchRate < THRESHOLDS.minZipMatchRate) fail(`ZIP match rate ${matchRate.toFixed(3)} (< ${THRESHOLDS.minZipMatchRate})`)
 
-const filingsByCbsa = new Map<string, number>()
-for (const r of matched) filingsByCbsa.set(r.cbsa, (filingsByCbsa.get(r.cbsa) ?? 0) + 1)
-
 // The title layer (Task 2+) wants ALL certified full-time filings, any SOC; the employer layer
 // still wants only target-SOC filings, so filter here (moved from parse-time in parse-lca.ts).
 const employerRecords = matched.filter(r => r.targetSoc).map(r => ({ ...r, soc: r.targetSoc! }))
 const lcaNonTargetSoc = matched.length - employerRecords.length
+
+// meta.metros[].lcaFilings must stay scoped to target-SOC (registry-role) filings, NOT all of
+// `matched` — the site treats lcaFilings > 0 as "an employers/<cbsa>.json file exists" (it skips
+// fetching when 0). buildEmployerFiles below is built from employerRecords, so this has to match
+// that same input or a metro with only off-registry-SOC filings would advertise filings it can't
+// back with an employer file (broken fetch on click).
+const filingsByCbsa = new Map<string, number>()
+for (const r of employerRecords) filingsByCbsa.set(r.cbsa, (filingsByCbsa.get(r.cbsa) ?? 0) + 1)
+
+// 3b. Title layer — same deduped, CBSA-matched stream as the employer layer, but ALL SOCs
+// (no target-SOC filter): titles must see filings whose SOC falls outside our 21 roles.
+const titleAgg = aggregateTitles(matched)
+for (const fam of titleAgg.families)
+  for (const b of fam.buckets)
+    if (b.national.filings === 0) fail(`title bucket ${fam.key}/${b.key} ("${b.label}") has 0 national filings — regex likely broken`)
+if (titleAgg.matchedTotal < THRESHOLDS.minTitleFilings) fail(`only ${titleAgg.matchedTotal} title-matched LCA filings (< ${THRESHOLDS.minTitleFilings})`)
+
+// Cross-family overlap: a title should hit at most one bucket per family, and — by design —
+// essentially never span multiple families. Checked on a sampled subset (matched can be
+// 500k+ rows and this re-runs every FAMILIES regex per record).
+const overlapSampleSize = 20_000
+const overlapStep = Math.max(1, Math.floor(matched.length / overlapSampleSize))
+const overlapSample = matched.filter((_, i) => i % overlapStep === 0).slice(0, overlapSampleSize)
+let sampleMatched = 0, sampleOverlap = 0
+for (const r of overlapSample) {
+  const familyHits = FAMILIES.filter(f => f.buckets.some(b => b.re.test(r.title))).length
+  if (familyHits >= 1) sampleMatched++
+  if (familyHits >= 2) sampleOverlap++
+}
+const titleFamilyOverlapRate = sampleMatched ? sampleOverlap / sampleMatched : 0
+if (titleFamilyOverlapRate > THRESHOLDS.maxTitleFamilyOverlap)
+  fail(`title family overlap rate ${titleFamilyOverlapRate.toFixed(4)} (> ${THRESHOLDS.maxTitleFamilyOverlap}) — ${sampleOverlap}/${sampleMatched} sampled matched filings hit >=2 families`)
+console.log(`  titles: ${titleAgg.matchedTotal} matched filings, overlap rate ${(titleFamilyOverlapRate * 100).toFixed(3)}% (sample ${overlapSample.length})`)
+for (const fam of titleAgg.families)
+  for (const b of fam.buckets)
+    console.log(`    ${fam.key}/${b.key} (${b.label}): ${b.national.filings} national filings`)
 
 // 4. Build + coverage assertions
 const { meta, droppedNoArea, droppedNoCoords } = buildMeta(salaries, areas, coords, rpp, year, filingsByCbsa)
@@ -157,6 +192,8 @@ const { files: employerFiles, excluded: employerFilesExcluded } = buildEmployerF
 for (const { cbsa, body } of employerFiles) {
   writeFileSync(path.join(OUT_DIR, 'employers', `${cbsa}.json`), JSON.stringify(body))
 }
+const titlesJson = buildTitles(titleAgg, lcaPeriod)
+writeFileSync(path.join(OUT_DIR, 'titles.json'), JSON.stringify(titlesJson))
 const lcaMatchedPostFilter = matched.filter(r => keepCbsa.has(r.cbsa)).length
 
 // 6. Report
@@ -170,6 +207,10 @@ writeFileSync(path.join(REPORT_DIR, `run-${meta.generated.slice(0, 10)}.json`), 
   lcaRaw: lcaRecords.length, lcaDrops, lcaDuplicateCaseNumbers: duplicateCaseNumbers,
   lcaUsable: dedupedLcaRecords.length, lcaMatched: matched.length, lcaMatchedPostFilter, lcaNonTargetSoc, zipMatchRate: matchRate,
   rppCoverage, employerFiles: employerFiles.length,
+  titleMatchedTotal: titleAgg.matchedTotal,
+  titleFamilyOverlapRate,
+  titleBucketFilings: Object.fromEntries(
+    titleAgg.families.flatMap(f => f.buckets.map(b => [`${f.key}/${b.key}`, b.national.filings]))),
   topUnmatchedZips: [...unmatchedZips.entries()].sort((a, b) => b[1] - a[1]).slice(0, 25),
 }, null, 2))
 console.log(`DONE: ${meta.metros.length} metros, ${employerFiles.length} employer files -> ${OUT_DIR}`)

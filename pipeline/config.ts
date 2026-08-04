@@ -12,4 +12,6 @@ export const THRESHOLDS = {
   minZipMatchRate: 0.85, // LCA worksite ZIP -> CBSA join
   minRppCoverage: 0.8,   // share of salary metros with an RPP value
   minLcaRecords: 50_000, // usable LCA filings across all quarters before ZIP join
+  minTitleFilings: 10_000,      // total filings matched into a title bucket (scan found ~14k in PM alone)
+  maxTitleFamilyOverlap: 0.01,  // share of title-matched filings whose title hits >=2 families (regex overlap tripwire)
 }
