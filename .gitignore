@@ -5,6 +5,7 @@ data/reports/*
 !data/reports/.gitkeep
 .next/
 site/out/
+site/e2e-scratch/
 *.tsbuildinfo
 site/AGENTS.md
 site/CLAUDE.md

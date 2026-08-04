@@ -30,3 +30,20 @@ body { background: var(--bg); color: var(--ink); font-family: var(--font); }
 .loading, .load-error { padding: 48px 0; color: var(--ink-muted); }
 .load-error { color: #b3403c; }
 .provenance { margin-top: 32px; font-size: 12px; color: var(--ink-muted); border-top: 1px solid var(--line); padding-top: 12px; }
+
+.hero-row { display: grid; grid-template-columns: 1fr; gap: 16px; }
+@media (min-width: 980px) { .hero-row.has-panel { grid-template-columns: 2fr 1fr; } }
+.map-figure { position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
+.salary-map { width: 100%; height: auto; display: block; }
+.map-states { fill: var(--bg); stroke: var(--line); stroke-width: 0.7; }
+.map-bubble { stroke: var(--surface); stroke-width: 1; cursor: pointer; transition: fill 400ms ease; }
+.map-bubble:hover { stroke: var(--ink); }
+.map-bubble.is-selected { stroke: var(--ink); stroke-width: 2; }
+.map-tooltip {
+  position: fixed; z-index: 10; pointer-events: none; background: var(--surface); color: var(--ink);
+  border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; font-size: 12px;
+  display: flex; flex-direction: column; gap: 2px; box-shadow: 0 4px 14px rgb(0 0 0 / 0.15);
+}
+.map-legend { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 12px; color: var(--ink-muted); }
+.legend-ramp { display: inline-flex; }
+.legend-ramp i { width: 18px; height: 10px; display: inline-block; }

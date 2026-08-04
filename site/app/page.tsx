@@ -1,6 +1,7 @@
 'use client'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { FilterBar } from '../components/FilterBar'
+import { SalaryMap } from '../components/SalaryMap'
 import { loadMeta, loadSalaries } from '../lib/data'
 import type { Meta, Salaries } from '../lib/types'
 import { DEFAULT_STATE, parseState, serializeState, type UrlState } from '../lib/url-state'
@@ -10,6 +11,7 @@ export default function Page() {
   const [salaries, setSalaries] = useState<Salaries | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [state, setState] = useState<UrlState>(DEFAULT_STATE)
+  const [dark, setDark] = useState(false)
 
   useEffect(() => {
     Promise.all([loadMeta(), loadSalaries()])
@@ -19,6 +21,14 @@ export default function Page() {
         setState(m.roles.some(r => r.soc === parsed.role) ? parsed : { ...parsed, role: DEFAULT_STATE.role })
       })
       .catch(e => setError(String(e)))
+  }, [])
+
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-color-scheme: dark)')
+    setDark(mq.matches)
+    const fn = (e: MediaQueryListEvent) => setDark(e.matches)
+    mq.addEventListener('change', fn)
+    return () => mq.removeEventListener('change', fn)
   }, [])
 
   const update = useCallback((patch: Partial<UrlState>) => {
@@ -45,7 +55,12 @@ export default function Page() {
         </p>
       </header>
       <FilterBar roles={meta.roles} state={state} onChange={update} />
-      {/* Task 5 mounts <SalaryMap/> here; Task 6 mounts <MetroPanel/> */}
+      <div className={state.metro ? 'hero-row has-panel' : 'hero-row'}>
+        <SalaryMap meta={meta} salaries={salaries} soc={state.role} metric={state.metric}
+                   adjusted={state.adjusted} selected={state.metro} dark={dark}
+                   onSelect={cbsa => update({ metro: cbsa })} />
+        {/* Task 6 mounts <MetroPanel/> here */}
+      </div>
       <footer className="provenance">
         Sources: BLS OEWS {meta.year} · BEA RPP {meta.rppYear} · DOL H-1B LCA {meta.lcaPeriod} · generated {meta.generated.slice(0, 10)}
       </footer>
