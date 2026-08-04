@@ -2,6 +2,7 @@ export interface Role { soc: string; label: string; short: string }
 
 export const ROLES: Role[] = [
   { soc: '11-3021', label: 'Computer & Information Systems Managers', short: 'IT Mgr' },
+  { soc: '13-1082', label: 'Project Management Specialists', short: 'Project Mgmt' },
   { soc: '15-1211', label: 'Computer Systems Analysts', short: 'Sys Analyst' },
   { soc: '15-1212', label: 'Information Security Analysts', short: 'Security' },
   { soc: '15-1221', label: 'Computer & Information Research Scientists', short: 'CS Research' },

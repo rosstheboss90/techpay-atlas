@@ -17,7 +17,7 @@ payoff: answers "where do my skills pay best in real terms?" during an active jo
 | Purpose | Both portfolio and personal tool, **portfolio-first** |
 | Data sources | **BLS OEWS** (backbone) + **DOL H-1B LCA disclosures** (employer layer) + **BEA RPP** (cost-of-living) |
 | Deliverable | **Static site + offline pipeline** (no runtime server, free public hosting) |
-| Role scope | **Core tech + adjacent**, 20 occupations: all SOC 15-12xx (Computer Occupations) + 15-2031 (Operations Research Analysts), 15-2041 (Statisticians), 15-2051 (Data Scientists), plus 11-3021 (Computer & IS Managers) and 41-9031 (Sales Engineers). Excluded as not IT-adjacent: the rest of the 15-2000 Mathematical Science group — 15-2011 (Actuaries), 15-2021 (Mathematicians), 15-2099 (Mathematical Science Occupations, All Other) |
+| Role scope | **Core tech + adjacent**, 21 occupations: all SOC 15-12xx (Computer Occupations) + 15-2031 (Operations Research Analysts), 15-2041 (Statisticians), 15-2051 (Data Scientists), plus 11-3021 (Computer & IS Managers) and 41-9031 (Sales Engineers). Excluded as not IT-adjacent: the rest of the 15-2000 Mathematical Science group — 15-2011 (Actuaries), 15-2021 (Mathematicians), 15-2099 (Mathematical Science Occupations, All Other). 13-1082 (Project Management Specialists) added at user request — NOTE it is all-industry (OEWS metro data cannot isolate tech-sector PMs; a construction PM counts too); the H-1B employer layer is implicitly tech-weighted. |
 | COL adjustment | **Yes** — nominal ↔ RPP-adjusted toggle on every salary view |
 | Centerpiece | **Metro Salary Map** (bubble map; size = employment, color = pay) |
 | Site structure | **One-page dashboard**: map hero + drill-down panel + sections below, shared filters |

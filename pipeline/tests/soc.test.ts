@@ -3,9 +3,9 @@ import { ROLES, SOC_SET, targetSoc } from '../lib/soc'
 import { cell, num, TOP_CODE } from '../lib/num'
 
 describe('roles', () => {
-  it('has 20 unique roles with labels', () => {
-    expect(ROLES).toHaveLength(20)
-    expect(new Set(ROLES.map(r => r.soc)).size).toBe(20)
+  it('has 21 unique roles with labels', () => {
+    expect(ROLES).toHaveLength(21)
+    expect(new Set(ROLES.map(r => r.soc)).size).toBe(21)
     for (const r of ROLES) expect(r.label.length).toBeGreaterThan(0)
   })
   it('targetSoc normalizes O*NET suffixes and rejects non-targets', () => {
