@@ -12,7 +12,9 @@ export function parseState(q: URLSearchParams): UrlState {
   const metric = q.get('metric') as Metric
   const metro = q.get('metro') ?? ''
   return {
-    role: SOC_RE.test(role) && role.startsWith('15-') || role === '11-3021' || role === '41-9031' ? role : DEFAULT_STATE.role,
+    // Shape-only: the real membership gate is the page checking against meta.roles,
+    // so new roles (e.g. 13-1082) don't need an allowlist edit here.
+    role: SOC_RE.test(role) ? role : DEFAULT_STATE.role,
     metric: METRICS.has(metric) ? metric : DEFAULT_STATE.metric,
     adjusted: q.get('adj') === '1',
     metro: /^\d{5}$/.test(metro) ? metro : null,

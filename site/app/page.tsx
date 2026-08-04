@@ -19,7 +19,11 @@ export default function Page() {
       .then(([m, s]) => {
         setMeta(m); setSalaries(s)
         const parsed = parseState(new URLSearchParams(window.location.search))
-        setState(m.roles.some(r => r.soc === parsed.role) ? parsed : { ...parsed, role: DEFAULT_STATE.role })
+        setState({
+          ...parsed,
+          role: m.roles.some(r => r.soc === parsed.role) ? parsed.role : DEFAULT_STATE.role,
+          metro: parsed.metro != null && m.metros.some(x => x.cbsa === parsed.metro) ? parsed.metro : null,
+        })
       })
       .catch(e => setError(String(e)))
   }, [])
@@ -38,7 +42,12 @@ export default function Page() {
 
   useEffect(() => {
     if (!meta) return
-    const q = serializeState(state)
+    // Preserve any query params this app doesn't own (utm_*, etc.) — only
+    // our own keys get replaced by the serialized state.
+    const params = new URLSearchParams(window.location.search)
+    for (const key of ['role', 'metric', 'adj', 'metro']) params.delete(key)
+    for (const [k, v] of new URLSearchParams(serializeState(state))) params.set(k, v)
+    const q = params.toString()
     window.history.replaceState(null, '', q ? `?${q}` : window.location.pathname)
   }, [state, meta])
 
