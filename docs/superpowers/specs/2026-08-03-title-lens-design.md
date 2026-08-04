@@ -21,6 +21,12 @@ because we hold the raw filings; directly useful to the user's own search.
   SRE, Platform Engineer, Cloud Engineer, Infrastructure Engineer), **Data** (Data Engineer,
   ML Engineer, Analytics Engineer, Data Analyst), **Dev specialization** (Frontend, Backend,
   Full-stack, Mobile).
+- **Seniority axis** (user-approved 2026-08-03): each bucket additionally splits by tier
+  parsed from the title string — `base` (unmarked), `senior` (SENIOR/SR/III+), `staff+`
+  (STAFF/PRINCIPAL/DISTINGUISHED), `lead` (LEAD/HEAD OF), `director+` (DIRECTOR/VP).
+  Tier stats are NATIONAL-ONLY (per-metro × tier would shred sample sizes) and a tier is
+  emitted only with ≥ 25 filings. Tier parsing is independent of bucket matching (the
+  bucket regexes must therefore tolerate seniority prefixes/suffixes).
 
 ## Pipeline extension
 
@@ -49,6 +55,8 @@ because we hold the raw filings; directly useful to the user's own search.
     key: string; label: string
     national: TitleStats
     metros: Record<string, TitleStats>   // only metros with filings >= 8
+    tiers: Partial<Record<'base' | 'senior' | 'staffPlus' | 'lead' | 'directorPlus', TitleStats>>
+      // national-only; a tier key is present only with >= 25 filings
     socMix: { soc: string; share: number }[]  // top 4 + { soc: 'other' }, shares sum to 1
     topEmployers: { name: string; filings: number; median: number }[]  // top 5
   }
@@ -67,15 +75,18 @@ New section below the hero (same page, shared metro selection):
    categorical color (≤ 4 SOCs + gray "other"; dataviz rules: fixed assignment, 2px gaps,
    legend + segment tooltips, texture fallback). Clicking a segment sets the main role
    dropdown to that SOC (cross-link into the map).
-3. **Metro awareness**: when a metro is selected in the map AND the bucket has that metro
+3. **Seniority ladder**: each bucket row expands (disclosure) to its tier sub-rows —
+   "TPM $158k → Senior $185k → Principal $210k" style, p25–p75 band per tier, filings count
+   beside each. Tiers are always national (chip says so even when a metro is selected).
+4. **Metro awareness**: when a metro is selected in the map AND the bucket has that metro
    (filings ≥ 8), rows show the metro's stats with a "in {metro short name}" chip; otherwise
    national stats with a muted "national" chip. COL-adjust applies ONLY to metro-level
    stats (national numbers cannot be adjusted — render nominal with the existing note
    pattern; reuse `canAdjust`).
-4. **Honesty rails**: filings count always visible; buckets with metro filings < 8 never
+5. **Honesty rails**: filings count always visible; buckets with metro filings < 8 never
    show metro numbers; "wage floors midpointed" note reused; `lcaPeriod` cited in the
    section header.
-5. `titles.json` fetched lazily when the section first scrolls into view (IntersectionObserver),
+6. `titles.json` fetched lazily when the section first scrolls into view (IntersectionObserver),
    with the standard inline-error fallback.
 
 ## Error handling
@@ -89,6 +100,10 @@ New section below the hero (same page, shared metro selection):
 - `titles.ts` bucket regexes: fixture list of ~40 real titles from the scan (e.g.
   "SENIOR TECHNICAL PROGRAM MANAGER II", "PMO LEAD", "SR. SDET", "FULL STACK DEVELOPER")
   asserting exact bucket (or no match); overlap assertion.
+- `parseSeniority` fixtures: "SENIOR TECHNICAL PROGRAM MANAGER II" → senior · "PRINCIPAL
+  SOFTWARE ENGINEER" → staffPlus · "LEAD DATA ENGINEER" → lead · "DIRECTOR, PMO" →
+  directorPlus · "PRODUCT MANAGER" → base; precedence when multiple markers appear
+  (directorPlus > lead > staffPlus > senior).
 - `aggregateTitles`: grouping, metro threshold, socMix top-4+other shares sum to 1,
   deterministic ordering.
 - Emit golden test extension for `titles.json` shape.
