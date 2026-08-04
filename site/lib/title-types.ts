@@ -24,5 +24,5 @@ export const TIER_ORDER: { key: Tier; label: string }[] = [
   { key: 'senior', label: 'Senior' },
   { key: 'staffPlus', label: 'Staff/Principal' },
   { key: 'lead', label: 'Lead' },
-  { key: 'directorPlus', label: 'Director+' },
+  { key: 'directorPlus', label: 'Director / VP' },
 ]

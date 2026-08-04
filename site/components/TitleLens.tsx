@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Meta } from '../lib/types'
 import type { TitlesJson } from '../lib/title-types'
 import { loadTitles } from '../lib/data'
+import { adjust } from '../lib/derive'
 import { TitleBucketRow, selectStats } from './TitleBucketRow'
 
 interface Props {
@@ -46,16 +47,27 @@ export function TitleLens({ meta, cbsa, adjusted, onSelectRole }: Props) {
   // Shared band domain across the visible family: every row's currently-selected stat
   // (national or metro) plus every tier's stats, so bands stay comparable and the
   // seniority disclosure never draws outside the axis the collapsed row implied.
+  //
+  // Domain must be computed over the same values the rows actually RENDER, not the raw
+  // nominal stats — a metro row in adjusted mode draws the COL-divided value (see
+  // TitleBucketRow's Band), and a domain built only from nominal p25/p75 clips those
+  // adjusted bars against the track edge. Tier rows are always national/nominal (the
+  // seniority ladder never adjusts), so their values go in as-is.
+  const rpp = metro?.rpp ?? null
   const domain = useMemo<[number, number]>(() => {
     if (!activeFamily) return [0, 1]
     const vals: number[] = []
     for (const b of activeFamily.buckets) {
-      const { stats } = selectStats(b, cbsa)
-      vals.push(stats.p25, stats.p75)
+      const { stats, isMetro } = selectStats(b, cbsa)
+      const rowAdjusted = adjusted && isMetro && rpp != null
+      const p25 = adjust(stats.p25, isMetro ? rpp : null, rowAdjusted)
+      const p75 = adjust(stats.p75, isMetro ? rpp : null, rowAdjusted)
+      if (p25 != null) vals.push(p25)
+      if (p75 != null) vals.push(p75)
       for (const t of Object.values(b.tiers)) if (t) vals.push(t.p25, t.p75)
     }
     return vals.length ? [Math.min(...vals), Math.max(...vals)] : [0, 1]
-  }, [activeFamily, cbsa])
+  }, [activeFamily, cbsa, adjusted, rpp])
 
   return (
     <section className="title-lens" ref={rootRef}>

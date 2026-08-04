@@ -3,6 +3,8 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { TitleLens } from '../components/TitleLens'
 import type { Meta } from '../lib/types'
 import type { TitlesJson } from '../lib/title-types'
+import { adjust } from '../lib/derive'
+import { fmtUsd } from '../lib/format'
 
 const meta = {
   year: 2025, generated: '2026-08-03T00:00:00Z', topCodeValue: 239200, rppYear: 2024,
@@ -84,6 +86,51 @@ describe('TitleLens', () => {
     expect(screen.getAllByText(/national/i).length).toBeGreaterThan(0)
   })
 
+  it('adjusted mode: metro row shows the COL-divided value with an "(adj.)" marker; a bucket without that metro stays nominal national, no marker', async () => {
+    stubFetchOk()
+    render(<TitleLens meta={meta} cbsa="12420" adjusted={true} onSelectRole={() => {}} />)
+    await waitFor(() => expect(screen.getByText('Technical Program Manager')).toBeInTheDocument())
+    const tpmAdjMedian = fmtUsd(adjust(161900, 98.066, true))
+    expect(screen.getByText(`${tpmAdjMedian} (adj.)`)).toBeInTheDocument()
+    // devops has no '12420' metro entry -> stays national, never adjusted, no "(adj.)" marker
+    expect(screen.getByText('$140,000')).toBeInTheDocument()
+    expect(screen.queryByText('$140,000 (adj.)')).toBeNull()
+  })
+
+  it('adjusted mode: no band draws outside its 140px track (regression for domain computed from nominal values while rows render adjusted ones)', async () => {
+    // A dedicated fixture where the metro's rpp (60) diverges sharply from 100, so a domain
+    // built from nominal stats (pre-fix) would clip the adjusted bar hard against the track
+    // edge — both p25 and p75 collapse to the same clamped x, producing a zero-width band.
+    const narrowMeta: Meta = {
+      ...meta,
+      metros: [{ cbsa: '99999', name: 'Expensive City, CA', state: 'CA', lat: 0, lng: 0, rpp: 60, lcaFilings: 100 }],
+    }
+    const narrowTitles: TitlesJson = {
+      lcaPeriod: 'FY2025 Q1–Q4',
+      families: [{
+        key: 'pm', label: 'PM & Product',
+        buckets: [{
+          key: 'tpm', label: 'Technical Program Manager',
+          national: { filings: 100, p25: 100000, median: 110000, p75: 120000 },
+          metros: { '99999': { filings: 50, p25: 100000, median: 110000, p75: 120000 } },
+          tiers: {},
+          socMix: [{ soc: '15-1299', share: 1 }],
+          topEmployers: [],
+        }],
+      }],
+    }
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => narrowTitles }))
+    const { container } = render(<TitleLens meta={narrowMeta} cbsa="99999" adjusted={true} onSelectRole={() => {}} />)
+    await waitFor(() => expect(screen.getByText('Technical Program Manager')).toBeInTheDocument())
+    expect(screen.getByText(/\(adj\.\)/)).toBeInTheDocument()
+    const rect = container.querySelector('.tl-band-inner')!
+    const x = Number(rect.getAttribute('x'))
+    const w = Number(rect.getAttribute('width'))
+    expect(x).toBeGreaterThanOrEqual(0)
+    expect(x + w).toBeLessThanOrEqual(140)
+    expect(w).toBeGreaterThan(0) // must not collapse to a zero-width sliver clamped at the edge
+  })
+
   it('tier disclosure reveals seniority sub-rows only after expansion', async () => {
     stubFetchOk()
     render(<TitleLens meta={meta} cbsa={null} adjusted={false} onSelectRole={() => {}} />)
@@ -114,5 +161,15 @@ describe('TitleLens', () => {
     fireEvent.click(screen.getByLabelText(/Other.*21%/i))
     fireEvent.click(screen.getByLabelText(/11-3021.*22%/))
     expect(onSelectRole).toHaveBeenCalledTimes(1)
+  })
+
+  it('non-interactive conflation segments (out-of-registry / "other") expose an accessible name via role=img (announced by screen readers, unlike role=generic)', async () => {
+    stubFetchOk()
+    render(<TitleLens meta={meta} cbsa={null} adjusted={false} onSelectRole={() => {}} />)
+    await waitFor(() => expect(screen.getByText('Technical Program Manager')).toBeInTheDocument())
+    expect(screen.getByRole('img', { name: /other.*21%/i })).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: /11-3021.*22%/ })).toBeInTheDocument()
+    // clickable, in-registry segments remain role=button, not role=img
+    expect(screen.getByRole('button', { name: /Software Developers.*19%/ })).toBeInTheDocument()
   })
 })

@@ -85,7 +85,7 @@ export function TitleBucketRow({ bucket, domain, cbsa, metroShort, rpp, adjusted
                onClick={() => onSelectRole(seg.soc)}
                onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelectRole(seg.soc) } }} />
           ) : (
-            <i key={seg.soc + i} style={style} title={text} aria-label={text} className={className} />
+            <i key={seg.soc + i} style={style} title={text} aria-label={text} className={className} role="img" />
           )
         })}
       </div>
