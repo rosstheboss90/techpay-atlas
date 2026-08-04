@@ -3,15 +3,18 @@ import { lcaRowsToRecords } from '../lib/parse-lca'
 
 const row = (over: Record<string, unknown> = {}) => ({
   CASE_STATUS: 'Certified', FULL_TIME_POSITION: 'Y',
-  EMPLOYER_NAME: '  Acme   Corp ', SOC_CODE: '15-1252.00', JOB_TITLE: 'Software Engineer II',
+  EMPLOYER_NAME: '  Acme   Corp ', SOC_CODE: '15-1252.00', JOB_TITLE: ' Senior  Software Engineer II ',
   WORKSITE_POSTAL_CODE: 78701, WAGE_RATE_OF_PAY_FROM: '$145,000.00', WAGE_UNIT_OF_PAY: 'Year',
   ...over,
 })
 
 describe('lcaRowsToRecords', () => {
-  it('maps a certified full-time target row, normalizing employer whitespace and ZIP', () => {
+  it('maps a certified full-time target row, normalizing employer whitespace, ZIP, and title', () => {
     expect(lcaRowsToRecords([row()]).records).toEqual([
-      { soc: '15-1252', employer: 'Acme Corp', zip: '78701', annualWage: 145000, caseNumber: '' },
+      {
+        soc: '15-1252', targetSoc: '15-1252', title: 'SENIOR SOFTWARE ENGINEER II',
+        employer: 'Acme Corp', zip: '78701', annualWage: 145000, caseNumber: '',
+      },
     ])
   })
   it.each([
@@ -36,13 +39,24 @@ describe('lcaRowsToRecords', () => {
     expect(lcaRowsToRecords([row({ WAGE_RATE_OF_PAY_FROM: '6000', WAGE_UNIT_OF_PAY: 'Bi-Weekly' })]).records[0].annualWage).toBe(156000)
     expect(lcaRowsToRecords([row({ WAGE_RATE_OF_PAY_FROM: '12000', WAGE_UNIT_OF_PAY: 'Month' })]).records[0].annualWage).toBe(144000)
   })
-  it('drops withdrawn, part-time, non-target-SOC, unknown-unit, and implausible-wage rows', () => {
+  it('drops withdrawn, part-time, malformed-SOC, unknown-unit, and implausible-wage rows', () => {
     expect(lcaRowsToRecords([row({ CASE_STATUS: 'Certified - Withdrawn' })]).records).toEqual([])
     expect(lcaRowsToRecords([row({ FULL_TIME_POSITION: 'N' })]).records).toEqual([])
-    expect(lcaRowsToRecords([row({ SOC_CODE: '29-1141' })]).records).toEqual([])
+    expect(lcaRowsToRecords([row({ SOC_CODE: 'garbage' })]).records).toEqual([])
     expect(lcaRowsToRecords([row({ WAGE_UNIT_OF_PAY: 'Fortnight' })]).records).toEqual([])
     expect(lcaRowsToRecords([row({ WAGE_RATE_OF_PAY_FROM: '12' })]).records).toEqual([])        // $12/yr
     expect(lcaRowsToRecords([row({ WAGE_RATE_OF_PAY_FROM: '9,000,000' })]).records).toEqual([])  // $9M/yr
+  })
+  it('retains a valid but non-target SOC (targetSoc null, not dropped)', () => {
+    const records = lcaRowsToRecords([row({ SOC_CODE: '11-9021' })]).records
+    expect(records).toHaveLength(1)
+    expect(records[0].soc).toBe('11-9021')
+    expect(records[0].targetSoc).toBeNull()
+  })
+  it('retains a row with an empty JOB_TITLE as title: ""', () => {
+    const records = lcaRowsToRecords([row({ JOB_TITLE: '' })]).records
+    expect(records).toHaveLength(1)
+    expect(records[0].title).toBe('')
   })
   it('restores leading zeros on ZIPs and trims ZIP+4 (hyphenated, unhyphenated, and numeric cells)', () => {
     expect(lcaRowsToRecords([row({ WORKSITE_POSTAL_CODE: '02139-4307' })]).records[0].zip).toBe('02139')
@@ -78,7 +92,7 @@ describe('lcaRowsToRecords', () => {
         row({ CASE_STATUS: 'Denied' }),                           // status
         row({ CASE_STATUS: 'Certified - Withdrawn' }),            // certifiedWithdrawn
         row({ FULL_TIME_POSITION: 'N' }),                         // partTime
-        row({ SOC_CODE: '29-1141' }),                             // soc
+        row({ SOC_CODE: 'garbage' }),                             // soc (malformed -- non-target SOCs no longer drop)
         row({ WAGE_UNIT_OF_PAY: 'Fortnight' }),                   // unit
         row({ WAGE_RATE_OF_PAY_FROM: 'garbage' }),                // wage (unparseable)
         row({ WAGE_RATE_OF_PAY_FROM: '9,000,000' }),              // range (implausible)

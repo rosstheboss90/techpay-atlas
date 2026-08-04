@@ -1,7 +1,10 @@
 import { num } from './num'
-import { targetSoc } from './soc'
+import { targetSoc as toTargetSoc } from './soc'
 
-export interface LcaRecord { soc: string; employer: string; zip: string; annualWage: number; caseNumber: string }
+export interface LcaRecord {
+  soc: string; targetSoc: string | null; title: string
+  employer: string; zip: string; annualWage: number; caseNumber: string
+}
 
 export type DropReason =
   'status' | 'certifiedWithdrawn' | 'partTime' | 'soc' | 'unit' | 'wage' | 'range' | 'zip' | 'employer'
@@ -23,8 +26,11 @@ export function lcaRowsToRecords(rows: Record<string, unknown>[]): { records: Lc
     if (status === 'CERTIFIED - WITHDRAWN') { drops.certifiedWithdrawn++; continue }
     if (status !== 'CERTIFIED') { drops.status++; continue }
     if (!/^Y/.test(norm(r.FULL_TIME_POSITION))) { drops.partTime++; continue }
-    const soc = targetSoc(r.SOC_CODE)
-    if (!soc) { drops.soc++; continue }
+    const socMatch = /(\d{2}-\d{4})/.exec(String(r.SOC_CODE ?? ''))
+    if (!socMatch) { drops.soc++; continue }
+    const soc = socMatch[1]
+    const targetSoc = toTargetSoc(soc)
+    const title = String(r.JOB_TITLE ?? '').replace(/\s+/g, ' ').trim().toUpperCase()
     const factor = UNIT_FACTOR[norm(r.WAGE_UNIT_OF_PAY).replace(/[^A-Z]/g, '')]
     if (!factor) { drops.unit++; continue }
     const base = num(r.WAGE_RATE_OF_PAY_FROM)
@@ -39,7 +45,7 @@ export function lcaRowsToRecords(rows: Record<string, unknown>[]): { records: Lc
     const employer = String(r.EMPLOYER_NAME ?? '').replace(/\s+/g, ' ').trim()
     if (!employer) { drops.employer++; continue }
     const caseNumber = String(r.CASE_NUMBER ?? '').trim()
-    out.push({ soc, employer, zip, annualWage, caseNumber })
+    out.push({ soc, targetSoc, title, employer, zip, annualWage, caseNumber })
   }
   return { records: out, drops }
 }

@@ -37,7 +37,7 @@ export function readDelimitedRows(file: string, delimiter = ','): Record<string,
 // O(real rows). readLcaRows now drops all-null rows before they reach the output array, so peak
 // memory is O(real rows) as intended.
 export const LCA_COLUMNS = [
-  'CASE_NUMBER', 'CASE_STATUS', 'SOC_CODE', 'FULL_TIME_POSITION', 'EMPLOYER_NAME',
+  'CASE_NUMBER', 'CASE_STATUS', 'SOC_CODE', 'JOB_TITLE', 'FULL_TIME_POSITION', 'EMPLOYER_NAME',
   'WORKSITE_POSTAL_CODE', 'WAGE_RATE_OF_PAY_FROM', 'WAGE_RATE_OF_PAY_TO', 'WAGE_UNIT_OF_PAY',
 ] as const
 

@@ -3,7 +3,7 @@ import { aggregateEmployers, attachCbsa, median } from '../lib/aggregate'
 import type { LcaRecord } from '../lib/parse-lca'
 
 const rec = (employer: string, annualWage: number, soc = '15-1252', zip = '78701'): LcaRecord =>
-  ({ soc, employer, zip, annualWage, caseNumber: '' })
+  ({ soc, targetSoc: soc, title: '', employer, zip, annualWage, caseNumber: '' })
 
 describe('median', () => {
   it('handles odd and even lengths', () => {

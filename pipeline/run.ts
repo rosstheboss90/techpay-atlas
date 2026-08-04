@@ -127,6 +127,11 @@ if (matchRate < THRESHOLDS.minZipMatchRate) fail(`ZIP match rate ${matchRate.toF
 const filingsByCbsa = new Map<string, number>()
 for (const r of matched) filingsByCbsa.set(r.cbsa, (filingsByCbsa.get(r.cbsa) ?? 0) + 1)
 
+// The title layer (Task 2+) wants ALL certified full-time filings, any SOC; the employer layer
+// still wants only target-SOC filings, so filter here (moved from parse-time in parse-lca.ts).
+const employerRecords = matched.filter(r => r.targetSoc).map(r => ({ ...r, soc: r.targetSoc! }))
+const lcaNonTargetSoc = matched.length - employerRecords.length
+
 // 4. Build + coverage assertions
 const { meta, droppedNoArea, droppedNoCoords } = buildMeta(salaries, areas, coords, rpp, year, filingsByCbsa)
 const rppCoverage = meta.metros.filter(m => m.rpp !== null).length / (meta.metros.length || 1)
@@ -148,7 +153,7 @@ mkdirSync(path.join(OUT_DIR, 'employers'), { recursive: true })
 writeFileSync(path.join(OUT_DIR, 'meta.json'), JSON.stringify(meta)) // meta.rppYear/topCodeValue already stamped by buildMeta
 const { salaries: salariesJson, excluded: salariesExcluded } = buildSalaries(salaries, keepCbsa)
 writeFileSync(path.join(OUT_DIR, 'salaries.json'), JSON.stringify(salariesJson))
-const { files: employerFiles, excluded: employerFilesExcluded } = buildEmployerFiles(aggregateEmployers(matched), keepCbsa)
+const { files: employerFiles, excluded: employerFilesExcluded } = buildEmployerFiles(aggregateEmployers(employerRecords), keepCbsa)
 for (const { cbsa, body } of employerFiles) {
   writeFileSync(path.join(OUT_DIR, 'employers', `${cbsa}.json`), JSON.stringify(body))
 }
@@ -163,7 +168,7 @@ writeFileSync(path.join(REPORT_DIR, `run-${meta.generated.slice(0, 10)}.json`), 
   metros: meta.metros.length, metrosDroppedNoArea: droppedNoArea, metrosDroppedNoCoords: droppedNoCoords,
   salaryRows: salaries.length, salariesExcluded, employerFilesExcluded,
   lcaRaw: lcaRecords.length, lcaDrops, lcaDuplicateCaseNumbers: duplicateCaseNumbers,
-  lcaUsable: dedupedLcaRecords.length, lcaMatched: matched.length, lcaMatchedPostFilter, zipMatchRate: matchRate,
+  lcaUsable: dedupedLcaRecords.length, lcaMatched: matched.length, lcaMatchedPostFilter, lcaNonTargetSoc, zipMatchRate: matchRate,
   rppCoverage, employerFiles: employerFiles.length,
   topUnmatchedZips: [...unmatchedZips.entries()].sort((a, b) => b[1] - a[1]).slice(0, 25),
 }, null, 2))
