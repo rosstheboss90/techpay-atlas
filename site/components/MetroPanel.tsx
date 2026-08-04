@@ -13,6 +13,10 @@ interface Props {
 
 export function MetroPanel({ meta, salaries, cbsa, soc, adjusted, onClose }: Props) {
   const metro = meta.metros.find(m => m.cbsa === cbsa)
+  // Adjusting is impossible without an RPP (e.g. Puerto Rico metros) — fall back to
+  // nominal figures rather than blanking every number while the note implies they're shown.
+  const canAdjust = metro?.rpp != null
+  const adj = adjusted && canAdjust
   const [employers, setEmployers] = useState<EmployerFile | null>(null)
   const [empError, setEmpError] = useState(false)
 
@@ -24,20 +28,20 @@ export function MetroPanel({ meta, salaries, cbsa, soc, adjusted, onClose }: Pro
     return () => { live = false }
   }, [cbsa, metro])
 
-  const ranks = useMemo(() => rankMetros(meta.metros, salaries, soc, 'pay', adjusted), [meta, salaries, soc, adjusted])
+  const ranks = useMemo(() => rankMetros(meta.metros, salaries, soc, 'pay', adj), [meta, salaries, soc, adj])
   // Band domain shared across the role table so rows are comparable within the metro.
   const domain = useMemo<[number, number]>(() => {
     const vals = meta.roles.flatMap(r => {
       const row = salaries[cbsa]?.[r.soc]
-      return row ? (['p10', 'p90'] as Pct[]).map(p => adjust(row[p], metro?.rpp ?? null, adjusted)).filter((v): v is number => v != null) : []
+      return row ? (['p10', 'p90'] as Pct[]).map(p => adjust(row[p], metro?.rpp ?? null, adj)).filter((v): v is number => v != null) : []
     })
     return vals.length ? [Math.min(...vals), Math.max(...vals)] : [0, 1]
-  }, [meta, salaries, cbsa, adjusted, metro])
+  }, [meta, salaries, cbsa, adj, metro])
 
   if (!metro) return null
   const row = salaries[cbsa]?.[soc]
   const role = meta.roles.find(r => r.soc === soc)
-  const median = row ? adjust(row.p50, metro.rpp, adjusted) : null
+  const median = row ? adjust(row.p50, metro.rpp, adj) : null
   const bundle = employers?.roles[soc]
 
   return (
@@ -47,12 +51,12 @@ export function MetroPanel({ meta, salaries, cbsa, soc, adjusted, onClose }: Pro
         <button type="button" className="panel-close" onClick={onClose} aria-label="Close panel">×</button>
       </header>
 
-      {adjusted && metro.rpp == null ? (
+      {adjusted && !canAdjust ? (
         <p className="panel-note">Puerto Rico metros have no cost-of-living index (BEA RPP) — showing nominal figures only.</p>
       ) : null}
 
       <dl className="headline-stats">
-        <div><dt>{role?.short} median{adjusted ? ' (adj.)' : ''}</dt><dd>{row ? displayPct(row, 'p50', metro.rpp, adjusted) : '—'}</dd></div>
+        <div><dt>{role?.short} median{adj ? ' (adj.)' : ''}</dt><dd>{row ? displayPct(row, 'p50', metro.rpp, adj) : '—'}</dd></div>
         <div><dt>National rank</dt><dd>{median != null && ranks.get(cbsa) ? `#${ranks.get(cbsa)}` : '—'}</dd></div>
         <div><dt>{role?.short} jobs</dt><dd>{fmtNum(row?.emp)}</dd></div>
         <div><dt>H-1B filings (all roles)</dt><dd>{fmtNum(metro.lcaFilings)}</dd></div>
@@ -60,7 +64,7 @@ export function MetroPanel({ meta, salaries, cbsa, soc, adjusted, onClose }: Pro
 
       <h3 className="panel-sub">Pay by role</h3>
       <table className="role-table">
-        <thead><tr><th scope="col">Role</th><th scope="col">10th–90th percentile</th><th scope="col">Median</th></tr></thead>
+        <thead><tr><th scope="col">Role</th><th scope="col">10th–90th percentile{adj ? ' (adj.)' : ''}</th><th scope="col">Median{adj ? ' (adj.)' : ''}</th></tr></thead>
         <tbody>
           {meta.roles.map(r => {
             const rr = salaries[cbsa]?.[r.soc]
@@ -68,15 +72,15 @@ export function MetroPanel({ meta, salaries, cbsa, soc, adjusted, onClose }: Pro
             return (
               <tr key={r.soc} className={r.soc === soc ? 'is-current' : ''}>
                 <th scope="row">{r.short}</th>
-                <td><PercentileBand row={rr} rpp={metro.rpp} adjusted={adjusted} domain={domain} /></td>
-                <td className="cell-num">{displayPct(rr, 'p50', metro.rpp, adjusted)}</td>
+                <td><PercentileBand row={rr} rpp={metro.rpp} adjusted={adj} domain={domain} /></td>
+                <td className="cell-num">{displayPct(rr, 'p50', metro.rpp, adj)}</td>
               </tr>
             )
           })}
         </tbody>
       </table>
 
-      <h3 className="panel-sub">Who actually pays what — H-1B filings, {meta.lcaPeriod}</h3>
+      <h3 className="panel-sub">Who actually pays what — H-1B filings, {meta.lcaPeriod}{adj ? ' · COL-adjusted' : ''}</h3>
       {metro.lcaFilings === 0 ? (
         <p className="panel-note">No H-1B filings on record for this metro.</p>
       ) : empError ? (
@@ -87,15 +91,17 @@ export function MetroPanel({ meta, salaries, cbsa, soc, adjusted, onClose }: Pro
         <p className="panel-note">No filings for {role?.label} here — pick another role or metro.</p>
       ) : (
         <>
+          <p className="panel-note">top {Math.min(10, bundle.employers.length)} employers · {bundle.n} filings</p>
           <ol className="employer-list">
             {bundle.employers.slice(0, 10).map(e => (
               <li key={e.name}>
                 <span className="employer-name">{e.name}</span>
-                <span className="employer-facts">{fmtUsd(adjust(e.median, metro.rpp, adjusted))} · {e.filings} filings</span>
+                <span className="employer-facts">{fmtUsd(adjust(e.median, metro.rpp, adj))} · {e.filings} filings</span>
               </li>
             ))}
           </ol>
           {bundle.n <= 2 && <p className="panel-note">Small sample ({bundle.n} filings) — treat medians as anecdotes.</p>}
+          <p className="panel-note">Employer medians are midpoints of filed wage ranges — treat as floors, not offers.</p>
         </>
       )}
     </aside>

@@ -15,7 +15,7 @@ const meta = {
 
 const salaries = {
   '12420': { '15-1252': { emp: 31960, lq: 2.28, p10: 96110, p25: 104000, p50: 134120, p75: 168730, p90: 209890 } },
-  '99991': { '15-1252': { emp: 100, lq: 0.5, p10: null, p25: null, p50: null, p75: null, p90: null } },
+  '99991': { '15-1252': { emp: 100, lq: 0.5, p10: 58200, p25: 66900, p50: 79380, p75: 94500, p90: 112300 } },
 }
 
 describe('MetroPanel', () => {
@@ -41,9 +41,10 @@ describe('MetroPanel', () => {
     expect(spy).not.toHaveBeenCalled()
   })
 
-  it('adjusted mode with null rpp -> explains instead of numbers', () => {
+  it('adjusted mode with null rpp -> explains AND still shows nominal numbers (not dashes)', () => {
     vi.stubGlobal('fetch', vi.fn())
     render(<MetroPanel meta={meta} salaries={salaries} cbsa="99991" soc="15-1252" adjusted={true} onClose={() => {}} />)
     expect(screen.getByText(/no cost-of-living index/i)).toBeInTheDocument()
+    expect(screen.getAllByText('$79,380').length).toBeGreaterThan(0)
   })
 })
