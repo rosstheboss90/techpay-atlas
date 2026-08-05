@@ -133,3 +133,18 @@ See `docs/BACKLOG.md` "Standing notes" for vintage-specific gotchas.
   `main` triggers the Pages deploy (`.github/workflows/deploy.yml`, which runs `npm ci` +
   `npm run build` in `site/`). Keep commits scoped with conventional-commit prefixes
   (`feat`/`fix`/`data`/`docs`/`test`/`chore`), matching the existing history.
+
+### Design-doc house style
+
+Specs and plans follow a consistent template (shared across these projects — match it so new
+docs read like the existing ones under `docs/superpowers/`):
+
+- **Spec** (`specs/YYYY-MM-DD-<feature>-design.md`): a header line with **Date** and **Status**
+  (`Draft for review` → `Approved`), then **Purpose** → **Decisions** (what was chosen, and
+  why) → **Architecture** → **Data sources & joins** → **UI** → **Error handling** → **Testing**
+  → **Out of scope**. Enumerate edge cases and error handling as tables. Always state what is
+  explicitly *not* in scope.
+- **Plan** (`plans/YYYY-MM-DD-<feature>.md`): a one-line **Goal**, a **File Map**, then numbered
+  **Tasks** ordered *tests-first* (a test/fixture task precedes the implementation it covers),
+  closing with a **Done criteria** / final test-run-and-push task. Prefer additive changes and
+  say so ("purely additive — existing X unchanged").
