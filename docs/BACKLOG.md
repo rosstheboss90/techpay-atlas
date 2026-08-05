@@ -4,12 +4,19 @@ Newest decisions first. v1 (map + panel) shipped 2026-08-03.
 
 ## Title lens follow-ups (from final-review, 2026-08-04)
 
-pmo bucket too thin (61 filings, consider minBucketFilings) · tiny-segment conflation-bar
-click targets · unused topEmployers payload in titles.json (wire into the site or drop
-from emit) · tier `'V'` suffix in the IC-marker regex is inconsistent with the rest of the
-seniority parser (only I/II/III/IV are real title suffixes seen in the scan) · zipMatchRate
-population-change note (title lens widened the LCA population the match rate is computed
-over — re-check THRESHOLDS.minZipMatchRate still means what it did pre-title-lens).
+Closed 2026-08-05:
+- ~~pmo bucket too thin (61 filings)~~ — labeled, not hidden (honesty rule): rows under
+  `THIN_SAMPLE_FILINGS` (100, isolates pmo; next-thinnest is 307) carry a "thin sample" chip.
+- ~~unused topEmployers payload~~ — wired into the site as a per-bucket "Top employers"
+  disclosure (national medians of filed wages, never COL-adjusted).
+- ~~tier `'V'` suffix in the IC-marker regex~~ — dropped; only I/II/III/IV are real suffixes
+  in the scan, matching the senior-tier regex.
+- ~~zipMatchRate population-change note~~ — the join now spans the ALL-SOC deduped population
+  (title lens widened it from target-SOC-only). Measured ~0.99 vs the 0.85 floor, so the
+  threshold stays a tripwire, not a live constraint; documented in `pipeline/config.ts`.
+
+Still open:
+- tiny-segment conflation-bar click targets (small SOC shares are hard to click/tab-to).
 
 ## v2 candidates (unordered, unscoped)
 

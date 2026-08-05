@@ -126,3 +126,18 @@ body { background: var(--bg); color: var(--ink); font-family: var(--font); }
 }
 .tl-tier-row { display: flex; align-items: center; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
 .tl-tier-label { font-size: 12px; width: 96px; flex-shrink: 0; }
+
+.tl-chip-thin { color: #9a6a00; border-color: color-mix(in srgb, #9a6a00 45%, var(--line)); }
+@media (prefers-color-scheme: dark) {
+  .tl-chip-thin { color: #e0b458; border-color: color-mix(in srgb, #e0b458 40%, var(--line)); }
+}
+
+.tl-emp { margin-top: 10px; border-top: 1px solid var(--line); padding-top: 8px; }
+.tl-emp-list {
+  list-style: none; margin: 8px 0 0; padding: 0;
+  display: flex; flex-direction: column; gap: 6px; font-size: 13px;
+}
+.tl-emp-list li { display: flex; justify-content: space-between; gap: 12px; }
+.tl-emp-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tl-emp-facts { color: var(--ink-muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.tl-emp-note { font-size: 11px; color: var(--ink-muted); margin: 6px 0 0; }

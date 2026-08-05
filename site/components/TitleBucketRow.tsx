@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { Role } from '../lib/types'
 import type { TitleBucket, TitleStats } from '../lib/title-types'
-import { TIER_ORDER } from '../lib/title-types'
+import { TIER_ORDER, THIN_SAMPLE_FILINGS } from '../lib/title-types'
 import { adjust } from '../lib/derive'
 import { fmtNum, fmtUsd } from '../lib/format'
 
@@ -53,17 +53,27 @@ function Band({ stats, rpp, adjusted, domain, width = 140 }: { stats: TitleStats
 
 export function TitleBucketRow({ bucket, domain, cbsa, metroShort, rpp, adjusted, roles, onSelectRole }: Props) {
   const [tiersOpen, setTiersOpen] = useState(false)
+  const [empOpen, setEmpOpen] = useState(false)
   const { stats, isMetro } = selectStats(bucket, cbsa)
   const canAdjust = isMetro && rpp != null
   const adj = adjusted && canAdjust
   const chip = isMetro ? `in ${metroShort}` : 'national'
   const tierEntries = TIER_ORDER.filter(t => bucket.tiers[t.key])
+  // Flag on the national count regardless of which metro is selected — a thin national bucket is
+  // thin everywhere, and metro rows only exist above the 8-filing gate anyway.
+  const thin = bucket.national.filings < THIN_SAMPLE_FILINGS
 
   return (
     <div className="tl-row">
       <div className="tl-row-head">
         <span className="tl-title">{bucket.label}</span>
         <span className="tl-chip">{chip}</span>
+        {thin && (
+          <span className="tl-chip tl-chip-thin"
+                title={`Only ${fmtNum(bucket.national.filings)} filings nationwide — percentiles are rough.`}>
+            thin sample
+          </span>
+        )}
         <span className="tl-filings">{fmtNum(stats.filings)} filings</span>
       </div>
       <div className="tl-row-body">
@@ -116,6 +126,28 @@ export function TitleBucketRow({ bucket, domain, cbsa, metroShort, rpp, adjusted
               </div>
             )
           })}
+        </div>
+      )}
+
+      {bucket.topEmployers.length > 0 && (
+        <div className="tl-emp">
+          <button type="button" className="tl-tiers-toggle" aria-expanded={empOpen}
+                  onClick={() => setEmpOpen(o => !o)}>
+            Top employers
+          </button>
+          {empOpen && (
+            <>
+              <ol className="tl-emp-list">
+                {bucket.topEmployers.map((e, i) => (
+                  <li key={e.name + i}>
+                    <span className="tl-emp-name">{e.name}</span>
+                    <span className="tl-emp-facts">{fmtUsd(e.median)} · {fmtNum(e.filings)} filings</span>
+                  </li>
+                ))}
+              </ol>
+              <p className="tl-emp-note">National medians of filed wages — never cost-of-living adjusted.</p>
+            </>
+          )}
         </div>
       )}
     </div>

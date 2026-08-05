@@ -141,6 +141,40 @@ describe('TitleLens', () => {
     expect(screen.getByText('$177,914')).toBeInTheDocument()
   })
 
+  it('top-employers disclosure is hidden until expanded, then lists name · median · filings; a bucket with none shows no toggle', async () => {
+    stubFetchOk()
+    render(<TitleLens meta={meta} cbsa={null} adjusted={false} onSelectRole={() => {}} />)
+    await waitFor(() => expect(screen.getByText('Technical Program Manager')).toBeInTheDocument())
+    // Exactly one "Top employers" toggle: tpm has one, devops has topEmployers: [] (no toggle).
+    const toggles = screen.getAllByRole('button', { name: /top employers/i })
+    expect(toggles).toHaveLength(1)
+    expect(screen.queryByText('Amazon.com Services LLC')).toBeNull()
+    fireEvent.click(toggles[0])
+    expect(screen.getByText('Amazon.com Services LLC')).toBeInTheDocument()
+    expect(screen.getByText(/\$169,605 · 534 filings/)).toBeInTheDocument()
+  })
+
+  it('labels a thin-sample bucket (< 100 national filings) and leaves fuller buckets unlabelled', async () => {
+    const thinTitles: TitlesJson = {
+      lcaPeriod: 'FY2025 Q1–Q4',
+      families: [{
+        key: 'pm', label: 'PM & Product',
+        buckets: [
+          { key: 'pmo', label: 'PMO',
+            national: { filings: 61, p25: 120000, median: 140000, p75: 160000 },
+            metros: {}, tiers: {}, socMix: [{ soc: '15-1299', share: 1 }], topEmployers: [] },
+          { key: 'tpm', label: 'Technical Program Manager',
+            national: { filings: 1860, p25: 148700, median: 173660, p75: 201200 },
+            metros: {}, tiers: {}, socMix: [{ soc: '15-1299', share: 1 }], topEmployers: [] },
+        ],
+      }],
+    }
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => thinTitles }))
+    render(<TitleLens meta={meta} cbsa={null} adjusted={false} onSelectRole={() => {}} />)
+    await waitFor(() => expect(screen.getByText('PMO')).toBeInTheDocument())
+    expect(screen.getAllByText(/thin sample/i)).toHaveLength(1) // only PMO, not the 1,860-filing bucket
+  })
+
   it('conflation bar renders per-segment aria-labels with share text', async () => {
     stubFetchOk()
     render(<TitleLens meta={meta} cbsa={null} adjusted={false} onSelectRole={() => {}} />)

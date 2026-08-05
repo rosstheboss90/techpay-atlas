@@ -53,8 +53,10 @@ const TIER_RES: [Tier, RegExp][] = [
 // match is demoted to 'lead' when it came from VP/VICE PRESIDENT — never from DIRECTOR itself —
 // and the title also carries an IC marker (LEAD, or a roman-numeral level suffix) or opens
 // with ASSISTANT (ASSISTANT VICE PRESIDENT ranks below VP).
+// Roman-numeral levels stop at IV — the title scan only ever saw I/II/III/IV as real suffixes,
+// matching the senior-tier regex above (which likewise recognizes III/IV, never V).
 const VP_RE = /\b(VP|VICE\s+PRESIDENT)\b/
-const IC_MARKER_RE = /\b(LEAD|I{1,3}|IV|V)\b/
+const IC_MARKER_RE = /\b(LEAD|I{1,3}|IV)\b/
 
 export function parseSeniority(title: string): Tier {
   for (const [tier, re] of TIER_RES) {

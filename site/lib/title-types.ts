@@ -18,6 +18,11 @@ export interface TitleFamily { key: string; label: string; buckets: TitleBucket[
 
 export interface TitlesJson { lcaPeriod: string; families: TitleFamily[] }
 
+/** Below this many national filings a bucket's percentiles rest on a thin sample and the row
+ *  says so (honesty rule: small samples are labeled, not hidden). Isolates PMO (~61 filings);
+ *  the next-thinnest bucket sits above 300. */
+export const THIN_SAMPLE_FILINGS = 100
+
 /** Tier ladder display order (base -> most senior). */
 export const TIER_ORDER: { key: Tier; label: string }[] = [
   { key: 'base', label: 'Base' },
