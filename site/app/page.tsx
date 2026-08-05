@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { FilterBar } from '../components/FilterBar'
 import { MetroPanel } from '../components/MetroPanel'
+import { RankSlopegraph } from '../components/RankSlopegraph'
 import { RoleHeatmap } from '../components/RoleHeatmap'
 import { SalaryMap } from '../components/SalaryMap'
 import { TitleLens } from '../components/TitleLens'
@@ -77,6 +78,8 @@ export default function Page() {
                       adjusted={state.adjusted} onClose={() => update({ metro: null })} />
         )}
       </div>
+      <RankSlopegraph meta={meta} salaries={salaries} soc={state.role} metric={state.metric}
+                      onSelect={cbsa => update({ metro: cbsa })} />
       <TitleLens meta={meta} cbsa={state.metro} adjusted={state.adjusted}
                  onSelectRole={soc => update({ role: soc })} />
       <RoleHeatmap meta={meta} salaries={salaries} metric={state.metric} adjusted={state.adjusted}
