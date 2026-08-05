@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { FilterBar } from '../components/FilterBar'
 import { MetroPanel } from '../components/MetroPanel'
+import { RoleHeatmap } from '../components/RoleHeatmap'
 import { SalaryMap } from '../components/SalaryMap'
 import { TitleLens } from '../components/TitleLens'
 import { loadMeta, loadSalaries } from '../lib/data'
@@ -78,6 +79,9 @@ export default function Page() {
       </div>
       <TitleLens meta={meta} cbsa={state.metro} adjusted={state.adjusted}
                  onSelectRole={soc => update({ role: soc })} />
+      <RoleHeatmap meta={meta} salaries={salaries} metric={state.metric} adjusted={state.adjusted}
+                   dark={dark} selectedMetro={state.metro} selectedRole={state.role}
+                   onSelect={p => update(p)} />
       <footer className="provenance">
         Sources: BLS OEWS {meta.year} · BEA RPP {meta.rppYear} · DOL H-1B LCA {meta.lcaPeriod} · generated {meta.generated.slice(0, 10)}
       </footer>
