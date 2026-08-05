@@ -1,6 +1,7 @@
 'use client'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { FilterBar } from '../components/FilterBar'
+import { HeadToHead } from '../components/HeadToHead'
 import { MetroPanel } from '../components/MetroPanel'
 import { RankSlopegraph } from '../components/RankSlopegraph'
 import { RoleHeatmap } from '../components/RoleHeatmap'
@@ -26,6 +27,7 @@ export default function Page() {
           ...parsed,
           role: m.roles.some(r => r.soc === parsed.role) ? parsed.role : DEFAULT_STATE.role,
           metro: parsed.metro != null && m.metros.some(x => x.cbsa === parsed.metro) ? parsed.metro : null,
+          vs: parsed.vs != null && m.metros.some(x => x.cbsa === parsed.vs) ? parsed.vs : null,
         })
       })
       .catch(e => setError(String(e)))
@@ -48,7 +50,7 @@ export default function Page() {
     // Preserve any query params this app doesn't own (utm_*, etc.) — only
     // our own keys get replaced by the serialized state.
     const params = new URLSearchParams(window.location.search)
-    for (const key of ['role', 'metric', 'adj', 'metro']) params.delete(key)
+    for (const key of ['role', 'metric', 'adj', 'metro', 'vs']) params.delete(key)
     for (const [k, v] of new URLSearchParams(serializeState(state))) params.set(k, v)
     const q = params.toString()
     window.history.replaceState(null, '', q ? `?${q}` : window.location.pathname)
@@ -56,8 +58,21 @@ export default function Page() {
 
   const role = useMemo(() => meta?.roles.find(r => r.soc === state.role) ?? null, [meta, state.role])
 
+  // Default head-to-head pair: the two top-paying metros for the current role.
+  const comparePair = useMemo<[string, string]>(() => {
+    if (!meta || !salaries) return ['', '']
+    const ranked = meta.metros
+      .map(m => ({ cbsa: m.cbsa, v: salaries[m.cbsa]?.[state.role]?.p50 ?? null }))
+      .filter((x): x is { cbsa: string; v: number } => x.v != null)
+      .sort((a, b) => b.v - a.v)
+    return [ranked[0]?.cbsa ?? meta.metros[0]?.cbsa ?? '', ranked[1]?.cbsa ?? '']
+  }, [meta, salaries, state.role])
+
   if (error) return <main className="page"><p className="load-error">Failed to load data: {error}</p></main>
   if (!meta || !salaries || !role) return <main className="page"><p className="loading">Loading…</p></main>
+
+  const metroA = state.metro ?? comparePair[0]
+  const metroB = state.vs ?? (comparePair[0] && comparePair[0] !== metroA ? comparePair[0] : comparePair[1])
 
   return (
     <main className="page">
@@ -80,6 +95,8 @@ export default function Page() {
       </div>
       <RankSlopegraph meta={meta} salaries={salaries} soc={state.role} metric={state.metric}
                       onSelect={cbsa => update({ metro: cbsa })} />
+      <HeadToHead meta={meta} salaries={salaries} soc={state.role} adjusted={state.adjusted}
+                  metroA={metroA} metroB={metroB} onSelect={p => update(p)} />
       <TitleLens meta={meta} cbsa={state.metro} adjusted={state.adjusted}
                  onSelectRole={soc => update({ role: soc })} />
       <RoleHeatmap meta={meta} salaries={salaries} metric={state.metric} adjusted={state.adjusted}
