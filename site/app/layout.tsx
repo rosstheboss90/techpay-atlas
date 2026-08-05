@@ -3,7 +3,7 @@ import './globals.css'
 
 export const metadata: Metadata = {
   title: 'TechPay Atlas',
-  description: 'US tech salaries by metro — official BLS data, cost-of-living adjusted, with real H-1B employer filings',
+  description: 'See what tech jobs actually pay across US cities — real salary ranges by role and location, adjusted for cost of living, built from public government data.',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

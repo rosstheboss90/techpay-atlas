@@ -2,14 +2,14 @@
 
 Newest decisions first. v1 (map + panel) shipped 2026-08-03.
 
-## Site polish — description + custom domain (queued 2026-08-05, do after the v2 heatmap PR)
+## Site polish — description + custom domain (2026-08-05)
 
-- **Plain-language description.** Replace the jargon-heavy copy — the site meta `description` in
-  `site/app/layout.tsx` (currently "…official BLS data … real H-1B employer filings") and the
-  GitHub repo About one-liner — with a layman's version, e.g. _"See what tech jobs actually pay
-  across US cities — real salary ranges by role and location, adjusted for cost of living, built
-  from public government data."_ Keep the README/CLAUDE intros consistent. (The repo About panel
-  isn't editable via the automation tools — hand off the text to paste.)
+- ~~**Plain-language description.**~~ DONE (on the heatmap PR): site meta `description` in
+  `site/app/layout.tsx` rewritten to _"See what tech jobs actually pay across US cities — real
+  salary ranges by role and location, adjusted for cost of living, built from public government
+  data."_ The GitHub repo About one-liner isn't editable via the automation tools — paste
+  manually: _"See what tech jobs really pay across US cities — salary ranges by role and location,
+  cost-of-living adjusted, from public government data."_
 - **Custom domain (URL).** Point the site at a custom domain (value TBD from user). Work:
   - add a `CNAME` — put it in `site/public/CNAME` so the static export carries it into `out/`;
   - **drop the base path** — a custom apex/subdomain serves at the root, so `NEXT_PUBLIC_BASE_PATH`
