@@ -5,6 +5,7 @@ import { HeadToHead } from '../components/HeadToHead'
 import { MetroPanel } from '../components/MetroPanel'
 import { RankSlopegraph } from '../components/RankSlopegraph'
 import { RoleHeatmap } from '../components/RoleHeatmap'
+import { RoleSimilarity } from '../components/RoleSimilarity'
 import { SalaryMap } from '../components/SalaryMap'
 import { TitleLens } from '../components/TitleLens'
 import { loadMeta, loadSalaries } from '../lib/data'
@@ -99,6 +100,8 @@ export default function Page() {
                   metroA={metroA} metroB={metroB} onSelect={p => update(p)} />
       <TitleLens meta={meta} cbsa={state.metro} adjusted={state.adjusted}
                  onSelectRole={soc => update({ role: soc })} />
+      <RoleSimilarity meta={meta} salaries={salaries} soc={state.role}
+                      onSelectRole={soc => update({ role: soc })} />
       <RoleHeatmap meta={meta} salaries={salaries} metric={state.metric} adjusted={state.adjusted}
                    dark={dark} selectedMetro={state.metro} selectedRole={state.role}
                    onSelect={p => update(p)} />
