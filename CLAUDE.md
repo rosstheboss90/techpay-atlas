@@ -13,7 +13,8 @@ Live: https://rosstheboss90.github.io/techpay-atlas/
 
 ## Commands
 
-Two npm packages: the pipeline at the repo root, the site under `site/`. Node ≥ 20.
+Two npm packages: the pipeline at the repo root, the site under `site/`. Node ≥ 22 (the site's
+jsdom/undici test stack needs it; CI pins 22).
 
 ```bash
 # --- Pipeline (repo root) ---
