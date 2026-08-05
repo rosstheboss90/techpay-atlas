@@ -50,9 +50,13 @@ Still open:
   accessibility table-fallback the spec owes) · head-to-head compare (must clamp beeswarm
   axis at bundle `p99`, decide thin-bundle policy — 39% of bundles have n ≤ 2)
 - **Role similarity / equivalency** (user-requested 2026-08-03):
-  1. wage-profile clustering across metros from shipped salaries.json (cheap)
-  2. H-1B `JOB_TITLE` ↔ SOC conflation matrix — needs pipeline extension (title retained,
-     normalized, emitted); the novel one
+  1. ~~wage-profile clustering across metros from shipped salaries.json~~ — SHIPPED 2026-08-05
+     (`RoleSimilarity`, pay-overlap equivalency).
+  2. H-1B `JOB_TITLE` ↔ SOC conflation matrix — **pipeline DRAFTED 2026-08-05** (`normalize-title.ts`,
+     `aggregate-conflation.ts`, emits `conflation.json`; unit-tested, gated by
+     `minConflationTitles`). **Blocked on:** a local `npm run pipeline` with the raw H-1B files to
+     produce + commit `conflation.json` (the sandbox has no raw inputs), then the **site UI**
+     (a title×SOC matrix) — contract in `docs/superpowers/specs/2026-08-05-title-soc-conflation-design.md`.
   3. O*NET skill-vector similarity per SOC (new small data source)
 - **Map zoom/pan to select areas** (user-requested 2026-08-03; browser zoom is the
   accepted workaround for now)
