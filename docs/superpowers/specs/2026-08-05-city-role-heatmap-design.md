@@ -28,13 +28,13 @@ of the salary dataset — the "table fallback" the project owes.
    (`pay` / `emp` / `lq`) and `state.adjusted` from the FilterBar, and computes each cell with the
    existing `metricValue(row, metro, metric, adjusted)`. Pay cells honor COL-adjust; `emp`/`lq` are
    unaffected (same as the map).
-4. **Color normalized per-column (per-role) by default**, with a "Normalize: per role / global"
-   toggle. Pay ranges differ enormously between roles (a Data Analyst vs a Computer & IS Manager),
-   so a single global pay ramp would wash out within-role variation — the common read is "which
-   metros pay most for *this* role," which per-column normalization serves. A caption note states
-   that under per-role normalization, **color is comparable down a column, not across columns**
-   (the printed values remain the source of truth for cross-column comparison). Reuses
-   `bubbleColor()` + the contrast-validated `RAMP_LIGHT` / `RAMP_DARK`.
+4. **Color normalized per-column (per-role).** Pay ranges differ enormously between roles (a Data
+   Analyst vs a Computer & IS Manager), so a single global ramp would wash out within-role
+   variation — the common read is "which metros pay most for *this* role," which per-column
+   normalization serves. A caption note states that **color is comparable down a column, not across
+   columns** (the printed values remain the source of truth for cross-column comparison). Reuses
+   `bubbleColor()` + the contrast-validated `RAMP_LIGHT` / `RAMP_DARK`. (Global normalization was
+   considered and dropped — it hides the variation the heatmap exists to show.)
 5. **Bounded default row set: top 50 metros by total employment** (sum of `emp` across roles),
    with a metro search box and a "Show all 393" toggle. Default ≈ 50 × 21 ≈ 1,050 cells; full is
    ~8,200 — rendered but behind an explicit opt-in, with a note that expanding is heavier. No
@@ -56,7 +56,7 @@ no data regeneration.
 |---|---|
 | Cell value | existing `metricValue(row, metro, metric, adjusted)` (`derive.ts`) |
 | Cell color | existing `bubbleColor(v, columnDomain, ramp)` + `RAMP_LIGHT/DARK` (`map-scales.ts`) |
-| Column domain | `[min, max]` of that role's cell values across the visible metros (per-role); or global across all visible cells when the normalize toggle is "global" |
+| Column domain | `[min, max]` of that role's cell values across the visible metros (per-role) |
 | Cell text | `displayPct`-style formatting for pay (`≥` when capped), `fmtNum` for emp, raw for lq |
 | Row sort | reuse `rankMetros(...)` for the selected metric; header click sets the sort column |
 | Controls | `state.metric` + `state.adjusted` from FilterBar (unchanged); heatmap-local: sort column/dir, normalize mode, row-limit, metro search |
@@ -67,8 +67,8 @@ no data regeneration.
 
 - **Section header**: "City × role" + a one-line caption naming the active metric and adjust state
   and the normalization note.
-- **Controls row** (heatmap-local): metro search, "Show all / top 50" toggle, "Normalize: per role /
-  global" toggle. Metric and COL-adjust stay in the global FilterBar.
+- **Controls row** (heatmap-local): metro search, "Show all / top 50" toggle. Metric and COL-adjust
+  stay in the global FilterBar.
 - **Table**: sticky header row (roles) + sticky first column (metro names). Header cells are sort
   buttons (▲/▼ on the active column); default sort = selected role's value, desc. Selected role
   column and selected metro row highlighted. Horizontal scroll inside the section on narrow widths.
@@ -91,8 +91,8 @@ no data regeneration.
 ## Testing
 
 - Component (`site/tests/role-heatmap.test.tsx`): renders a `<table>` with `scope`d headers from a
-  fixture; per-column color domain (a value that's max in its column but mid-range globally gets the
-  strong ramp end under per-role, a mid step under global); suppressed cell → em-dash and excluded
+  fixture; per-column color domain (a value that's max in its column gets the strong ramp end even
+  when it's mid-range across the whole grid); suppressed cell → em-dash and excluded
   from domain; header click re-sorts rows; cell click fires `update({ metro, role })`; adjusted mode
   nulls a `rpp == null` metro's pay cell; `emp`/`lq` cells ignore adjust.
 - e2e (extend `site/e2e`): heatmap section renders, sorting by a column reorders rows, clicking a
