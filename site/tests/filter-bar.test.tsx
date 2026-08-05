@@ -11,13 +11,13 @@ const roles = [
 describe('FilterBar', () => {
   it('renders role options and fires onChange', () => {
     const onChange = vi.fn()
-    render(<FilterBar roles={roles} state={{ role: '15-1252', metric: 'pay', adjusted: false, metro: null }} onChange={onChange} />)
+    render(<FilterBar roles={roles} state={{ role: '15-1252', metric: 'pay', adjusted: false, metro: null, vs: null }} onChange={onChange} />)
     fireEvent.change(screen.getByLabelText('Role'), { target: { value: '15-2051' } })
     expect(onChange).toHaveBeenCalledWith({ role: '15-2051' })
   })
   it('COL toggle is a pressed-state button', () => {
     const onChange = vi.fn()
-    render(<FilterBar roles={roles} state={{ role: '15-1252', metric: 'pay', adjusted: true, metro: null }} onChange={onChange} />)
+    render(<FilterBar roles={roles} state={{ role: '15-1252', metric: 'pay', adjusted: true, metro: null, vs: null }} onChange={onChange} />)
     const btn = screen.getByRole('button', { name: /cost of living/i })
     expect(btn).toHaveAttribute('aria-pressed', 'true')
     fireEvent.click(btn)

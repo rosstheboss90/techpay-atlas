@@ -222,3 +222,31 @@ body { background: var(--bg); color: var(--ink); font-family: var(--font); }
 .slope-row.is-mover .slope-label { font-weight: 600; }
 .slope-row:hover .slope-line { stroke-width: 3; }
 .slope-row:hover .slope-label { fill: var(--accent); }
+
+/* ── Head-to-head compare ────────────────────────────────────────────── */
+.pct-marker { stroke: var(--soc-2); stroke-width: 1.5; }
+
+.h2h { margin-top: 32px; }
+.h2h-head h2 { font-size: 19px; }
+.h2h-note-sub { font-size: 12px; color: var(--ink-muted); margin-top: 4px; }
+.h2h-controls { display: flex; gap: 12px 16px; align-items: end; flex-wrap: wrap; margin: 14px 0; }
+.h2h-pick, .h2h-target { display: flex; flex-direction: column; gap: 4px; font-size: 11px;
+  text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-muted); }
+.h2h-pick select, .h2h-target input {
+  background: var(--surface); color: var(--ink); border: 1px solid var(--line);
+  border-radius: 6px; padding: 6px 10px; font-size: 14px; text-transform: none; letter-spacing: 0;
+  min-width: 170px;
+}
+.h2h-vs { align-self: center; font-size: 12px; color: var(--ink-muted); padding-bottom: 8px; }
+.h2h-hint { font-size: 12px; color: var(--ink-muted); margin: 0 0 8px; }
+
+.h2h-block { margin-top: 14px; overflow-x: auto; }
+.h2h-caption { font-size: 11px; color: var(--ink-muted); margin-bottom: 8px; }
+.h2h-row { display: flex; align-items: center; gap: 12px; margin: 6px 0; min-height: 22px; }
+.h2h-rowlabel { width: 120px; flex-shrink: 0; font-size: 13px; font-weight: 500;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.h2h-rowmed { font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; min-width: 76px; }
+.h2h-pct { font-size: 12px; color: var(--ink-muted); }
+.h2h-note { font-size: 12px; color: var(--ink-muted); }
+.h2h-swarm-svg { display: block; }
+.h2h-dot { fill: var(--accent); opacity: 0.5; }
