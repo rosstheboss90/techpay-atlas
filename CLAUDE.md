@@ -148,3 +148,7 @@ docs read like the existing ones under `docs/superpowers/`):
   **Tasks** ordered *tests-first* (a test/fixture task precedes the implementation it covers),
   closing with a **Done criteria** / final test-run-and-push task. Prefer additive changes and
   say so ("purely additive — existing X unchanged").
+
+These conventions are the project-agnostic ones shared across sibling projects; the portable
+version (what transfers between projects, and what must be rewritten per project) lives in
+`docs/PROJECT-STANDARDS.md`.
