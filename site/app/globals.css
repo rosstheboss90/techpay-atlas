@@ -141,3 +141,53 @@ body { background: var(--bg); color: var(--ink); font-family: var(--font); }
 .tl-emp-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tl-emp-facts { color: var(--ink-muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .tl-emp-note { font-size: 11px; color: var(--ink-muted); margin: 6px 0 0; }
+
+/* ── City × role heatmap ─────────────────────────────────────────────── */
+.heatmap { margin-top: 32px; }
+.hm-head h2 { font-size: 19px; }
+.hm-note { font-size: 12px; color: var(--ink-muted); margin-top: 4px; }
+.hm-controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 12px 0; }
+.hm-search {
+  background: var(--surface); color: var(--ink); border: 1px solid var(--line);
+  border-radius: 8px; padding: 6px 10px; font-size: 13px; min-width: 180px;
+}
+.hm-toggle {
+  background: var(--surface); color: var(--ink); border: 1px solid var(--line);
+  border-radius: 999px; padding: 5px 12px; font-size: 12px; cursor: pointer;
+}
+.hm-toggle[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+.hm-count { font-size: 12px; color: var(--ink-muted); font-variant-numeric: tabular-nums; }
+
+.hm-scroll { overflow-x: auto; overflow-y: auto; max-height: 70vh; border: 1px solid var(--line); border-radius: 10px; }
+.hm-table { border-collapse: separate; border-spacing: 0; font-size: 12px; }
+.hm-caption { caption-side: top; text-align: left; font-size: 11px; color: var(--ink-muted); padding: 8px 10px; }
+
+.hm-table thead th { position: sticky; top: 0; z-index: 2; background: var(--surface); }
+.hm-corner { position: sticky; left: 0; z-index: 3; background: var(--surface); text-align: left;
+  padding: 6px 10px; font-size: 11px; color: var(--ink-muted); border-bottom: 1px solid var(--line); }
+.hm-colh { padding: 0; border-bottom: 1px solid var(--line); }
+.hm-colh.is-selcol { background: color-mix(in srgb, var(--accent) 16%, var(--surface)); }
+.hm-sort {
+  background: none; border: none; color: var(--ink); font: inherit; font-weight: 600; cursor: pointer;
+  padding: 6px 8px; white-space: nowrap; width: 100%;
+}
+.hm-sort:hover, .hm-sort:focus-visible { color: var(--accent); }
+
+.hm-rowh { position: sticky; left: 0; z-index: 1; background: var(--surface); text-align: left;
+  padding: 4px 10px; font-weight: 500; white-space: nowrap; max-width: 160px; overflow: hidden;
+  text-overflow: ellipsis; border-bottom: 1px solid var(--line); }
+.hm-table tbody tr.is-selrow .hm-rowh { color: var(--accent); }
+
+.hm-cell { padding: 2px; border-bottom: 1px solid var(--line); }
+.hm-cell.is-selcol { box-shadow: inset 2px 0 0 color-mix(in srgb, var(--accent) 55%, transparent),
+  inset -2px 0 0 color-mix(in srgb, var(--accent) 55%, transparent); }
+.hm-cell--empty { color: var(--ink-muted); text-align: center; opacity: 0.55; }
+/* backgroundColor + a luminance-matched text color are set inline per cell (see inkOn). */
+.hm-cellbtn {
+  display: block; width: 100%; min-width: 56px; border: none; cursor: pointer;
+  padding: 5px 8px; font: inherit; font-variant-numeric: tabular-nums; text-align: right;
+  border-radius: 3px;
+}
+.hm-cellbtn:hover { outline: 2px solid var(--ink); outline-offset: -2px; }
+.hm-cellbtn:focus-visible { outline: 2px solid var(--ink); outline-offset: -1px; }
+.hm-empty { padding: 16px; text-align: center; color: var(--ink-muted); }

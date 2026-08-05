@@ -33,8 +33,9 @@ test('title lens: expand seniority, click a registry SOC segment, role + map upd
   await expect(registrySegment).toBeVisible()
   await registrySegment.click()
 
-  // Role select's value changed, and the URL gained the role param.
-  await expect(page.getByLabel('Role')).toHaveValue('11-3021')
+  // Role select's value changed, and the URL gained the role param. Exact match: the heatmap
+  // section's accessible name ("City × role") also substring-matches getByLabel('Role').
+  await expect(page.getByLabel('Role', { exact: true })).toHaveValue('11-3021')
   await expect(page).toHaveURL(/[?&]role=11-3021/)
 
   // The map still renders its bubbles at (roughly) the same count — recoloring, not

@@ -2,6 +2,24 @@
 
 Newest decisions first. v1 (map + panel) shipped 2026-08-03.
 
+## Site polish — description + custom domain (2026-08-05)
+
+- ~~**Plain-language description.**~~ DONE (on the heatmap PR): site meta `description` in
+  `site/app/layout.tsx` rewritten to _"See what tech jobs actually pay across US cities — real
+  salary ranges by role and location, adjusted for cost of living, built from public government
+  data."_ The GitHub repo About one-liner isn't editable via the automation tools — paste
+  manually: _"See what tech jobs really pay across US cities — salary ranges by role and location,
+  cost-of-living adjusted, from public government data."_
+- **Custom domain (URL).** Point the site at a custom domain (value TBD from user). Work:
+  - add a `CNAME` — put it in `site/public/CNAME` so the static export carries it into `out/`;
+  - **drop the base path** — a custom apex/subdomain serves at the root, so `NEXT_PUBLIC_BASE_PATH`
+    must go from `/techpay-atlas` to empty in `.github/workflows/deploy.yml` **and** the CI build
+    env in `ci.yml`; then re-verify `site/lib/data.ts`'s absolute-path prefixing under an empty
+    base;
+  - update the in-repo URL references (README "Live site", `CLAUDE.md` "Live:", and the
+    deploy-target note below) to the new domain;
+  - set the custom domain in the repo's Pages settings + DNS (manual).
+
 ## Title lens follow-ups (from final-review, 2026-08-04)
 
 Closed 2026-08-05:
