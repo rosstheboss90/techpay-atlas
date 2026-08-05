@@ -19,6 +19,14 @@ Newest decisions first. v1 (map + panel) shipped 2026-08-03.
   - update the in-repo URL references (README "Live site", `CLAUDE.md` "Live:", and the
     deploy-target note below) to the new domain;
   - set the custom domain in the repo's Pages settings + DNS (manual).
+- ~~**Open Graph / social metadata.**~~ DONE (2026-08-05): `openGraph` + `twitter` tags in
+  `site/app/layout.tsx` (base-path-aware image `site/public/og.png`, from the map screenshot).
+  When the custom domain lands, update `metadataBase` + the `basePath` image/URL prefixes here too.
+- **CI lint step — BLOCKED for now.** `PROJECT-STANDARDS.md` wants CI to gate lint; but the repo
+  pins **TypeScript 7.0.2** (the native compiler), which is outside `typescript-eslint`'s peer range
+  (`>=4.8.4 <6.1.0`), so eslint's TS parser won't install cleanly. Options when revisited: wait for
+  `typescript-eslint` TS-7 support, pin the JS `typescript@5` for linting only, or a `@babel/eslint-parser`
+  setup for hook-rules only. `tsc --noEmit` (strict) is the interim gate.
 
 ## Title lens follow-ups (from final-review, 2026-08-04)
 
