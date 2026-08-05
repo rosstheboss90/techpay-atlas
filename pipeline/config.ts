@@ -16,4 +16,5 @@ export const THRESHOLDS = {
   minLcaRecords: 50_000, // usable LCA filings across all quarters before ZIP join
   minTitleFilings: 10_000,      // total filings matched into a title bucket (scan found ~14k in PM alone)
   maxTitleFamilyOverlap: 0.01,  // share of title-matched filings whose title hits >=2 families (regex overlap tripwire)
+  minConflationTitles: 20,      // normalized titles clearing minFilings for the title↔SOC matrix
 }

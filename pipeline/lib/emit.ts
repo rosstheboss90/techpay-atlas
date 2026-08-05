@@ -1,6 +1,7 @@
 import type { Pct, SalaryRecord } from './parse-oews'
 import type { EmployerBundle } from './aggregate'
 import type { aggregateTitles } from './aggregate-titles'
+import type { ConflationAgg } from './aggregate-conflation'
 import { ROLES, type Role } from './soc'
 import { TOP_CODE } from './num'
 
@@ -70,6 +71,13 @@ export type TitlesJson = { lcaPeriod: string; families: ReturnType<typeof aggreg
  *  bookkeeping for run.ts's data-quality assertions; it is not part of the emitted contract. */
 export function buildTitles(agg: ReturnType<typeof aggregateTitles>, lcaPeriod: string): TitlesJson {
   return { lcaPeriod, families: agg.families }
+}
+
+export type ConflationJson = { lcaPeriod: string } & ConflationAgg
+
+/** Title↔SOC conflation matrix, plus run.ts's lcaPeriod provenance. Emitted to conflation.json. */
+export function buildConflation(agg: ConflationAgg, lcaPeriod: string): ConflationJson {
+  return { lcaPeriod, ...agg }
 }
 
 export function buildEmployerFiles(agg: Map<string, Map<string, EmployerBundle>>, keep: Set<string>):

@@ -10,8 +10,9 @@ import { hudRowsToZipCbsa } from './lib/crosswalk'
 import { lcaRowsToRecords, type DropReason, type LcaRecord } from './lib/parse-lca'
 import { aggregateEmployers, attachCbsa } from './lib/aggregate'
 import { aggregateTitles } from './lib/aggregate-titles'
+import { aggregateConflation } from './lib/aggregate-conflation'
 import { FAMILIES } from './lib/titles'
-import { buildEmployerFiles, buildMeta, buildSalaries, buildTitles } from './lib/emit'
+import { buildConflation, buildEmployerFiles, buildMeta, buildSalaries, buildTitles } from './lib/emit'
 
 // Raw files can live one level deep (e.g. data/raw/oesm25ma/MSA_M2025_dl.xlsx) as well as flat
 // in data/raw/. Regexes below match against the basename only, so a subdirectory never needs to
@@ -170,6 +171,13 @@ for (const fam of titleAgg.families)
   for (const b of fam.buckets)
     console.log(`    ${fam.key}/${b.key} (${b.label}): ${b.national.filings} national filings`)
 
+// 3c. Title↔SOC conflation matrix — same all-SOC stream; normalize free-text titles and record how
+// each common title scatters across official SOC codes (role-similarity variant 2).
+const conflationAgg = aggregateConflation(matched)
+if (conflationAgg.titles.length < THRESHOLDS.minConflationTitles)
+  fail(`only ${conflationAgg.titles.length} conflation titles cleared the floor (< ${THRESHOLDS.minConflationTitles}) — title normalization likely broke`)
+console.log(`  conflation: ${conflationAgg.titles.length} titles (of ${conflationAgg.distinctTitles} distinct), ${conflationAgg.totalFilings} filings`)
+
 // 4. Build + coverage assertions
 const { meta, droppedNoArea, droppedNoCoords } = buildMeta(salaries, areas, coords, rpp, year, filingsByCbsa)
 const rppCoverage = meta.metros.filter(m => m.rpp !== null).length / (meta.metros.length || 1)
@@ -197,6 +205,7 @@ for (const { cbsa, body } of employerFiles) {
 }
 const titlesJson = buildTitles(titleAgg, lcaPeriod)
 writeFileSync(path.join(OUT_DIR, 'titles.json'), JSON.stringify(titlesJson))
+writeFileSync(path.join(OUT_DIR, 'conflation.json'), JSON.stringify(buildConflation(conflationAgg, lcaPeriod)))
 const lcaMatchedPostFilter = matched.filter(r => keepCbsa.has(r.cbsa)).length
 
 // 6. Report
@@ -214,6 +223,8 @@ writeFileSync(path.join(REPORT_DIR, `run-${meta.generated.slice(0, 10)}.json`), 
   titleFamilyOverlapRate,
   titleBucketFilings: Object.fromEntries(
     titleAgg.families.flatMap(f => f.buckets.map(b => [`${f.key}/${b.key}`, b.national.filings]))),
+  conflationTitles: conflationAgg.titles.length, conflationDistinctTitles: conflationAgg.distinctTitles,
+  conflationTotalFilings: conflationAgg.totalFilings,
   topUnmatchedZips: [...unmatchedZips.entries()].sort((a, b) => b[1] - a[1]).slice(0, 25),
 }, null, 2))
 console.log(`DONE: ${meta.metros.length} metros, ${employerFiles.length} employer files -> ${OUT_DIR}`)
