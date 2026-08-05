@@ -71,6 +71,9 @@ describe('parseSeniority', () => {
     ['VICE PRESIDENT, LEAD SITE RELIABILITY ENGINEER', 'lead'],
     ['VICE PRESIDENT; DATA ENGINEER III', 'lead'],
     ['ASSISTANT VICE PRESIDENT, FULL-STACK ENGINEER II', 'lead'],
+    // A bare roman-numeral V is NOT an IC-demotion marker (only I–IV are real suffixes in the
+    // scan) — this VP title stays directorPlus rather than demoting to lead.
+    ['VICE PRESIDENT, ENGINEERING V', 'directorPlus'],
   ] as const)('%s -> %s', (title, tier) => {
     expect(parseSeniority(title)).toBe(tier)
   })
