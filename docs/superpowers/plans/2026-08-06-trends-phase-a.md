@@ -33,7 +33,7 @@
 - The eight absent before 2021: `13-1082`, `15-1242`, `15-1243`, `15-1252`, `15-1253`, `15-1254`, `15-1255`, `15-2051`. All first appear in **2021**.
 - CPI-U May values: 2019 `256.092`, 2020 `256.394`, 2021 `269.195`, 2022 `292.296`, 2023 `304.127`, 2024 `314.069`, 2025 `321.465`.
 - **No registry role has a censored `p50` in any vintage.** Only `11-3021`'s p90 (2019–2024) and `15-1221`'s p90 (2021) are censored. Both figures plot p50, so neither touches a censored value.
-- Worked example to test against: `15-1252` p50 is `120730` (2021) and `135980` (2025). In 2025 dollars, 2021 becomes `120730 × 321.465 / 269.195 = 144175.4…`, so `changeReal ≈ -0.0569`.
+- Worked example to test against: `15-1252` p50 is `120730` (2021) and `135980` (2025). In 2025 dollars, 2021 becomes `120730 × 321.465 / 269.195 = 144172.33…`, so `changeReal ≈ -0.0568`.
 
 ## File Structure
 
@@ -94,7 +94,7 @@ describe('buildTrends', () => {
     const out = buildTrends([archive(2021, { '15-1252': 120730 }), archive(2025, { '15-1252': 135980 })], cpi, 2025, 2021)
     const r = out.roles['15-1252']
     // 120730 * 321.465 / 269.195
-    expect(r.real[0]).toBeCloseTo(144175.4, 0)
+    expect(r.real[0]).toBeCloseTo(144172.3, 0)
     expect(r.real[1]).toBe(135980)
   })
 
