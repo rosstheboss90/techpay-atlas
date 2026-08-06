@@ -23,19 +23,36 @@ export const VINTAGES = {
 export const OEWS_NAT_YEARS: readonly number[] =
   Array.from({ length: VINTAGES.oewsYear - 2019 + 1 }, (_, i) => 2019 + i)
 
-/** BLS substitutes `#` for a percentile wage at or above its annual top code, and that
- *  threshold is VINTAGE-SPECIFIC. Reading an old file with the current constant silently
- *  rewrites that year's censored cells (spec trap T2).
+/** BLS substitutes `#` for a percentile wage at or above its annual top code, and that threshold
+ *  is VINTAGE-SPECIFIC — so reading an old file with a current constant would rewrite that year's
+ *  censored cells. That is why the value is per-year and why each archive file records its own.
  *
- *  ⚠️ VERIFY THESE AGAINST THE DOWNLOADED FILES — Task 9 of the implementation plan does this.
- *  The values below are the expected shape ($208,000 early, $239,200 later); the year at which
- *  the threshold changed has NOT been confirmed against BLS's technical notes. */
+ *  ⚠️ THESE VALUES ARE NOT THE REAL THRESHOLDS, and for this project it does not matter. Measured
+ *  2026-08-06 against the local May 2025 MSA file (150,023 rows):
+ *
+ *    - Only 212 cells in the whole file are `#`, and every one is a physician / anesthetist
+ *      occupation (29-xxxx).
+ *    - **Zero `#` cells occur in any of the 21 registry SOCs** (5,371 rows), across all ten
+ *      percentile columns. The highest registry A_PCT90 is $430,840, published as a real number.
+ *    - The real ceiling is far above $239,200: the file publishes A_PCT90 up to $929,520
+ *      ($446.89/hr, Chief Executives). BLS's long-standing documented footnote reads "$100.00 per
+ *      hour or $208,000 per year", so the threshold has clearly been raised and the current value
+ *      must be read from the technical notes, not assumed.
+ *
+ *  Consequence: `topCodeForYear` is never actually consulted for a tech role, because no tech cell
+ *  is censored. The numbers below are placeholders of the right SHAPE. Do not trust them as facts,
+ *  and do not spend effort verifying them unless a vintage turns up with a non-empty `capped`
+ *  array for a registry SOC — `archive-verify` reports that, and it is the only signal that would
+ *  make the true threshold matter.
+ *
+ *  Authoritative source if it ever does: BLS OEWS technical notes,
+ *  bls.gov/oes/current/oes_tec.htm (or bls.gov/oes/<year>/may/oes_tec.htm for an older release). */
 const OEWS_TOP_CODE_BY_YEAR: Readonly<Record<number, number>> = {
   2019: 208_000,
   2020: 208_000,
   2021: 208_000,
   2022: 208_000,
-  2023: 239_200, // ⚠️ UNVERIFIED boundary — see Task 9
+  2023: 239_200,
   2024: 239_200,
   2025: 239_200,
 }
