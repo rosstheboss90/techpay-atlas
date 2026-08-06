@@ -16,12 +16,32 @@ export function looksLikeZip(buf: Buffer): boolean {
   return buf.length >= 4 && buf[0] === 0x50 && buf[1] === 0x4b && buf[2] === 0x03 && buf[3] === 0x04
 }
 
-/** A `.done` marker holds the basename of the file it downloaded. If that file has since been
- *  deleted from data/raw (manual cleanup, disk pressure), the marker is stale -- self-heal by
- *  treating the source as not-yet-downloaded rather than skipping it forever. */
-export function markerTargetExists(markerContent: string, rawFiles: ReadonlySet<string>): boolean {
-  const basename = markerContent.trim()
-  return basename.length > 0 && rawFiles.has(basename)
+/** A `.done` marker records two lines: the URL it downloaded from, then that file's basename.
+ *
+ *  Keying on the URL rather than the basename is what makes a vintage bump invalidate the marker
+ *  (spec trap T1). With basename-only markers, changing the configured URL to a new year while the
+ *  previous year's file was still in data/raw produced `skip <source> (already downloaded)` — a
+ *  "successful" refresh that downloaded nothing.
+ *
+ *  Current iff the recorded URL is still one of the configured URLs (membership, not position, so
+ *  keeping last year's URL as a fallback doesn't force a re-download) AND the file it named is
+ *  still present.
+ *
+ *  Legacy single-line markers are accepted when their basename matches what a configured URL would
+ *  produce, so the first run after this change migrates in place instead of re-downloading ~478MB. */
+export function markerIsCurrent(
+  markerContent: string,
+  configuredUrls: readonly string[],
+  rawFiles: ReadonlySet<string>,
+): boolean {
+  const lines = markerContent.split('\n').map(s => s.trim()).filter(Boolean)
+  if (lines.length === 0) return false
+  if (lines.length === 1) {
+    const basename = lines[0]
+    return configuredUrls.some(u => path.basename(u) === basename) && rawFiles.has(basename)
+  }
+  const [url, basename] = lines
+  return configuredUrls.includes(url) && rawFiles.has(basename)
 }
 
 const isZipOrXlsx = (file: string) => /\.(zip|xlsx)$/i.test(file)
@@ -58,15 +78,16 @@ export async function runDownloads(sources: readonly Source[], rawDir: string): 
   let missingRequired = 0
   for (const src of sources) {
     const marker = path.join(rawDir, `${src.name}.done`)
-    if (existsSync(marker) && markerTargetExists(readFileSync(marker, 'utf8'), new Set(readdirSync(rawDir)))) {
+    if (existsSync(marker) && markerIsCurrent(readFileSync(marker, 'utf8'), src.urls, new Set(readdirSync(rawDir)))) {
       console.log(`skip ${src.name} (already downloaded)`)
       continue
     }
     let got: string | null = null
+    let gotUrl: string | null = null
     for (const url of src.urls) {
       const dest = path.join(rawDir, path.basename(url))
       console.log(`fetch ${url}`)
-      if (await fetchTo(url, dest)) { got = dest; break }
+      if (await fetchTo(url, dest)) { got = dest; gotUrl = url; break }
     }
     if (!got) {
       console.warn(`FAILED: ${src.name}${src.required ? ' (required — download manually into data/raw/)' : ''}`)
@@ -74,7 +95,7 @@ export async function runDownloads(sources: readonly Source[], rawDir: string): 
       continue
     }
     if (src.unzip) new AdmZip(got).extractAllTo(rawDir, true)
-    writeFileSync(marker, path.basename(got))
+    writeFileSync(marker, `${gotUrl}\n${path.basename(got)}`)
   }
   console.log(missingRequired ? `${missingRequired} required source(s) missing` : 'all required sources present')
   return missingRequired

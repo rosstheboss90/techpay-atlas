@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { looksLikeZip, markerTargetExists } from '../lib/download-lib'
+import { looksLikeZip, markerIsCurrent } from '../lib/download-lib'
 
 describe('looksLikeZip', () => {
   it('accepts a buffer starting with the PK\\x03\\x04 local-file-header signature', () => {
@@ -17,19 +17,43 @@ describe('looksLikeZip', () => {
   })
 })
 
-describe('markerTargetExists', () => {
+describe('markerIsCurrent', () => {
   const rawFiles = new Set(['oesm25ma.zip', 'ZIP_CBSA_032026.xlsx'])
-  it('is true when the marker names a file that is still present in data/raw', () => {
-    expect(markerTargetExists('oesm25ma.zip', rawFiles)).toBe(true)
+  const urls25 = ['https://www.bls.gov/oes/special-requests/oesm25ma.zip']
+  const urls26 = ['https://www.bls.gov/oes/special-requests/oesm26ma.zip']
+  const marker25 = 'https://www.bls.gov/oes/special-requests/oesm25ma.zip\noesm25ma.zip'
+
+  it('is true when the marker URL is still configured and its file is present', () => {
+    expect(markerIsCurrent(marker25, urls25, rawFiles)).toBe(true)
   })
-  it('is true after trimming incidental whitespace from the marker content', () => {
-    expect(markerTargetExists('  oesm25ma.zip\n', rawFiles)).toBe(true)
+
+  it('is FALSE when the configured URL changed — a vintage bump must re-download (T1)', () => {
+    // The old file is still on disk; a basename-only check would wrongly report "already downloaded".
+    expect(markerIsCurrent(marker25, urls26, rawFiles)).toBe(false)
   })
+
+  it('is true when the marker URL is a configured fallback rather than the preferred URL', () => {
+    expect(markerIsCurrent(marker25, [...urls26, ...urls25], rawFiles)).toBe(true)
+  })
+
   it('is false when the marker names a file that no longer exists (self-heal: re-download)', () => {
-    expect(markerTargetExists('oesm24ma.zip', rawFiles)).toBe(false)
+    expect(markerIsCurrent(marker25, urls25, new Set(['ZIP_CBSA_032026.xlsx']))).toBe(false)
   })
+
+  it('migrates a legacy basename-only marker without forcing a re-download', () => {
+    expect(markerIsCurrent('oesm25ma.zip', urls25, rawFiles)).toBe(true)
+  })
+
+  it('invalidates a legacy basename-only marker when the configured vintage moved on', () => {
+    expect(markerIsCurrent('oesm25ma.zip', urls26, rawFiles)).toBe(false)
+  })
+
   it('is false for empty/blank marker content', () => {
-    expect(markerTargetExists('', rawFiles)).toBe(false)
-    expect(markerTargetExists('   ', rawFiles)).toBe(false)
+    expect(markerIsCurrent('', urls25, rawFiles)).toBe(false)
+    expect(markerIsCurrent('   ', urls25, rawFiles)).toBe(false)
+  })
+
+  it('tolerates incidental whitespace around the recorded lines', () => {
+    expect(markerIsCurrent(`  ${urls25[0]}  \n  oesm25ma.zip \n`, urls25, rawFiles)).toBe(true)
   })
 })
