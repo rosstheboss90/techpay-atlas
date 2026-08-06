@@ -124,38 +124,45 @@ Consequences, all of which the watcher is built around:
 
 ## Observed vintage coverage
 
-| Vintage | Registry roles | `15-2051` | `13-1082` | Any `capped` |
-|---|---|---|---|---|
-| May 2025 | 21 / 21 | present | present | none |
+Measured from the archive, 2026-08-06. All seven vintages present.
 
-_2019–2024 not yet archived — see "Status" below. Fill each row in as its vintage lands. The two
-columns that matter for `/trends` are `15-2051` (Data Scientists) and `13-1082` (Project Management
-Specialists): both are 2018-SOC carve-outs from combined codes and are expected to be **absent**
-from the earliest vintages. The page depends on the measured first-appearance year, not an
-estimate, so record what the archive actually shows._
+| Vintage | Registry roles | Top code | Censored p90 |
+|---|---|---|---|
+| May 2019 | **13** / 21 | $208,000 | `11-3021` |
+| May 2020 | **13** / 21 | $208,000 | `11-3021` |
+| May 2021 | 21 / 21 | $208,000 | `11-3021`, `15-1221` |
+| May 2022 | 21 / 21 | $239,200 | `11-3021` |
+| May 2023 | 21 / 21 | $239,200 | `11-3021` |
+| May 2024 | 21 / 21 | $239,200 | `11-3021` |
+| May 2025 | 21 / 21 | none applied | — |
+
+⚠️ **Eight registry roles do not exist before May 2021**, not two as originally assumed:
+`13-1082`, `15-1242`, `15-1243`, **`15-1252` (Software Developers)**, `15-1253`, `15-1254`,
+`15-1255`, `15-2051`. OEWS published combined codes for these until the May 2021 detailed-code
+split. All eight first appear in **2021**. Anything plotting a 2019-start series must account for
+this — it includes the site's flagship role.
+
+⚠️ **`11-3021` (IT Managers) has a censored p90 in every vintage 2019–2024.** Those values are
+*floors*, not wages: $208,000 through 2021, $239,200 from 2022, then a genuine $297,510 in 2025.
+A p90 chart for that role would show a step at 2022 and a jump in 2025 that are both artifacts of
+censoring, not pay movement. The `capped` array marks exactly which cells; use it.
 
 ## Status
 
-The refresh machinery is complete and tested. **CPI is archived** (`data/history/cpi-u.json`,
-2019–2025). **The OEWS backfill has not run** — the national vintage files could not be downloaded
-because of the Akamai block described above. Outstanding, in order:
+**Complete.** The refresh machinery is built and tested, CPI is archived (`data/history/cpi-u.json`,
+2019–2025), and all seven OEWS national vintages are archived and verified.
 
-1. `npm run download` — fetch the national OEWS vintages. Small files, one row per occupation; the
-   MSA and LCA data is already on disk. Requires the block to have cleared.
-2. Build `pipeline/lib/parse-oews-nat.ts`. Deliberately deferred: the national file's real column
-   set and its industry/ownership grouping must be *read*, not assumed, or the parser may silently
-   select a cross-industry subset instead of the total row. One hint already in hand — the MSA
-   zip's own `file_descriptions.xlsx` describes `MSA_M2025_dl.xlsx` as *"cross-industry,
-   cross-ownership"*, which suggests the national file is the same shape (one row per occupation),
-   but confirm against the file.
-3. Run `npm run archive:nat`, then `npm run archive:verify`, then fill in "Observed vintage
-   coverage" above.
+Two things to carry forward, both discovered by running it rather than by planning it:
 
-**No longer outstanding:** the CPI source (now the API) and the top-code boundary year — see the
-comment on `OEWS_TOP_CODE_BY_YEAR` in `pipeline/vintages.ts`. Measured against the May 2025 MSA
-file, **no registry SOC is ever top-coded** (zero `#` cells in 5,371 rows across all ten percentile
-columns), so the per-year table is never actually consulted for a tech role. Chase the true
-threshold only if `archive-verify` reports a non-empty `capped` array for some vintage.
+- **Column casing drifts between vintages.** May 2019 uses entirely lowercase headers and has no
+  `PRIM_STATE`; 2020+ are uppercase; 2021+ add `PCT_RPT`. `parse-oews-nat.ts` resolves columns
+  case-insensitively for this reason. The same drift is documented for the HUD crosswalk in
+  `crosswalk.ts` — assume it for any new BLS source.
+- **Verify the top code by measuring, never by guessing.** The method: the largest *uncensored*
+  `H_PCT90` in a vintage lands just below that year's hourly ceiling, which BLS sets at a round
+  figure. 98.90 / 99.92 / 99.72 → $100.00 for 2019–2021; 112.97 / 112.31 / 113.34 → $115.00 for
+  2022–2024. A guessed boundary of 2023 was wrong by a year and archived `11-3021`'s 2022 p90 15%
+  low, producing a fake step. Re-run this check after every refresh.
 
 ## Why not CI
 

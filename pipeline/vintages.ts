@@ -27,34 +27,41 @@ export const OEWS_NAT_YEARS: readonly number[] =
  *  is VINTAGE-SPECIFIC — so reading an old file with a current constant would rewrite that year's
  *  censored cells. That is why the value is per-year and why each archive file records its own.
  *
- *  ⚠️ THESE VALUES ARE NOT THE REAL THRESHOLDS, and for this project it does not matter. Measured
- *  2026-08-06 against the local May 2025 MSA file (150,023 rows):
+ *  VERIFIED 2026-08-06 by measuring the largest UNCENSORED H_PCT90 in each national vintage. BLS
+ *  censors at a round hourly figure, so that maximum lands just under the true ceiling:
  *
- *    - Only 212 cells in the whole file are `#`, and every one is a physician / anesthetist
- *      occupation (29-xxxx).
- *    - **Zero `#` cells occur in any of the 21 registry SOCs** (5,371 rows), across all ten
- *      percentile columns. The highest registry A_PCT90 is $430,840, published as a real number.
- *    - The real ceiling is far above $239,200: the file publishes A_PCT90 up to $929,520
- *      ($446.89/hr, Chief Executives). BLS's long-standing documented footnote reads "$100.00 per
- *      hour or $208,000 per year", so the threshold has clearly been raised and the current value
- *      must be read from the technical notes, not assumed.
+ *    vintage | max uncensored H_PCT90 | implied hourly cap | annual
+ *    2019    |  98.90                 | $100.00            | 208,000
+ *    2020    |  99.92                 | $100.00            | 208,000
+ *    2021    |  99.72                 | $100.00            | 208,000
+ *    2022    | 112.97                 | $115.00            | 239,200
+ *    2023    | 112.31                 | $115.00            | 239,200
+ *    2024    | 113.34                 | $115.00            | 239,200
+ *    2025    | 349.35, and ZERO `#` cells in the whole file — no censoring applied at all
  *
- *  Consequence: `topCodeForYear` is never actually consulted for a tech role, because no tech cell
- *  is censored. The numbers below are placeholders of the right SHAPE. Do not trust them as facts,
- *  and do not spend effort verifying them unless a vintage turns up with a non-empty `capped`
- *  array for a registry SOC — `archive-verify` reports that, and it is the only signal that would
- *  make the true threshold matter.
+ *  ⚠️ The boundary is **May 2022**, not 2023. An earlier guess here said 2023 and was wrong, which
+ *  archived `11-3021`'s 2022 p90 as 208,000 instead of 239,200 — a 15% understatement that showed
+ *  up as a fake step in 2023. That is exactly the artifact this per-year table exists to prevent,
+ *  so it is worth restating: DO NOT guess these, measure them.
  *
- *  Authoritative source if it ever does: BLS OEWS technical notes,
- *  bls.gov/oes/current/oes_tec.htm (or bls.gov/oes/<year>/may/oes_tec.htm for an older release). */
+ *  This matters more than a first pass suggested. Registry SOCs are never censored in the 2025 MSA
+ *  file, which made the whole mechanism look inert — but in the NATIONAL files `11-3021` (IT
+ *  Managers) has a censored p90 in every vintage 2019–2024, and `15-1221` in 2021. Any p90 series
+ *  for those roles is a floor, not a value; the archive's `capped` array marks exactly which.
+ *
+ *  2025's entry is unused (nothing is censored) and is kept only so `topCodeForYear` does not throw.
+ *  The true 2025 ceiling, if any, is above $742,310 nationally / $929,520 in the MSA file.
+ *
+ *  To re-verify after a refresh: max uncensored H_PCT90 per vintage, per the table above.
+ *  Cross-check against BLS OEWS technical notes, bls.gov/oes/<year>/may/oes_tec.htm. */
 const OEWS_TOP_CODE_BY_YEAR: Readonly<Record<number, number>> = {
   2019: 208_000,
   2020: 208_000,
   2021: 208_000,
-  2022: 208_000,
+  2022: 239_200, // boundary — BLS raised the cap from $100.00/hr to $115.00/hr in May 2022
   2023: 239_200,
   2024: 239_200,
-  2025: 239_200,
+  2025: 239_200, // unused: the 2025 file has zero `#` cells
 }
 
 /** Throws rather than defaulting: an unrecorded vintage must fail loudly, never silently
