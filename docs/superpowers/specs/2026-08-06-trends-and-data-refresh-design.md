@@ -37,6 +37,42 @@ These are coupled because the fix for (2) is a longitudinal archive, and the arc
 - Running the pipeline in CI. See Decision 7.
 - The `trailingSlash` fix. See "Inherited defects".
 
+## ⚠️ CORRECTION — Decisions 1, 2 and 6 rest on a false premise (measured 2026-08-06)
+
+The archive has since been built (`data/history/oews-nat-2019.json` … `2025`). Measuring it
+contradicts the assumption those decisions were made on.
+
+**Eight registry roles do not exist before May 2021, not two.** OEWS published combined codes until
+the May 2021 detailed-code split. Absent from both 2019 and 2020:
+
+`13-1082` (Project Mgmt) · `15-1242` (DBA) · `15-1243` (DB Architect) · **`15-1252` (Software
+Developers)** · `15-1253` (QA) · `15-1254` (Web Dev) · `15-1255` (UX/UI) · `15-2051` (Data Sci)
+
+All eight first appear in **2021**. Coverage is 13/21 for 2019 and 2020, 21/21 from 2021 on.
+
+**Why this breaks the design as written.** Decision 6 says the headline figure covers "the 19 roles
+with a full 2019 start." There are 13, and **Software Developers is not among them** — the site's
+flagship role would be missing from its own headline chart. Decision 1 chose the 2019 window
+specifically to avoid the hot 2021 baseline; that trade was priced against losing two minor roles,
+not against losing SWE, Data Scientists, QA, Web Dev, UX/UI, and both database roles.
+
+**This needs re-deciding before the `/trends` plan is written.** The options are the same three as
+before, but the trade is materially different now:
+
+- **2019 start, 13 roles** — honest long arc, no SWE. Probably not viable as a headline.
+- **2021 start, 21 roles, 5 points** — complete rectangle including SWE, but the baseline sits
+  inside the pandemic wage surge, so "real pay fell since 2021" partly describes 2021.
+- **Split the page** — 2021→2025 across all 21 roles as the headline, with a 13-role 2019→2025
+  panel underneath for the longer arc. More work; keeps both truths.
+
+**Also measured, and relevant to any p90 series:** `11-3021` (IT Managers) has a *censored* p90 in
+every vintage 2019–2024 — $208,000 through 2021, $239,200 from 2022, then a genuine $297,510 in
+2025. Those are floors, not wages. A p90 chart for that role shows a step at 2022 and a jump in
+2025 that are artifacts of censoring. `capped` marks them; the page must respect it.
+
+Everything below this block is the design as originally written. Decisions 3, 4, 5 and the §1 data
+layer are unaffected and have shipped.
+
 ## Decisions
 
 1. **Window: May 2019 → May 2025, seven points, ragged.** (Option A2 of three considered.)
