@@ -8,6 +8,7 @@ import { RankSlopegraph } from '../components/RankSlopegraph'
 import { RoleHeatmap } from '../components/RoleHeatmap'
 import { RoleSimilarity } from '../components/RoleSimilarity'
 import { SalaryMap } from '../components/SalaryMap'
+import { SectionNav } from '../components/SectionNav'
 import { TitleLens } from '../components/TitleLens'
 import { loadMeta, loadSalaries } from '../lib/data'
 import type { Meta, Salaries } from '../lib/types'
@@ -88,8 +89,9 @@ export default function Page() {
         </div>
         <Link href="/about" className="masthead-link">About the data →</Link>
       </header>
+      <SectionNav />
       <FilterBar roles={meta.roles} state={state} onChange={update} />
-      <div className={state.metro ? 'hero-row has-panel' : 'hero-row'}>
+      <div id="sec-map" className={state.metro ? 'hero-row has-panel' : 'hero-row'}>
         <SalaryMap meta={meta} salaries={salaries} soc={state.role} metric={state.metric}
                    adjusted={state.adjusted} selected={state.metro} dark={dark}
                    onSelect={cbsa => update({ metro: cbsa })} />

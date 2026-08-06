@@ -35,8 +35,10 @@ function roleFullLabel(soc: string, roles: Role[]): string {
   return roles.find(r => r.soc === soc)?.label ?? soc
 }
 
-/** Thin p25-median-p75 band, same domain-mapping approach as PercentileBand. */
-function Band({ stats, rpp, adjusted, domain, width = 140 }: { stats: TitleStats; rpp: number | null; adjusted: boolean; domain: [number, number]; width?: number }) {
+/** Thin p25-median-p75 band, same domain-mapping approach as PercentileBand.
+ *  The viewBox lets CSS size the band to the row (it is the headline mark, not a
+ *  sparkline); `width` is the coordinate space, not a hard render width. */
+function Band({ stats, rpp, adjusted, domain, width = 560 }: { stats: TitleStats; rpp: number | null; adjusted: boolean; domain: [number, number]; width?: number }) {
   const h = 10
   const x = (v: number) => Math.max(0, Math.min(width, ((v - domain[0]) / (domain[1] - domain[0] || 1)) * width))
   const p25 = adjust(stats.p25, rpp, adjusted)
@@ -44,7 +46,8 @@ function Band({ stats, rpp, adjusted, domain, width = 140 }: { stats: TitleStats
   const median = adjust(stats.median, rpp, adjusted)
   const label = p25 != null && p75 != null ? `25th to 75th percentile: ${fmtUsd(p25)} to ${fmtUsd(p75)}` : 'pay range not available'
   return (
-    <svg width={width} height={h} className="tl-band" role="img" aria-label={label}>
+    <svg viewBox={`0 0 ${width} ${h}`} width={width} height={h} preserveAspectRatio="none"
+         className="tl-band" role="img" aria-label={label}>
       {p25 != null && p75 != null && <rect x={x(p25)} y={2} width={x(p75) - x(p25)} height={6} rx={2} className="tl-band-inner" />}
       {median != null && <line x1={x(median)} x2={x(median)} y1={0} y2={h} className="tl-band-median" />}
     </svg>
@@ -108,6 +111,7 @@ export function TitleBucketRow({ bucket, domain, cbsa, metroShort, rpp, adjusted
         ))}
       </div>
 
+      <div className="tl-disclosures">
       {tierEntries.length > 0 && (
         <div className="tl-tiers">
           <button type="button" className="tl-tiers-toggle" aria-expanded={tiersOpen}
@@ -150,6 +154,7 @@ export function TitleBucketRow({ bucket, domain, cbsa, metroShort, rpp, adjusted
           )}
         </div>
       )}
+      </div>
     </div>
   )
 }

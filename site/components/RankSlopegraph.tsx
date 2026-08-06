@@ -13,8 +13,19 @@ interface Props {
 }
 
 const N = 18
-const PAD_TOP = 34, ROW_GAP = 26, PAD_BOTTOM = 14
-const LEFT_X = 210, RIGHT_X = 360, W = 560
+const PAD_TOP = 36, ROW_GAP = 28, PAD_BOTTOM = 16
+
+/* Label gutters are derived from the widest label rather than fixed, because the
+   old constants (LEFT_X=210 in a W=560 box) clipped both ends: an end-anchored
+   label like "San Jose-Sunnyvale-Santa Clara · $213k" starts near x=-50, and its
+   right-hand twin runs past x=560. Nothing outside the viewBox is drawn.
+   CH_PX over-estimates advance width for the 12px UI sans so movers, which render
+   at weight 650, still fit. */
+const CH_PX = 7.1
+const LABEL_GAP = 12
+const SPAN_MIN = 200, SPAN_MAX = 460, TARGET_W = 1140
+
+const gutter = (maxChars: number) => Math.ceil(maxChars * CH_PX) + LABEL_GAP + 8
 
 /** ≥ 3 rank places moved counts as a "mover"; direction from the sign of delta. */
 function moveClass(delta: number): string {
@@ -65,6 +76,17 @@ export function RankSlopegraph({ meta, salaries, soc, metric, onSelect }: Props)
   const short = (name: string) => name.split(',')[0]
   const dollars = (v: number, capped: boolean) => `${capped ? '≥' : ''}${fmtUsdCompact(v)}`
 
+  const leftText = (r: (typeof rows)[number]) => `${short(r.name)} · ${dollars(r.nominal, r.capped)}`
+  const rightText = (r: (typeof rows)[number]) => `${dollars(r.adjusted, r.capped)} · ${short(r.name)}`
+  const GUTTER_L = gutter(Math.max(...rows.map(r => leftText(r).length)))
+  const GUTTER_R = gutter(Math.max(...rows.map(r => rightText(r).length)))
+  // Claim the container width where the gutters leave room, but keep the line
+  // span in the range where the crossing pattern stays readable.
+  const SPAN = Math.min(SPAN_MAX, Math.max(SPAN_MIN, TARGET_W - GUTTER_L - GUTTER_R))
+  const LEFT_X = GUTTER_L
+  const RIGHT_X = LEFT_X + SPAN
+  const W = RIGHT_X + GUTTER_R
+
   return (
     <section className="slope" aria-labelledby="slope-h">
       {header}
@@ -83,11 +105,11 @@ export function RankSlopegraph({ meta, salaries, soc, metric, onSelect }: Props)
                 <line x1={LEFT_X} y1={y1} x2={RIGHT_X} y2={y2} className="slope-line" />
                 <circle cx={LEFT_X} cy={y1} r={3.5} className="slope-node" />
                 <circle cx={RIGHT_X} cy={y2} r={3.5} className="slope-node" />
-                <text x={LEFT_X - 12} y={y1} dy="0.32em" textAnchor="end" className="slope-label">
-                  {short(r.name)} · {dollars(r.nominal, r.capped)}
+                <text x={LEFT_X - LABEL_GAP} y={y1} dy="0.32em" textAnchor="end" className="slope-label">
+                  {leftText(r)}
                 </text>
-                <text x={RIGHT_X + 12} y={y2} dy="0.32em" textAnchor="start" className="slope-label">
-                  {dollars(r.adjusted, r.capped)} · {short(r.name)}
+                <text x={RIGHT_X + LABEL_GAP} y={y2} dy="0.32em" textAnchor="start" className="slope-label">
+                  {rightText(r)}
                 </text>
               </g>
             )
