@@ -1,0 +1,221 @@
+# Monthly watcher for newer upstream vintages (OEWS, LCA, Gazetteer, HUD). This workflow ONLY
+# probes; it never downloads data and never runs the pipeline. A real refresh needs ~478MB of raw
+# input and a 6GB heap, and landing its output means pushing main, which auto-deploys WITHOUT
+# tests (deploy.yml is ungated; ci.yml only gates pull requests) -- so a human always refreshes
+# locally and lands a reviewed PR. This workflow's only job is to open an issue when it looks like
+# there's something to refresh.
+#
+# WHY A RANGED GET + THREE-WAY CLASSIFICATION, NOT curl -I + 200:
+# Measured directly from this machine (see the implementation-plan writeup for Task 11):
+#   - bls.gov and dol.gov sit behind AkamaiGHost, which returns 403 "Access Denied" to automated
+#     requests once a modest request rate is exceeded. It returned 403 for EVERY URL tried --
+#     files that certainly exist and files that certainly do not (an unpublished future vintage).
+#     All 403 bodies were byte-identical HTML.
+#   - curl -I (HEAD) is refused outright by these hosts.
+#   - census.gov, apps.bea.gov and huduser.gov answered normally -- this is agency-specific
+#     Akamai behaviour, not a network fault, so it can hit different sources on different runs.
+#
+# The consequence that shapes every design choice below: a probe that treats only 200 as
+# "published" degrades SILENTLY. Under a 403 sweep it finds nothing, opens no issue, and looks
+# like a clean run reporting "no new data" -- manufacturing false confidence that everything was
+# checked. So every non-(200|206|404) outcome, including 403, 5xx and timeouts, is classified
+# INCONCLUSIVE rather than folded into "not yet published"; the run aborts remaining probes after
+# the first 403 (continuing only deepens the block); and an all-INCONCLUSIVE sweep both opens/
+# comments on an issue AND fails the job, so a permanently blocked watcher shows up red in the
+# Actions UI instead of quietly staying green forever.
+#
+# Do NOT "simplify" this back to curl -I + a 200 check -- that is the exact failure mode above.
+#
+# NOTE: the "data-refresh" label must already exist in this repo (Settings -> Labels) for the
+# issue-reuse lookup below to find anything. If it doesn't exist, `gh issue list --label
+# data-refresh` always returns empty, every run falls through to `gh issue create`, and a new
+# duplicate issue opens every month instead of one thread being reused.
+
+name: Watch upstream sources
+
+on:
+  schedule:
+    - cron: '0 13 1 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: watch-sources
+
+jobs:
+  watch:
+    name: Watch for newer upstream vintages
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+
+      # Targets are derived from pipeline/vintages.ts -- the single source of truth for which
+      # vintage is current -- so this workflow never re-hardcodes a year. Each target is the NEXT
+      # vintage after what's configured. This step makes no network request, it only prints
+      # label<TAB>url lines built from the same URL patterns pipeline/download.ts uses.
+      #
+      # This is deliberately ONE physical line, using require() rather than a static import.
+      # Verified against this exact tsx version (4.23.5) / Node (22, 24): `tsx -e` silently
+      # produces ZERO output (exit 0, empty stdout AND stderr, no error) whenever its script (a)
+      # starts with a blank line, (b) spans more than one physical line, or (c) contains a static
+      # ESM `import` -- each of those independently swallows the whole script. A dynamic
+      # `await import(...)` additionally hits "Top-level await is currently not supported with
+      # the cjs output format", since tsx's -e evaluator compiles to CJS. `require()` on one line
+      # is the only form that reliably ran and printed. Do NOT "clean this up" into a multi-line
+      # or `import`-based script without re-verifying output actually appears.
+      - name: Compute probe targets
+        run: |
+          set -euo pipefail
+          npx tsx -e 'const { VINTAGES } = require("./pipeline/vintages"); const yy = (year) => String(year).slice(2); const oewsMsaUrl = (year) => `https://www.bls.gov/oes/special-requests/oesm${yy(year)}ma.zip`; const oewsNatUrl = (year) => `https://www.bls.gov/oes/special-requests/oesm${yy(year)}nat.zip`; const gazetteerUrl = (year) => `https://www2.census.gov/geo/docs/maps-data/data/gazetteer/${year}_Gazetteer/${year}_Gaz_cbsa_national.zip`; const lcaUrl = (fy, q) => `https://www.dol.gov/sites/dolgov/files/ETA/oflc/pdfs/LCA_Disclosure_Data_FY${fy}_Q${q}.xlsx`; const hudUrl = (stamp) => `https://www.huduser.gov/portal/datasets/usps/ZIP_CBSA_${stamp}.xlsx`; const oewsNext = VINTAGES.oewsYear + 1; const gazNext = VINTAGES.gazetteerYear + 1; const lcaNext = VINTAGES.lcaFiscalYear + 1; const hudYearNext = Number(VINTAGES.hudStamp.slice(2)) + 1; const targets = [[`OEWS MSA ${oewsNext}`, oewsMsaUrl(oewsNext)], [`OEWS National ${oewsNext}`, oewsNatUrl(oewsNext)], [`Census Gazetteer ${gazNext}`, gazetteerUrl(gazNext)], ...[1,2,3,4].map((q) => [`LCA FY${lcaNext} Q${q}`, lcaUrl(lcaNext, q)]), ...["03","06","09","12"].map((mm) => [`HUD ${mm}${hudYearNext}`, hudUrl(`${mm}${hudYearNext}`)])]; for (const [label, url] of targets) console.log(`${label}\t${url}`)' > targets.tsv
+          cat targets.tsv
+
+      # Ranged GET (never HEAD -- these hosts refuse it), same UA the pipeline uses, 5s between
+      # requests, hard abort after the first 403. Classification is three-way, not two:
+      #   200 | 206 -> PUBLISHED
+      #   404       -> not yet (the expected quiet case)
+      #   anything else (403, 5xx, 000/timeout) -> INCONCLUSIVE
+      - name: Probe upstream sources
+        id: probe
+        run: |
+          set -euo pipefail
+          UA="techpay-atlas research pipeline (personal project)"
+          PUBLISHED=""
+          INCONCLUSIVE=""
+          ABORTED=0
+          TOTAL_COUNT=0
+          INCONCLUSIVE_COUNT=0
+
+          while IFS=$'\t' read -r label url; do
+            if [ -z "$label" ]; then
+              continue
+            fi
+
+            if [ "$ABORTED" -eq 1 ]; then
+              echo "skip (aborted after prior 403): $label"
+              INCONCLUSIVE="${INCONCLUSIVE}- **${label}**: not probed - aborted after an earlier 403 in this run (see above)\n"
+              INCONCLUSIVE_COUNT=$((INCONCLUSIVE_COUNT + 1))
+              TOTAL_COUNT=$((TOTAL_COUNT + 1))
+              continue
+            fi
+
+            TOTAL_COUNT=$((TOTAL_COUNT + 1))
+
+            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 -r 0-1 -A "$UA" "$url" 2>/dev/null) || code="000"
+            if [ -z "$code" ]; then
+              code="000"
+            fi
+            echo "probe: $label -> $code ($url)"
+
+            case "$code" in
+              200|206)
+                PUBLISHED="${PUBLISHED}- **${label}**: ${url} (HTTP ${code})\n"
+                ;;
+              404)
+                echo "  not yet published"
+                ;;
+              403)
+                echo "  403 - blocked. Aborting remaining probes so we don't deepen the block."
+                INCONCLUSIVE="${INCONCLUSIVE}- **${label}**: HTTP 403 (blocked) - ${url}\n"
+                INCONCLUSIVE_COUNT=$((INCONCLUSIVE_COUNT + 1))
+                ABORTED=1
+                ;;
+              *)
+                echo "  unexpected status - treating as inconclusive, not as 'not published'"
+                INCONCLUSIVE="${INCONCLUSIVE}- **${label}**: HTTP ${code} (unexpected) - ${url}\n"
+                INCONCLUSIVE_COUNT=$((INCONCLUSIVE_COUNT + 1))
+                ;;
+            esac
+
+            sleep 5
+          done < targets.tsv
+
+          echo "totals: $TOTAL_COUNT probed-or-skipped, $INCONCLUSIVE_COUNT inconclusive"
+
+          {
+            echo "published<<PUBLISHED_EOF"
+            printf '%b' "$PUBLISHED"
+            echo "PUBLISHED_EOF"
+            echo "inconclusive<<INCONCLUSIVE_EOF"
+            printf '%b' "$INCONCLUSIVE"
+            echo "INCONCLUSIVE_EOF"
+            if [ -n "$PUBLISHED" ]; then echo "has_published=true"; else echo "has_published=false"; fi
+            if [ -n "$INCONCLUSIVE" ]; then echo "has_inconclusive=true"; else echo "has_inconclusive=false"; fi
+            echo "total_count=$TOTAL_COUNT"
+            echo "inconclusive_count=$INCONCLUSIVE_COUNT"
+          } >> "$GITHUB_OUTPUT"
+
+      # Fires on EITHER signal: a real published find, or any inconclusive result -- an
+      # inconclusive sweep is itself something a human needs to know about (see header comment).
+      - name: Open or update watch issue
+        if: steps.probe.outputs.has_published == 'true' || steps.probe.outputs.has_inconclusive == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PUBLISHED: ${{ steps.probe.outputs.published }}
+          INCONCLUSIVE: ${{ steps.probe.outputs.inconclusive }}
+          HAS_INCONCLUSIVE: ${{ steps.probe.outputs.has_inconclusive }}
+        run: |
+          set -euo pipefail
+          {
+            echo "## Published"
+            echo
+            echo "Targets that answered 200/206 this run -- these look like a real new vintage."
+            echo
+            if [ -n "$PUBLISHED" ]; then
+              printf '%s\n' "$PUBLISHED"
+            else
+              echo "_None this run._"
+            fi
+            echo
+            echo "## Inconclusive - could not verify"
+            echo
+            if [ "$HAS_INCONCLUSIVE" = "true" ]; then
+              echo "**These targets did NOT return a clean 404. That means the sweep could NOT confirm"
+              echo "whether they are published or not -- this is NOT a signal that nothing is available,"
+              echo "only that the check itself failed for these targets (most likely an upstream Akamai"
+              echo "block on bls.gov/dol.gov -- see the header comment in"
+              echo "\`.github/workflows/watch-sources.yml\` for the measured behaviour). Verify these"
+              echo "manually before concluding there is nothing new.**"
+              echo
+              printf '%s\n' "$INCONCLUSIVE"
+            else
+              echo "_None -- every other target came back a clean 404 (not yet published)._"
+            fi
+            echo
+            echo "---"
+            echo "_Automated monthly sweep from \`.github/workflows/watch-sources.yml\`. Targets are"
+            echo "derived from \`pipeline/vintages.ts\`. This workflow never downloads data or runs the"
+            echo "pipeline -- a refresh is done locally and landed as a reviewed PR._"
+          } > issue-body.md
+
+          # Reuse an existing open data-refresh issue by commenting, else create one. NOTE: the
+          # "data-refresh" label must already exist in the repo or this lookup always returns
+          # empty and a duplicate issue opens every month (see header comment).
+          existing=$(gh issue list --repo "$GITHUB_REPOSITORY" --label data-refresh --state open --json number --jq '.[0].number // empty')
+          if [ -n "$existing" ]; then
+            echo "commenting on existing issue #$existing"
+            gh issue comment "$existing" --repo "$GITHUB_REPOSITORY" --body-file issue-body.md
+          else
+            echo "creating new issue"
+            gh issue create --repo "$GITHUB_REPOSITORY" \
+              --title "Upstream source watch: $(date -u +%Y-%m-%d)" \
+              --label data-refresh \
+              --body-file issue-body.md
+          fi
+
+      # A fully-blocked sweep (every target inconclusive) must NOT look green: that's exactly the
+      # "silent degrade" this workflow exists to prevent. Fails AFTER the issue step above has
+      # already posted, so the issue still records what happened.
+      - name: Fail if the entire sweep was blocked
+        if: steps.probe.outputs.total_count != '0' && steps.probe.outputs.inconclusive_count == steps.probe.outputs.total_count
+        run: |
+          echo "::error::All ${{ steps.probe.outputs.total_count }} probe target(s) came back inconclusive this run -- the watcher could not confirm ANY vintage. Treat this as 'blocked', not as 'no new data'."
+          exit 1
