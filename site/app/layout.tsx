@@ -29,8 +29,10 @@ export const metadata: Metadata = {
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  // data-scroll-behavior acknowledges the `scroll-behavior: smooth` the section nav
+  // relies on, so Next does not warn about it during route transitions.
   return (
-    <html lang="en">
+    <html lang="en" data-scroll-behavior="smooth">
       <body>{children}</body>
     </html>
   )

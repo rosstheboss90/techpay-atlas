@@ -106,9 +106,12 @@ export function SalaryMap({ meta, salaries, soc, metric, adjusted, selected, dar
           <span className="legend-value">{formatLegendValue(domain[1], metric)}</span>
         </span>
         <span className="legend-size" aria-hidden="true">
-          <svg width="60" height="28" className="legend-bubbles">
-            <circle cx="14" cy="21" r={bubbleRadius(smallEmp, maxEmp)} className="legend-bubble" />
-            <circle cx="42" cy="14" r={bubbleRadius(maxEmp, maxEmp)} className="legend-bubble" />
+          {/* Nested and baseline-aligned, at the map's own radius scale. The box has
+              to fit bubbleRadius()'s 26px max: the old 60x28 clipped the large
+              circle on all four sides, which rendered as a stray squiggle. */}
+          <svg width="58" height="56" className="legend-bubbles">
+            <circle cx="28" cy={54 - bubbleRadius(maxEmp, maxEmp)} r={bubbleRadius(maxEmp, maxEmp)} className="legend-bubble" />
+            <circle cx="28" cy={54 - bubbleRadius(smallEmp, maxEmp)} r={bubbleRadius(smallEmp, maxEmp)} className="legend-bubble" />
           </svg>
           <span>{fmtNum(smallEmp)}–{fmtNum(maxEmp)} jobs</span>
         </span>

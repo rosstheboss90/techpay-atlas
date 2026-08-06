@@ -58,13 +58,18 @@ html { scroll-behavior: smooth; }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
 body {
   background: var(--bg); color: var(--ink); font-family: var(--font);
-  font-size: var(--fs-body); line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }
-h1, h2, h3 { line-height: 1.2; letter-spacing: -0.02em; font-weight: 650; }
 button, select, input { font-family: inherit; }
 
-.page { max-width: var(--page-max); margin: 0 auto; padding: var(--s5) var(--s5) var(--s8); }
+/* Base type and heading treatment are scoped to .page, not global: /about is
+   deliberately isolated under .ab-root with its own serif scale ("scoped so it
+   never touches the tool" — about.css), and a global rule would leak into it. */
+.page {
+  max-width: var(--page-max); margin: 0 auto; padding: var(--s5) var(--s5) var(--s8);
+  font-size: var(--fs-body); line-height: 1.5;
+}
+.page h1, .page h2, .page h3 { line-height: 1.2; letter-spacing: -0.02em; font-weight: 650; }
 
 /* ── Masthead ────────────────────────────────────────────────────────── */
 .masthead {
@@ -88,8 +93,8 @@ button, select, input { font-family: inherit; }
   position: sticky; top: 0; z-index: 20;
   display: flex; gap: var(--s1); overflow-x: auto; scrollbar-width: none;
   margin: 0 calc(var(--s5) * -1); padding: 0 var(--s5);
-  background: color-mix(in srgb, var(--bg) 88%, transparent);
-  backdrop-filter: blur(8px);
+  background: color-mix(in srgb, var(--bg) 95%, transparent);
+  backdrop-filter: blur(10px);
   border-bottom: var(--rule);
   height: var(--nav-h); align-items: center;
 }
@@ -250,6 +255,7 @@ button, select, input { font-family: inherit; }
 /* Height is pinned because the band draws with preserveAspectRatio="none": only
    the horizontal axis is meant to stretch. */
 .tl-band { flex: 1 1 auto; min-width: 0; max-width: 620px; height: 10px; }
+.tl-band-track { fill: var(--line); }
 .tl-band-inner { fill: var(--accent); opacity: 0.8; }
 .tl-band-median { stroke: var(--ink); stroke-width: 2; }
 .tl-median {
@@ -435,9 +441,12 @@ button, select, input { font-family: inherit; }
    the slack. Replaces width:160px + max-width:240px, which ended the row at
    ~660px of a 1180px container and wrapped almost every name onto two lines. */
 .rsim-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+/* Column widths must be absolute units, never max-content: each row is its own
+   grid, so a content-sized first column resolves per row and every bar would
+   start at a different x — which makes the bar lengths non-comparable. */
 .rsim-row {
   display: grid; align-items: center; gap: var(--s4);
-  grid-template-columns: minmax(0, max-content) minmax(120px, 1fr) minmax(0, 22ch) auto;
+  grid-template-columns: 34ch minmax(120px, 1fr) 22ch auto;
   padding: var(--s2) 0; border-top: 1px solid var(--line-soft);
 }
 .rsim-row:first-child { border-top: none; }
@@ -473,7 +482,9 @@ button, select, input { font-family: inherit; }
   .rsim-name { max-width: none; white-space: normal; }
   .rsim-med { order: 2; align-self: start; }
   .rsim-bar { order: 3; align-self: center; }
-  .rsim-fact { order: 4; text-align: right; white-space: nowrap; }
+  /* No nowrap: at 360px the longest fact ("about the same pay") reaches the
+     edge exactly, so it would clip on anything narrower. */
+  .rsim-fact { order: 4; text-align: right; }
   .rsim-chip { grid-column: 1 / -1; order: 5; }
   .tl-row-body { gap: var(--s3); }
   .tl-median { font-size: var(--fs-body); }

@@ -48,6 +48,9 @@ function Band({ stats, rpp, adjusted, domain, width = 560 }: { stats: TitleStats
   return (
     <svg viewBox={`0 0 ${width} ${h}`} width={width} height={h} preserveAspectRatio="none"
          className="tl-band" role="img" aria-label={label}>
+      {/* Track spans the family's shared domain, so a bar's position and length
+          read against a constant reference instead of floating in space. */}
+      <rect x={0} y={4} width={width} height={2} rx={1} className="tl-band-track" />
       {p25 != null && p75 != null && <rect x={x(p25)} y={2} width={x(p75) - x(p25)} height={6} rx={2} className="tl-band-inner" />}
       {median != null && <line x1={x(median)} x2={x(median)} y1={0} y2={h} className="tl-band-median" />}
     </svg>
