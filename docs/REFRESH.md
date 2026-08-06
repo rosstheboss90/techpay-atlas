@@ -27,8 +27,8 @@ an upstream file publishes. Release cadences:
 4. ⏳ `npm run archive:nat` — **NOT YET IMPLEMENTED.** Will archive the new national vintage,
    append-only (existing vintages skipped, never rewritten; `--force` to overwrite, `--year <YYYY>`
    for one vintage). Blocked on the national parser — see "Status".
-5. ⏳ `npm run archive:cpi` — **NOT YET IMPLEMENTED.** Will refresh the committed CPI-U deflator.
-   Blocked on confirming the BLS flat-file name — see "Status".
+5. `npm run archive:cpi` — refreshes the committed CPI-U deflator (`data/history/cpi-u.json`) from
+   the BLS **API**, not a file download. See "CPI comes from the API" below.
 6. `npm run archive:verify` — **if it reports anything, stop and diagnose.** See "Reading the
    tripwire" below. Never raise a threshold to make it pass. (Exits 0 with "nothing to verify"
    until `data/history/` has content, which requires step 4.)
@@ -37,9 +37,28 @@ an upstream file publishes. Release cadences:
 9. Commit and open a **PR**. Do not push straight to `main` — `deploy.yml` fires on push to main
    and runs no tests; `ci.yml` only gates PRs.
 
-**Scripts that exist today:** `download`, `pipeline`, `archive:verify`, `test`. Steps 4 and 5 are
-written down now because they are the intended shape and the surrounding machinery already assumes
-them — but they will fail with "missing script" until the work under "Status" is finished.
+**Scripts that exist today:** `download`, `pipeline`, `archive:cpi`, `archive:verify`, `test`.
+Step 4 (`archive:nat`) is written down now because it is the intended shape and the surrounding
+machinery already assumes it — but it will fail with "missing script" until the work under
+"Status" is finished.
+
+## CPI comes from the API
+
+`npm run archive:cpi` calls `https://api.bls.gov/publicAPI/v1/timeseries/data/` — **a different
+host from the Akamai-blocked `download.bls.gov`, and reachable**. It is also the better source:
+structured JSON instead of a ~20MB space-padded fixed-width flat file.
+
+Limits: the unauthenticated v1 API allows 10 years and 25 series per request. `archive-cpi.ts`
+throws if the span exceeds 10 years rather than truncating — register a free v2 key at
+`data.bls.gov/registrationEngine/` (20 years, 50 series, 500 queries/day) when that day comes.
+
+⚠️ A `value` can be the string `"-"` when an observation is unavailable — the 2025 lapse in
+appropriations did exactly that to October 2025. The parser throws on it rather than coercing, and
+`archive-cpi.ts` separately verifies every year in `OEWS_NAT_YEARS` is present before writing.
+
+**The API cannot replace the OEWS file downloads.** OEWS series exist in the API but it serves only
+the *current* reference period — requesting 2021–2024 returns `No Data Available` for each. The
+historical vintages are only available as the archived zips on the blocked host.
 
 ## Marker semantics, and the two cases they do NOT cover
 
@@ -113,20 +132,26 @@ page depends on the measured years, not on an estimate._
 
 ## Status
 
-The refresh machinery is complete and tested. **The backfill itself has not run**: the national
-OEWS vintages and the CPI-U file could not be downloaded because of the Akamai block described
-above. Outstanding, in order:
+The refresh machinery is complete and tested. **CPI is archived** (`data/history/cpi-u.json`,
+2019–2025). **The OEWS backfill has not run** — the national vintage files could not be downloaded
+because of the Akamai block described above. Outstanding, in order:
 
-1. `npm run download` — fetch the national OEWS vintages + CPI (small files; the MSA and LCA data
-   is already present).
-2. Confirm the CPI flat-file name. `pipeline/download.ts` uses
-   `cu.data.1.AllItems`, marked in-code as **unverified** — it could not be checked against the
-   live directory listing.
-3. Build `pipeline/lib/parse-oews-nat.ts`. Deliberately deferred: the national file's real column
+1. `npm run download` — fetch the national OEWS vintages. Small files, one row per occupation; the
+   MSA and LCA data is already on disk. Requires the block to have cleared.
+2. Build `pipeline/lib/parse-oews-nat.ts`. Deliberately deferred: the national file's real column
    set and its industry/ownership grouping must be *read*, not assumed, or the parser may silently
-   select a cross-industry subset instead of the total row.
-4. Verify the top-code boundary year in `OEWS_TOP_CODE_BY_YEAR` — currently marked `⚠️ UNVERIFIED`.
-5. Run the backfill and fill in "Observed vintage coverage" above.
+   select a cross-industry subset instead of the total row. One hint already in hand — the MSA
+   zip's own `file_descriptions.xlsx` describes `MSA_M2025_dl.xlsx` as *"cross-industry,
+   cross-ownership"*, which suggests the national file is the same shape (one row per occupation),
+   but confirm against the file.
+3. Run `npm run archive:nat`, then `npm run archive:verify`, then fill in "Observed vintage
+   coverage" above.
+
+**No longer outstanding:** the CPI source (now the API) and the top-code boundary year — see the
+comment on `OEWS_TOP_CODE_BY_YEAR` in `pipeline/vintages.ts`. Measured against the May 2025 MSA
+file, **no registry SOC is ever top-coded** (zero `#` cells in 5,371 rows across all ten percentile
+columns), so the per-year table is never actually consulted for a tech role. Chase the true
+threshold only if `archive-verify` reports a non-empty `capped` array for some vintage.
 
 ## Why not CI
 
