@@ -50,3 +50,35 @@ export function buildNationalArchive(
   }
   return { year, topCode, source, roles }
 }
+
+export interface ImplausibleJump {
+  soc: string; from: number; to: number; fromValue: number; toValue: number; change: number
+}
+
+/** Nominal year-over-year median moves larger than `threshold` (fraction, e.g. 0.4 = 40%).
+ *
+ *  This is a tripwire, not a statistic: a wrong vintage top code or a misaligned deflator
+ *  produces exactly this signature, and without it the result is a plausible-looking wrong chart
+ *  rather than an error. Roles absent from either vintage are skipped — a young SOC code appearing
+ *  for the first time is not a jump. */
+export function findImplausibleJumps(
+  vintages: readonly NationalArchive[],
+  threshold: number,
+): ImplausibleJump[] {
+  const sorted = [...vintages].sort((a, b) => a.year - b.year)
+  const out: ImplausibleJump[] = []
+  for (let i = 1; i < sorted.length; i++) {
+    const prev = sorted[i - 1], cur = sorted[i]
+    for (const [soc, curRole] of Object.entries(cur.roles)) {
+      const prevRole = prev.roles[soc]
+      if (!prevRole) continue
+      const a = prevRole.p50, b = curRole.p50
+      if (a === null || b === null || a === 0) continue
+      const change = (b - a) / a
+      if (Math.abs(change) > threshold) {
+        out.push({ soc, from: prev.year, to: cur.year, fromValue: a, toValue: b, change })
+      }
+    }
+  }
+  return out
+}
