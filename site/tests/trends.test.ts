@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { pathPoints, rankByChange, realDomain } from '../lib/trends'
+import { latestNominal, pathPoints, rankByChange, valueDomain } from '../lib/trends'
 import type { TrendsJson } from '../lib/trends-types'
 
 const fixture: TrendsJson = {
@@ -34,7 +34,7 @@ describe('rankByChange', () => {
 })
 
 describe('pathPoints', () => {
-  it('drops leading nulls so a ragged series starts where its data does', () => {
+  it('drops leading nulls so a ragged series starts where its data does (real, the default)', () => {
     expect(pathPoints(fixture, '15-1252')).toEqual([
       { year: 2021, value: 120 }, { year: 2022, value: 110 },
     ])
@@ -45,14 +45,45 @@ describe('pathPoints', () => {
   it('returns an empty array for an unknown role rather than throwing', () => {
     expect(pathPoints(fixture, '99-9999')).toEqual([])
   })
+  it('reads real values when mode is explicitly "real"', () => {
+    expect(pathPoints(fixture, '15-1252', 'real')).toEqual([
+      { year: 2021, value: 120 }, { year: 2022, value: 110 },
+    ])
+  })
+  it('reads nominal values when mode is "nominal"', () => {
+    expect(pathPoints(fixture, '15-1252', 'nominal')).toEqual([
+      { year: 2021, value: 100 }, { year: 2022, value: 110 },
+    ])
+  })
 })
 
-describe('realDomain', () => {
-  it('spans the min and max real value across every role', () => {
-    expect(realDomain(fixture)).toEqual([95, 120])
+describe('valueDomain', () => {
+  it('spans the min and max real value across every role by default', () => {
+    expect(valueDomain(fixture)).toEqual([95, 120])
   })
   it('ignores nulls', () => {
     const only: TrendsJson = { ...fixture, roles: { '15-1252': fixture.roles['15-1252'] } }
-    expect(realDomain(only)).toEqual([110, 120])
+    expect(valueDomain(only)).toEqual([110, 120])
+  })
+  it('spans nominal values when asked, which differ from the real domain', () => {
+    // Real domain is [95, 120] (see above); nominal figures are never deflated and land on
+    // their own span — 15-1252 nominal is [100, 110], 11-3021 nominal is [80, 85, 90, 100].
+    expect(valueDomain(fixture, 'nominal')).toEqual([80, 110])
+  })
+})
+
+describe('latestNominal', () => {
+  it('returns the most recent non-null nominal figure and its year', () => {
+    expect(latestNominal(fixture, '11-3021')).toEqual({ year: 2022, value: 100 })
+  })
+  it('skips trailing nulls to find the true latest reported year', () => {
+    const trailingNull: TrendsJson = {
+      ...fixture,
+      roles: { ...fixture.roles, '11-3021': { ...fixture.roles['11-3021'], nominal: [80, 85, 90, null] } },
+    }
+    expect(latestNominal(trailingNull, '11-3021')).toEqual({ year: 2021, value: 90 })
+  })
+  it('returns null for an unknown role rather than throwing', () => {
+    expect(latestNominal(fixture, '99-9999')).toBeNull()
   })
 })

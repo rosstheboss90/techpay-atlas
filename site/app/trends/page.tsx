@@ -3,14 +3,24 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { TrendsPath } from '../../components/TrendsPath'
 import { TrendsRanked } from '../../components/TrendsRanked'
+import { TrendsTable } from '../../components/TrendsTable'
 import { loadTrends } from '../../lib/data'
+import { fmtUsd } from '../../lib/format'
+import { latestNominal } from '../../lib/trends'
 import type { TrendsJson } from '../../lib/trends-types'
 import { DEFAULT_STATE, parseState } from '../../lib/url-state'
+
+// U+2212 minus, matching TrendsRanked's bars, so the lead's secondary figure reads consistently
+// with the ranking below it.
+const pct = (v: number) => `${v >= 0 ? '+' : '−'}${Math.abs(v * 100).toFixed(1)}%`
 
 export default function TrendsPage() {
   const [trends, setTrends] = useState<TrendsJson | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [selected, setSelected] = useState<string>(DEFAULT_STATE.role)
+  // Nominal/real toggle for the path chart and table only — never the ranked bars, which are a
+  // real-change metric by definition (see the comment on rankByChange in lib/trends.ts).
+  const [nominal, setNominal] = useState(false)
 
   useEffect(() => {
     loadTrends()
@@ -40,6 +50,9 @@ export default function TrendsPage() {
   if (!trends) return <main className="page"><p className="loading">Loading…</p></main>
 
   const roleCount = Object.keys(trends.roles).length
+  const sel = trends.roles[selected]
+  const lead = latestNominal(trends, selected)
+  const mode = nominal ? 'nominal' : 'real'
 
   return (
     <main className="page">
@@ -54,6 +67,13 @@ export default function TrendsPage() {
         <Link href="/" className="masthead-link">← TechPay Atlas</Link>
       </header>
 
+      {sel && lead && (
+        <p className="t-lead">
+          <strong>{sel.label}</strong> · {fmtUsd(lead.value)} median · {trends.deflator.period} {lead.year}
+          <span className="t-lead-sub"> — {pct(sel.changeReal)} real change since {trends.headlineFrom}</span>
+        </p>
+      )}
+
       <TrendsRanked trends={trends} selected={selected} onSelect={setSelected} />
 
       <p className="t-note">
@@ -61,7 +81,16 @@ export default function TrendsPage() {
         starting line. See "How to read this" below before drawing conclusions from the size of a bar.
       </p>
 
-      <TrendsPath trends={trends} selected={selected} />
+      <div className="tr-toggle-row">
+        <button type="button" className="col-toggle" aria-pressed={nominal}
+                onClick={() => setNominal(v => !v)}>
+          Show as-paid dollars (not inflation-adjusted)
+        </button>
+      </div>
+
+      <TrendsPath trends={trends} selected={selected} mode={mode} />
+
+      <TrendsTable trends={trends} selected={selected} />
 
       {trends.skippedRoles.length > 0 && (
         <p className="t-note">

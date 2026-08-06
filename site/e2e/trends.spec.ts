@@ -44,3 +44,21 @@ test('trends: figures render, rank order, selection, keyboard, caveats', async (
   const countPoints = (p: string | null) => (p ?? '').trim().split(/\s+/).filter(Boolean).length
   expect(countPoints(raggedPoints)).toBeLessThan(countPoints(fullPoints))
 })
+
+test('trends: year-by-year table shows real ground-truth figures for the default role', async ({ page }) => {
+  await page.goto('/trends')
+  await expect(page.getByRole('heading', { name: 'Pay trends' })).toBeVisible()
+
+  // Default-selected role is 15-1252 (Software Developers). Against the real emitted data
+  // (base year 2025), its 2025 row should read $135,980 in both the nominal and the base-year
+  // ($) column, and 2019 predates the role's own BLS code — so it must read the reason string,
+  // not a blank or a dash.
+  const table = page.locator('table.tr-table')
+  await expect(table).toBeVisible()
+
+  const row2025 = table.locator('tbody tr').filter({ hasText: '2025' })
+  await expect(row2025.getByRole('cell', { name: '$135,980' })).toHaveCount(2)
+
+  const row2019 = table.locator('tbody tr').filter({ hasText: '2019' })
+  await expect(row2019.getByText('no separate BLS code')).toBeVisible()
+})

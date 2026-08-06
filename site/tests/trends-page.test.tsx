@@ -86,4 +86,49 @@ describe('/trends page', () => {
     render(<Page />)
     await waitFor(() => expect(screen.getByText(/boom/)).toBeInTheDocument())
   })
+
+  it('leads with the latest nominal median and its year for the selected role', async () => {
+    const Page = (await import('../app/trends/page')).default
+    const { container } = render(<Page />)
+    // Default-selected role is 15-1252 (fixture nominal [100, 110], years [2021, 2022]) —
+    // the latest reported nominal figure is $110 in 2022, not the deflated $110/$120 pair.
+    // Scoped to .t-lead: the table below also shows $110 in its base-year row, coincidentally
+    // equal to the lead figure in this small fixture.
+    await waitFor(() => expect(container.querySelector('.t-lead')).toBeTruthy())
+    const lead = container.querySelector('.t-lead')
+    expect(lead?.textContent).toMatch(/\$110/)
+    expect(lead?.textContent).toMatch(/2022/)
+  })
+
+  it('renders a nominal/real toggle that changes what the path chart plots', async () => {
+    const Page = (await import('../app/trends/page')).default
+    const { container } = render(<Page />)
+    await waitFor(() => expect(container.querySelector('[data-series="15-1252"]')).toBeInTheDocument())
+    const before = container.querySelector('[data-series="15-1252"]')?.getAttribute('points')
+
+    const toggle = screen.getByRole('button', { name: /as-paid/i })
+    expect(toggle.getAttribute('aria-pressed')).toBe('false')
+    toggle.click()
+
+    await waitFor(() => expect(toggle.getAttribute('aria-pressed')).toBe('true'))
+    await waitFor(() => {
+      const after = container.querySelector('[data-series="15-1252"]')?.getAttribute('points')
+      expect(after).not.toBe(before)
+    })
+  })
+
+  it('renders the year-by-year table for the selected role', async () => {
+    const Page = (await import('../app/trends/page')).default
+    render(<Page />)
+    await waitFor(() => expect(screen.getByRole('table')).toBeInTheDocument())
+  })
+
+  it('keeps the ranked figure describing itself as inflation-adjusted after switching to nominal mode', async () => {
+    const Page = (await import('../app/trends/page')).default
+    render(<Page />)
+    const toggle = await screen.findByRole('button', { name: /as-paid/i })
+    toggle.click()
+    const rankedCaption = document.querySelector('.tr-ranked .t-caption')
+    expect(rankedCaption?.textContent).toMatch(/adjusted for.*inflation/i)
+  })
 })

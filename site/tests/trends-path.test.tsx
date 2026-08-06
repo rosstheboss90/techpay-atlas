@@ -70,4 +70,43 @@ describe('TrendsPath', () => {
     const order = [...container.querySelectorAll('[data-series]')].map(n => n.getAttribute('data-series'))
     expect(order[order.length - 1]).toBe('11-3021')
   })
+
+  it('plots different y-coordinates in nominal mode than in real mode for the same role', () => {
+    // 11-3021 real is [95, 98, 105, 100], nominal is [80, 85, 90, 100] — different values, and
+    // the two modes also use different y-domains (valueDomain per mode), so both the point
+    // values and the domain they're mapped against change.
+    const real = render(<TrendsPath trends={fixture} selected="11-3021" mode="real" />)
+    const nominal = render(<TrendsPath trends={fixture} selected="11-3021" mode="nominal" />)
+    const realPoints = real.container.querySelector('[data-series="11-3021"]')?.getAttribute('points')
+    const nominalPoints = nominal.container.querySelector('[data-series="11-3021"]')?.getAttribute('points')
+    expect(realPoints).toBeTruthy()
+    expect(nominalPoints).toBeTruthy()
+    expect(nominalPoints).not.toBe(realPoints)
+  })
+
+  it('defaults to real mode when no mode prop is given', () => {
+    const withDefault = render(<TrendsPath trends={fixture} selected="11-3021" />)
+    const withExplicitReal = render(<TrendsPath trends={fixture} selected="11-3021" mode="real" />)
+    const a = withDefault.container.querySelector('[data-series="11-3021"]')?.getAttribute('points')
+    const b = withExplicitReal.container.querySelector('[data-series="11-3021"]')?.getAttribute('points')
+    expect(a).toBe(b)
+  })
+
+  it('states it is adjusted for inflation in real mode', () => {
+    render(<TrendsPath trends={fixture} selected="15-1252" mode="real" />)
+    expect(screen.getByText(/adjusted for inflation/i)).toBeInTheDocument()
+  })
+
+  it('does not claim inflation adjustment in nominal mode', () => {
+    render(<TrendsPath trends={fixture} selected="15-1252" mode="nominal" />)
+    // "Not adjusted for inflation" legitimately contains the substring "adjusted for inflation",
+    // so assert against the real-mode-only affirmative phrasing rather than that substring.
+    expect(screen.queryByText(/adjusted for inflation with cpi-u/i)).not.toBeInTheDocument()
+    expect(screen.getByText(/not adjusted for inflation/i)).toBeInTheDocument()
+  })
+
+  it('labels the nominal svg distinctly so assistive tech doesn\'t hear "real" for as-paid figures', () => {
+    render(<TrendsPath trends={fixture} selected="15-1252" mode="nominal" />)
+    expect(screen.getByRole('img', { name: /nominal median pay over time/i })).toBeInTheDocument()
+  })
 })
