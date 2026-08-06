@@ -55,10 +55,10 @@ describe('About page', () => {
     expect(screen.getByText('$114,000')).toBeInTheDocument()
   })
 
-  it('computes the similarity ladder live (the anchor’s pay-twin appears)', async () => {
+  it('computes the similarity ladder live (the anchor’s pay-twin appears, short label)', async () => {
     render(<About />)
-    // Database Architects tracks Software Developers closely -> shows up in the live figure
-    await waitFor(() => expect(screen.getByText('Database Architects')).toBeInTheDocument())
+    // Database Architects tracks Software Developers closely -> shows up (as its short label)
+    await waitFor(() => expect(screen.getByText('DB Architect')).toBeInTheDocument())
   })
 
   it('links back to the atlas', () => {
