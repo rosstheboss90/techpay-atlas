@@ -169,6 +169,7 @@ export interface TrendsJson {
   headlineTo: number
   deflator: { series: string; period: string; base: number }
   roles: Record<string, TrendsRole>
+  skippedRoles: string[]
   breaks: { year: number; note: string }[]
 }
 
@@ -378,6 +379,7 @@ export interface TrendsJson {
   headlineTo: number
   deflator: { series: string; period: string; base: number }
   roles: Record<string, TrendsRole>
+  skippedRoles: string[]
   breaks: { year: number; note: string }[]
 }
 ```
