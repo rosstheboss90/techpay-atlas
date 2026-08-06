@@ -87,6 +87,9 @@ export function RoleHeatmap({ meta, salaries, metric, adjusted, dark, selectedMe
         <span className="hm-count">{rows.length} metros</span>
       </div>
 
+      {/* The wrapper carries the right-edge fade that signals the table scrolls
+          horizontally — 21 role columns never fit the viewport. */}
+      <div className="hm-scrollwrap">
       <div className="hm-scroll">
         <table className="hm-table">
           <caption className="hm-caption">{caption}</caption>
@@ -142,6 +145,7 @@ export function RoleHeatmap({ meta, salaries, metric, adjusted, dark, selectedMe
             ))}
           </tbody>
         </table>
+      </div>
       </div>
     </section>
   )

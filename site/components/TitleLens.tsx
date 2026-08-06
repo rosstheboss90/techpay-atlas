@@ -70,9 +70,9 @@ export function TitleLens({ meta, cbsa, adjusted, onSelectRole }: Props) {
   }, [activeFamily, cbsa, adjusted, rpp])
 
   return (
-    <section className="title-lens" ref={rootRef}>
+    <section className="title-lens" ref={rootRef} aria-labelledby="tl-h">
       <header className="tl-head">
-        <h2>Job titles, not just SOC codes</h2>
+        <h2 id="tl-h">Job titles, not just SOC codes</h2>
         {titles && (
           <p className="tl-note">
             H-1B filings, {titles.lcaPeriod} · wages are midpoints of filed ranges — treat as floors, not offers.

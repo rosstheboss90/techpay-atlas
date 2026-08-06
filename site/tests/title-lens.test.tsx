@@ -97,7 +97,7 @@ describe('TitleLens', () => {
     expect(screen.queryByText('$140,000 (adj.)')).toBeNull()
   })
 
-  it('adjusted mode: no band draws outside its 140px track (regression for domain computed from nominal values while rows render adjusted ones)', async () => {
+  it('adjusted mode: no band draws outside its track (regression for domain computed from nominal values while rows render adjusted ones)', async () => {
     // A dedicated fixture where the metro's rpp (60) diverges sharply from 100, so a domain
     // built from nominal stats (pre-fix) would clip the adjusted bar hard against the track
     // edge — both p25 and p75 collapse to the same clamped x, producing a zero-width band.
@@ -124,10 +124,14 @@ describe('TitleLens', () => {
     await waitFor(() => expect(screen.getByText('Technical Program Manager')).toBeInTheDocument())
     expect(screen.getByText(/\(adj\.\)/)).toBeInTheDocument()
     const rect = container.querySelector('.tl-band-inner')!
+    // Read the track width from the band's own coordinate space rather than
+    // hard-coding it, so widening the band can't silently retire this guard.
+    const track = Number(rect.closest('svg')!.getAttribute('width'))
     const x = Number(rect.getAttribute('x'))
     const w = Number(rect.getAttribute('width'))
+    expect(track).toBeGreaterThan(0)
     expect(x).toBeGreaterThanOrEqual(0)
-    expect(x + w).toBeLessThanOrEqual(140)
+    expect(x + w).toBeLessThanOrEqual(track)
     expect(w).toBeGreaterThan(0) // must not collapse to a zero-width sliver clamped at the edge
   })
 
