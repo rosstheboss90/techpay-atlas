@@ -1,5 +1,6 @@
 'use client'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
 import { FilterBar } from '../components/FilterBar'
 import { HeadToHead } from '../components/HeadToHead'
 import { MetroPanel } from '../components/MetroPanel'
@@ -78,11 +79,14 @@ export default function Page() {
   return (
     <main className="page">
       <header className="masthead">
-        <h1>TechPay Atlas</h1>
-        <p className="tagline">
-          {role.label} pay across {meta.metros.length} US metros — BLS OEWS {meta.year}
-          {state.adjusted ? `, adjusted for cost of living (BEA RPP ${meta.rppYear})` : ''}
-        </p>
+        <div>
+          <h1>TechPay Atlas</h1>
+          <p className="tagline">
+            {role.label} pay across {meta.metros.length} US metros — BLS OEWS {meta.year}
+            {state.adjusted ? `, adjusted for cost of living (BEA RPP ${meta.rppYear})` : ''}
+          </p>
+        </div>
+        <Link href="/about" className="masthead-link">About the data →</Link>
       </header>
       <FilterBar roles={meta.roles} state={state} onChange={update} />
       <div className={state.metro ? 'hero-row has-panel' : 'hero-row'}>
