@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { looksLikeZip, markerTargetExists } from '../download'
+import { looksLikeZip, markerTargetExists } from '../lib/download-lib'
 
 describe('looksLikeZip', () => {
   it('accepts a buffer starting with the PK\\x03\\x04 local-file-header signature', () => {
