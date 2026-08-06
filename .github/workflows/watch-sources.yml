@@ -72,10 +72,21 @@ jobs:
       # the cjs output format", since tsx's -e evaluator compiles to CJS. `require()` on one line
       # is the only form that reliably ran and printed. Do NOT "clean this up" into a multi-line
       # or `import`-based script without re-verifying output actually appears.
+      #
+      # HUD cadence: huduser.gov republishes the ZIP-CBSA crosswalk QUARTERLY, stamped MMYYYY
+      # with MM in {03,06,09,12} -- NOT annually. An earlier version of this workflow watched
+      # "the same four quarters one year after hudStamp's year", which for hudStamp=032026 meant
+      # probing 032027/062027/092027/122027 and would have silently skipped 062026, 092026 and
+      # 122026 -- the three releases actually due next. The correct target set is the next FOUR
+      # quarterly stamps in sequence strictly after the configured one (rolling the year at `12`),
+      # e.g. hudStamp=032026 -> 062026, 092026, 122026, 032027. If hudStamp's month is ever
+      # something other than 03/06/09/12, that's a vintages.ts data bug, not an upstream signal --
+      # this step throws and fails loudly rather than guessing, matching vintages.ts's own
+      # topCodeForYear() convention of never silently substituting a wrong value.
       - name: Compute probe targets
         run: |
           set -euo pipefail
-          npx tsx -e 'const { VINTAGES } = require("./pipeline/vintages"); const yy = (year) => String(year).slice(2); const oewsMsaUrl = (year) => `https://www.bls.gov/oes/special-requests/oesm${yy(year)}ma.zip`; const oewsNatUrl = (year) => `https://www.bls.gov/oes/special-requests/oesm${yy(year)}nat.zip`; const gazetteerUrl = (year) => `https://www2.census.gov/geo/docs/maps-data/data/gazetteer/${year}_Gazetteer/${year}_Gaz_cbsa_national.zip`; const lcaUrl = (fy, q) => `https://www.dol.gov/sites/dolgov/files/ETA/oflc/pdfs/LCA_Disclosure_Data_FY${fy}_Q${q}.xlsx`; const hudUrl = (stamp) => `https://www.huduser.gov/portal/datasets/usps/ZIP_CBSA_${stamp}.xlsx`; const oewsNext = VINTAGES.oewsYear + 1; const gazNext = VINTAGES.gazetteerYear + 1; const lcaNext = VINTAGES.lcaFiscalYear + 1; const hudYearNext = Number(VINTAGES.hudStamp.slice(2)) + 1; const targets = [[`OEWS MSA ${oewsNext}`, oewsMsaUrl(oewsNext)], [`OEWS National ${oewsNext}`, oewsNatUrl(oewsNext)], [`Census Gazetteer ${gazNext}`, gazetteerUrl(gazNext)], ...[1,2,3,4].map((q) => [`LCA FY${lcaNext} Q${q}`, lcaUrl(lcaNext, q)]), ...["03","06","09","12"].map((mm) => [`HUD ${mm}${hudYearNext}`, hudUrl(`${mm}${hudYearNext}`)])]; for (const [label, url] of targets) console.log(`${label}\t${url}`)' > targets.tsv
+          npx tsx -e 'const { VINTAGES } = require("./pipeline/vintages"); const yy = (year) => String(year).slice(2); const oewsMsaUrl = (year) => `https://www.bls.gov/oes/special-requests/oesm${yy(year)}ma.zip`; const oewsNatUrl = (year) => `https://www.bls.gov/oes/special-requests/oesm${yy(year)}nat.zip`; const gazetteerUrl = (year) => `https://www2.census.gov/geo/docs/maps-data/data/gazetteer/${year}_Gazetteer/${year}_Gaz_cbsa_national.zip`; const lcaUrl = (fy, q) => `https://www.dol.gov/sites/dolgov/files/ETA/oflc/pdfs/LCA_Disclosure_Data_FY${fy}_Q${q}.xlsx`; const hudUrl = (stamp) => `https://www.huduser.gov/portal/datasets/usps/ZIP_CBSA_${stamp}.xlsx`; const oewsNext = VINTAGES.oewsYear + 1; const gazNext = VINTAGES.gazetteerYear + 1; const lcaNext = VINTAGES.lcaFiscalYear + 1; const QUARTER_MONTHS = ["03","06","09","12"]; const hudMm = VINTAGES.hudStamp.slice(0,2); const hudYyyy = Number(VINTAGES.hudStamp.slice(2)); const hudIdx = QUARTER_MONTHS.indexOf(hudMm); if (hudIdx === -1) { throw new Error(`vintages.ts hudStamp "${VINTAGES.hudStamp}" has an unexpected month "${hudMm}" -- expected one of 03/06/09/12, cannot compute next HUD vintages`) } const hudStamps = []; let hi = hudIdx, hy = hudYyyy; for (let k = 0; k < 4; k++) { hi += 1; if (hi === QUARTER_MONTHS.length) { hi = 0; hy += 1 } hudStamps.push(`${QUARTER_MONTHS[hi]}${hy}`) } const targets = [[`OEWS MSA ${oewsNext}`, oewsMsaUrl(oewsNext)], [`OEWS National ${oewsNext}`, oewsNatUrl(oewsNext)], [`Census Gazetteer ${gazNext}`, gazetteerUrl(gazNext)], ...[1,2,3,4].map((q) => [`LCA FY${lcaNext} Q${q}`, lcaUrl(lcaNext, q)]), ...hudStamps.map((stamp) => [`HUD ${stamp}`, hudUrl(stamp)])]; for (const [label, url] of targets) console.log(`${label}\t${url}`)' > targets.tsv
           cat targets.tsv
 
       # Ranged GET (never HEAD -- these hosts refuse it), same UA the pipeline uses, 5s between
