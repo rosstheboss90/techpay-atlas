@@ -347,6 +347,28 @@ marked UNVERIFIED and is confirmed against the real files in a later task." -- p
 
 Markers are keyed by basename, so bumping a vintage URL while the old file is still on disk makes the run print `skip` and change nothing.
 
+> **⚠️ CORRECTION (found in review of the first implementation, commit `f72f5db`).** The design
+> originally written below — "current iff the recorded URL is in `configuredUrls`" — **does not fix
+> the bug**, because every multi-URL source keeps last year's URL as a fallback and the runbook
+> *demotes* rather than removes it. After a bump, `src.urls = [oesm26, oesm25]`, the recorded
+> oesm25 is still a member, and the source is skipped. T1 survives for `oews`, `gazetteer`, and
+> `hud`; only single-URL `lca-*` works.
+>
+> **The implemented design is a three-line marker:** fetched URL, basename, and the *preferred*
+> URL (`configuredUrls[0]`) at fetch time. Current iff the recorded preferred still equals
+> `configuredUrls[0]` **and** the fetched URL is still in `configuredUrls` **and** the file exists.
+> A bump changes `configuredUrls[0]` and invalidates; falling back at fetch time does not.
+>
+> Two further review findings folded into the same fix: the skip path must **rewrite** a
+> non-current-format marker or legacy migration never actually happens, and a `urlBasename()`
+> helper replaces `path.basename` on URLs (on Windows that is `path.win32.basename`, which works on
+> URLs only by accident and breaks on a query string). The marker write path is pinned to the read
+> path by a `formatMarker()` round-trip test.
+>
+> **Known limitation, must be documented in `docs/REFRESH.md`:** if the preferred vintage 404s at
+> download time and the fallback is used, the source stays "current" and will not automatically
+> pick up the preferred vintage once it publishes. Delete that source's `.done` marker to retry.
+
 **Files:**
 - Modify: `pipeline/lib/download-lib.ts` (replace `markerTargetExists` with `markerIsCurrent`; update marker write)
 - Modify: `pipeline/tests/download.test.ts` (replace the `markerTargetExists` describe block)
@@ -1484,6 +1506,33 @@ single-vintage writer has nothing to compare against." -- pipeline/lib/history.t
 **Files:**
 - Create: `.github/workflows/watch-sources.yml`
 
+> **⚠️ CORRECTION (measured 2026-08-06).** The probe design below is unsafe as written. Verified
+> from this box: `bls.gov` and `dol.gov` sit behind `AkamaiGHost`, which returns **403 "Access
+> Denied"** to automated requests once a modest request rate is exceeded — for *every* URL,
+> including ones that certainly exist and ones that certainly do not. `curl -I` (HEAD) is refused
+> outright. Meanwhile census.gov, bea.gov and huduser.gov answered normally, so this is
+> agency-specific, not an egress fault.
+>
+> A probe that treats only `200` as "published" therefore degrades **silently**: under a 403 it
+> finds nothing, opens no issue, and reports success. A watcher that cannot distinguish "not
+> published yet" from "we were blocked" is worse than no watcher, because it manufactures
+> confidence.
+>
+> **Required changes to the implementation below:**
+> 1. Probe with a **ranged GET** (`curl -r 0-1`), not `curl -I` — HEAD is refused by Akamai.
+> 2. Classify three outcomes, not two: `200/206` → published · `404` → not yet · **anything else
+>    (403, 5xx, timeout) → INCONCLUSIVE**.
+> 3. If any probe is inconclusive, the job must **still open/comment on the issue**, saying which
+>    probes could not be determined and why. Never let an inconclusive sweep look like a clean one.
+> 4. Rate-limit the sweep: sleep ~5s between probes and stop after the first 403, since continuing
+>    only deepens the block.
+> 5. Set the same `User-Agent` the pipeline uses.
+>
+> Note the probe may be inconclusive from GitHub-hosted runners as a rule, since Akamai commonly
+> treats cloud egress as automated traffic. If the first live run comes back all-403, that is a
+> finding to report, not a bug to retry around — the fallback is a calendar reminder keyed to the
+> release cadences in `docs/REFRESH.md`.
+
 - [ ] **Step 1: Create the workflow**
 
 ```yaml
@@ -1640,8 +1689,14 @@ when an upstream file publishes. Release cadences:
 2. **Add the new year's top code to `OEWS_TOP_CODE_BY_YEAR`.** `topCodeForYear` throws for an
    unrecorded vintage rather than guessing — that is deliberate. Verify the value against BLS's
    technical notes; do not copy the previous year's.
-3. `npm run download` — markers are keyed on URL, so a bumped vintage re-downloads and an unchanged
-   one is skipped. No need to delete `.done` files by hand.
+3. `npm run download` — markers record the vintage's *preferred* URL, so bumping step 1 invalidates
+   them and the new vintage re-downloads; unchanged sources are skipped. No need to delete `.done`
+   files by hand for an ordinary bump.
+
+   **Exception.** If a preferred URL 404s at download time (BLS has not published yet) the run falls
+   back to the previous vintage and the marker stays current — it will NOT automatically pick up the
+   preferred vintage once it publishes. When the watcher reports that vintage is live, delete that
+   source's `.done` marker to force the retry.
 4. `npm run archive:nat` — archives the new national vintage. Append-only: existing vintages are
    skipped, never rewritten.
 5. `npm run archive:verify` — cross-vintage tripwire. **If it reports an implausible move, stop and
