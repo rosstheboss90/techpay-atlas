@@ -56,14 +56,28 @@ flagship role would be missing from its own headline chart. Decision 1 chose the
 specifically to avoid the hot 2021 baseline; that trade was priced against losing two minor roles,
 not against losing SWE, Data Scientists, QA, Web Dev, UX/UI, and both database roles.
 
-**This needs re-deciding before the `/trends` plan is written.** The options are the same three as
-before, but the trade is materially different now:
+**RESOLVED 2026-08-06 — split the window, and let the path chart be ragged.** Replaces Decisions 1
+and 6:
 
-- **2019 start, 13 roles** — honest long arc, no SWE. Probably not viable as a headline.
-- **2021 start, 21 roles, 5 points** — complete rectangle including SWE, but the baseline sits
-  inside the pandemic wage surge, so "real pay fell since 2021" partly describes 2021.
-- **Split the page** — 2021→2025 across all 21 roles as the headline, with a 13-role 2019→2025
-  panel underneath for the longer arc. More work; keeps both truths.
+- **Figure 1, the headline: real % change 2021→2025, all 21 roles.** Every bar spans an identical
+  window, so the ranking is valid with no exclusions and no footnote about missing roles — Software
+  Developers included. The cost is a baseline inside the pandemic wage surge, which the page must
+  state outright rather than bury: *"2021 is the earliest year all 21 occupations exist as separate
+  BLS codes. It was also an unusually hot year for pay, so these figures measure change from a high
+  starting point."*
+- **Figure 2, the path: real dollars over the full history each role actually has** — 2019 for the
+  13 that existed, 2021 for the 8 that didn't, on a shared 2019–2025 axis. The ragged left edge is
+  the honest picture and is itself informative; a break marker at 2021 carries the explanation.
+
+This keeps the long arc visible where it is real, without letting an artifact of BLS classification
+masquerade as a pay trend. Rejected: excluding 8 roles from the headline (loses the flagship role),
+and splicing the young codes onto their combined predecessors (was Decision 2's option A3, still
+rejected — it merges two different populations).
+
+**p50 is safe to plot; p90 is not.** Verified across all seven archived vintages: no registry role
+has a censored *median* in any year. The only censored cells are `11-3021`'s p90 (2019–2024) and
+`15-1221`'s p90 (2021). Figures 1 and 2 both use p50, so neither touches a censored value. Any
+future band or p90 view must read `capped` and mark or omit those points.
 
 **Also measured, and relevant to any p90 series:** `11-3021` (IT Managers) has a *censored* p90 in
 every vintage 2019–2024 — $208,000 through 2021, $239,200 from 2022, then a genuine $297,510 in
