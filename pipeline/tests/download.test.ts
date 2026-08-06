@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { looksLikeZip, markerIsCurrent } from '../lib/download-lib'
+import { formatMarker, looksLikeZip, markerIsCurrent, urlBasename } from '../lib/download-lib'
 
 describe('looksLikeZip', () => {
   it('accepts a buffer starting with the PK\\x03\\x04 local-file-header signature', () => {
@@ -17,11 +17,22 @@ describe('looksLikeZip', () => {
   })
 })
 
+describe('urlBasename', () => {
+  it('extracts the basename from a plain URL path', () => {
+    expect(urlBasename('https://www.bls.gov/oes/special-requests/oesm25ma.zip')).toBe('oesm25ma.zip')
+  })
+  it('extracts the basename from a URL with a query string', () => {
+    expect(urlBasename('https://example.com/path/to/file.zip?token=abc&v=2')).toBe('file.zip')
+  })
+})
+
 describe('markerIsCurrent', () => {
   const rawFiles = new Set(['oesm25ma.zip', 'ZIP_CBSA_032026.xlsx'])
   const urls25 = ['https://www.bls.gov/oes/special-requests/oesm25ma.zip']
   const urls26 = ['https://www.bls.gov/oes/special-requests/oesm26ma.zip']
-  const marker25 = 'https://www.bls.gov/oes/special-requests/oesm25ma.zip\noesm25ma.zip'
+  const url25 = urls25[0]
+  const url26 = urls26[0]
+  const marker25 = `${url25}\noesm25ma.zip`
 
   it('is true when the marker URL is still configured and its file is present', () => {
     expect(markerIsCurrent(marker25, urls25, rawFiles)).toBe(true)
@@ -32,8 +43,28 @@ describe('markerIsCurrent', () => {
     expect(markerIsCurrent(marker25, urls26, rawFiles)).toBe(false)
   })
 
-  it('is true when the marker URL is a configured fallback rather than the preferred URL', () => {
-    expect(markerIsCurrent(marker25, [...urls26, ...urls25], rawFiles)).toBe(true)
+  it('is true when the preferred URL 404d and we fell back at fetch time, and nothing has changed since', () => {
+    // Recorded preferred (url26) still equals the CURRENT preferred (configuredUrls[0]) -- nothing
+    // was bumped, so this must not force a needless re-download of a large file.
+    const marker = formatMarker(url25, 'oesm25ma.zip', url26)
+    expect(markerIsCurrent(marker, [url26, url25], rawFiles)).toBe(true)
+  })
+
+  it('is false when the vintage bumped after the marker was written, even though the fetched URL is still a configured fallback (T1, multi-URL sources)', () => {
+    // Marker was written when url25 was preferred (recorded preferred == url25). The documented
+    // refresh procedure DEMOTES the old URL to fallback rather than removing it -- configuredUrls
+    // is now [url26, url25]. url25 is still technically "in" configuredUrls, which is exactly the
+    // membership bug from f72f5db: it must not be enough to keep the marker current.
+    const marker = formatMarker(url25, 'oesm25ma.zip', url25)
+    expect(markerIsCurrent(marker, [url26, url25], rawFiles)).toBe(false)
+  })
+
+  it('is false when the URL moved but the basename did not', () => {
+    expect(markerIsCurrent(
+      'https://old.example/MARPP.zip\nMARPP.zip\nhttps://old.example/MARPP.zip',
+      ['https://apps.bea.gov/regional/zip/MARPP.zip'],
+      new Set(['MARPP.zip']),
+    )).toBe(false)
   })
 
   it('is false when the marker names a file that no longer exists (self-heal: re-download)', () => {
@@ -54,6 +85,15 @@ describe('markerIsCurrent', () => {
   })
 
   it('tolerates incidental whitespace around the recorded lines', () => {
-    expect(markerIsCurrent(`  ${urls25[0]}  \n  oesm25ma.zip \n`, urls25, rawFiles)).toBe(true)
+    expect(markerIsCurrent(`  ${url25}  \n  oesm25ma.zip \n`, urls25, rawFiles)).toBe(true)
+  })
+
+  it('a 2-line marker written by f72f5db reads as current when config is unchanged (back-compat)', () => {
+    expect(markerIsCurrent(marker25, urls25, rawFiles)).toBe(true)
+  })
+
+  it('a marker written by formatMarker reads back as current', () => {
+    const url = 'https://www.bls.gov/oes/special-requests/oesm25ma.zip'
+    expect(markerIsCurrent(formatMarker(url, 'oesm25ma.zip', url), [url], new Set(['oesm25ma.zip']))).toBe(true)
   })
 })
