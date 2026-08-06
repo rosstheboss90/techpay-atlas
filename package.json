@@ -10,6 +10,7 @@
     "pipeline": "tsx --max-old-space-size=6144 pipeline/run.ts",
     "archive:verify": "tsx pipeline/archive-verify.ts",
     "archive:cpi": "tsx pipeline/archive-cpi.ts",
+    "archive:nat": "tsx pipeline/archive-nat.ts",
     "test": "vitest run"
   },
   "devDependencies": {
