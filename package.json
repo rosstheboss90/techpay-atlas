@@ -11,6 +11,7 @@
     "archive:verify": "tsx pipeline/archive-verify.ts",
     "archive:cpi": "tsx pipeline/archive-cpi.ts",
     "archive:nat": "tsx pipeline/archive-nat.ts",
+    "emit:trends": "tsx pipeline/emit-trends.ts",
     "test": "vitest run"
   },
   "devDependencies": {
