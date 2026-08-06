@@ -2,6 +2,48 @@
 
 Newest decisions first. v1 (map + panel) shipped 2026-08-03.
 
+## Visual polish pass — SHIPPED + DEPLOYED 2026-08-06 (`8995349`, PR #10)
+
+Editorial / data-journalism direction across the six main-page sections. Root cause of most
+of it: **fixed pixel widths for label columns and chart canvases**, sized for a narrower
+layout than the 1180px container — each truncated its labels *and* left the right half empty.
+Slopegraph (`LEFT_X=210` in a `W=560` viewBox clipped both label columns), role similarity
+(`width:160px` + `max-width:240px` ended the row at ~660px), head-to-head (`120px`), heatmap
+(`160px`), and the map (`.hero-row` stretched the figure to the taller panel).
+
+**House rule going forward:** no fixed px for label columns or chart canvases — size labels to
+content (`ch`) and let charts claim the container. See the header comment in `globals.css`.
+
+Two latent bugs found while reviewing: the map size legend drew a `r=26` circle
+(`bubbleRadius`'s max) inside a `60x28` box, clipped on all four sides; and a first cut of the
+similarity grid used `max-content`, which resolves *per row* because each `<li>` is its own
+grid — every bar started at a different x, making the lengths non-comparable.
+
+Constraints worth remembering:
+- `--surface` must stay byte-identical in both schemes — the `--soc-*` categorical palette was
+  validated against it. Changing it means re-running the dataviz validator.
+- Base type / heading rules are scoped to `.page`, **not** global: `/about` is deliberately
+  isolated under `.ab-root` with its own serif scale, and a global rule leaks into it.
+
+Still open from this pass:
+- **Page got longer, not shorter**: 5,389 → 5,860px desktop, 5,791 → 6,598px mobile. Mobile is
+  mostly the slopegraph, which now renders at natural size and scrolls instead of being scaled
+  down to ~4px text. Deliberate trade; revisit if the scroll length becomes the bigger problem.
+- **`/about` still on its own visual system** — untouched by this pass by design. Decide whether
+  it should adopt the new tokens/scales or stay a distinct "field guide".
+- **Raw SOC codes leak into some conflation legends** (`11-9021`, `17-2051`) where others show
+  friendly labels — a gap in the role registry, not styling.
+- **Heatmap per-column color scaling** still invites cross-column comparison that isn't valid.
+  The caption warns about it; a real fix is a design decision (shared scale? per-column legend?).
+
+## `/about/` trailing slash 404s (pre-existing, found 2026-08-06)
+
+`trailingSlash` is unset in `site/next.config.ts`, so the export emits `about.html`, not
+`about/index.html`. `/about` → 200, `/about/` → 404. The masthead link uses the working form so
+nothing is broken in-app, but a shared or hand-typed URL with a trailing slash dead-ends.
+One-line fix (`trailingSlash: true`) but it changes **every** URL on the site — do it together
+with the custom-domain move below, not on its own.
+
 ## Site polish — description + custom domain (2026-08-05)
 
 - ~~**Plain-language description.**~~ DONE (on the heatmap PR): site meta `description` in
