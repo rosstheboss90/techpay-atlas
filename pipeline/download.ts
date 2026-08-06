@@ -36,11 +36,11 @@ const SOURCES: Source[] = [
   ...OEWS_NAT_YEARS.map(year => ({
     name: `oews-nat-${year}`, required: false, unzip: true, urls: [oewsNatUrl(year)],
   })),
-  // CPI-U all items, US city average — the /trends deflator. Plain text, no unzip.
-  // NOTE: this exact filename is UNVERIFIED — bls.gov is currently 403ing this machine, so it
-  // could not be confirmed. Task 6 confirms it against the live directory listing and corrects
-  // this if wrong.
-  { name: 'cpi', required: false, urls: ['https://download.bls.gov/pub/time.series/cu/cu.data.1.AllItems'] },
+  // CPI-U all items, US city average — the /trends deflator — is NOT in SOURCES/runDownloads.
+  // download.bls.gov is Akamai-blocked (403 to automated requests) on this machine, but
+  // api.bls.gov is a separate host and is reachable, and is the better source anyway: structured
+  // JSON rather than a ~20MB space-padded fixed-width text file. Run `npm run archive:cpi`
+  // instead — it fetches from the API and writes data/history/cpi-u.json directly.
   // LCA quarters: individually optional; run.ts requires >= 2 files present overall.
   ...[1, 2, 3, 4].map(q => ({
     name: `lca-fy${VINTAGES.lcaFiscalYear}-q${q}`, required: false,
