@@ -76,6 +76,13 @@ change, not a UI layer over existing output.
    `category: 'staffing' | 'direct'`, the page shows a chip, and ranked lists offer an exclude
    toggle that defaults to off.
 
+   **Employers absent from the alias file are `direct` by default, and the default is never
+   displayed as a claim.** The chip renders only for an explicit `staffing`; an unaliased employer
+   shows no category chip at all, rather than an unearned "direct" badge. This keeps the curated
+   file an assertion about the head — where it has been reviewed — instead of an implicit
+   assertion about a tail nobody has looked at. The exclude toggle therefore removes only
+   *known* staffing firms, which is a filter the page should describe in those words.
+
 7. **Filed wages are not top-coded and must never be treated as such.** LCA wages are actual filed
    values bounded only by the `WAGE_MIN`/`WAGE_MAX` sanity range (`parse-lca.ts:15`). The OEWS
    top-code machinery — including the new vintage-keyed `makeCell(topCode)` factory — has no
