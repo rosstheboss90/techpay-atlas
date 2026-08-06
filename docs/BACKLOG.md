@@ -2,6 +2,48 @@
 
 Newest decisions first. v1 (map + panel) shipped 2026-08-03.
 
+## 🆕 2026-08-06 intake — public-data project slate
+
+Five "what else could we build from public data" ideas, generated 2026-08-06 and then checked
+against this repo. **Two were already partly or wholly built** — recorded here so the mistake
+isn't repeated:
+
+| # | Idea | Status after checking the repo |
+|---|---|---|
+| 1 | H-1B / PERM wage disclosure atlas | **~60% already here.** See below. |
+| 2 | WARN-notice layoff tracker | Genuinely new; standalone sibling site |
+| 3 | Austin commute-shed × rent map | Genuinely new; belongs to home-dashboard |
+| 4 | SEC Form 4 insider tracker | Genuinely new; belongs to home-dashboard |
+| 5 | BEA RPP cost-of-living overlay | ❌ **ALREADY SHIPPED** — `parse-rpp.ts`, `MARPP_MSA_2008_2024.csv` |
+
+### 1. H-1B / PERM deepening — what's actually left
+
+Already built: LCA ingest for all four FY2025 quarters (`data/raw/LCA_Disclosure_Data_FY2025_Q*.xlsx`,
+~417 MB), normalized by `pipeline/lib/parse-lca.ts` (SOC · title · employer · worksite ZIP ·
+annualized wage w/ unit conversion + `_FROM`/`_TO` midpointing · per-reason drop counts), and
+371 per-CBSA files in `site/public/data/employers/`.
+
+Not built, in rough order of distinctness:
+
+- **PERM ingest.** Only LCA is loaded today. PERM (permanent labor certification) is a separate
+  DOL file with a different population — skews more senior, different wage semantics. The single
+  biggest genuinely-new data addition available.
+- **Multi-year time series.** FY2025 only. "How has employer X's filed wage moved YoY" needs
+  FY2020–FY2024 ingest, and a decision on SOC/schema drift across vintages (the 2018 SOC
+  revision lands inside that window).
+- **Employer-centric lens.** Employer data exists but surfaces only as a "Top employers"
+  disclosure inside a role bucket. A first-class "what does Employer X file, by role, by city"
+  view does not exist.
+
+**Honesty constraints** (this site is public; these belong on the page, not in a footnote): H-1B
+covers only sponsoring employers — skewed toward large-cap and toward certain roles — and the
+filed wage is a **base-pay floor**, with no equity and no bonus. Consistent with the existing
+"label uncertainty, don't hide it" rule in `PROJECT-STANDARDS.md`.
+
+**Stale blocker cleared:** the title↔SOC conflation item under "v2 candidates" is marked blocked
+on "a local `npm run pipeline` with the raw H-1B files (the sandbox has no raw inputs)". The
+development box **does** have those inputs in `data/raw/`. That item is runnable as-is.
+
 ## Visual polish pass — SHIPPED + DEPLOYED 2026-08-06 (`8995349`, PR #10)
 
 Editorial / data-journalism direction across the six main-page sections. Root cause of most
