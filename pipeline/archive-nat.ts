@@ -33,33 +33,51 @@ function findNationalFile(year: number): string | null {
   return null
 }
 
-let written = 0, skipped = 0, missing = 0
+let written = 0, skipped = 0, missing = 0, errored = 0
+const errors: { year: number; message: string }[] = []
 
+// A parse failure on one vintage (e.g. undiscovered schema drift) must not abort the whole run —
+// six good years should still archive even if a seventh's file is broken. Each vintage is caught
+// independently and reported by year; the run still exits non-zero at the end if anything errored,
+// so a per-vintage failure is loud in the summary even though it doesn't stop the loop.
 for (const year of years) {
-  const file = findNationalFile(year)
-  if (!file) {
-    console.warn(`MISSING: no national_M${year}_dl.xlsx in ${RAW_DIR} (flat or one level deep) — skipping`)
-    missing++
-    continue
+  try {
+    const file = findNationalFile(year)
+    if (!file) {
+      console.warn(`MISSING: no national_M${year}_dl.xlsx in ${RAW_DIR} (flat or one level deep) — skipping`)
+      missing++
+      continue
+    }
+
+    const exists = existsSync(archivePath(year))
+    if (exists && !force) {
+      console.log(`SKIP: ${path.basename(archivePath(year))} already archived (pass --force to overwrite)`)
+      skipped++
+      continue
+    }
+    assertWritable(year, { exists, force })
+
+    const topCode = topCodeForYear(year)
+    const roles = parseOewsNational(readSheetRows(file), topCode)
+    const archive = buildNationalArchive(year, topCode, path.basename(file), roles)
+
+    mkdirSync(HISTORY_DIR, { recursive: true })
+    writeFileSync(archivePath(year), JSON.stringify(archive, null, 1))
+    console.log(`WROTE: ${year} — ${Object.keys(roles).length} role(s), top code $${topCode.toLocaleString()}`)
+    written++
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    console.error(`ERROR: vintage ${year} failed — ${message}`)
+    errors.push({ year, message })
+    errored++
   }
-
-  const exists = existsSync(archivePath(year))
-  if (exists && !force) {
-    console.log(`SKIP: ${path.basename(archivePath(year))} already archived (pass --force to overwrite)`)
-    skipped++
-    continue
-  }
-  assertWritable(year, { exists, force })
-
-  const topCode = topCodeForYear(year)
-  const roles = parseOewsNational(readSheetRows(file), topCode)
-  const archive = buildNationalArchive(year, topCode, path.basename(file), roles)
-
-  mkdirSync(HISTORY_DIR, { recursive: true })
-  writeFileSync(archivePath(year), JSON.stringify(archive, null, 1))
-  console.log(`WROTE: ${year} — ${Object.keys(roles).length} role(s), top code $${topCode.toLocaleString()}`)
-  written++
 }
 
-console.log(`\n${written} written, ${skipped} skipped, ${missing} missing (of ${years.length} vintage(s) requested)`)
-process.exitCode = missing > 0 ? 1 : 0
+console.log(
+  `\n${written} written, ${skipped} skipped, ${missing} missing, ${errored} errored ` +
+  `(of ${years.length} vintage(s) requested)`,
+)
+if (errors.length > 0) {
+  console.error(`\nFailed vintage(s): ${errors.map(e => `${e.year} (${e.message})`).join('; ')}`)
+}
+process.exitCode = missing > 0 || errored > 0 ? 1 : 0

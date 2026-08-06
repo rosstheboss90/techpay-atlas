@@ -75,3 +75,47 @@ describe('parseOewsNational', () => {
     expect(() => parseOewsNational([], TOP_CODE)).toThrow(/no registry SOC/i)
   })
 })
+
+// MEASURED 2026-08-06 against the real files on disk: May 2019's national_M2019_dl.xlsx uses
+// all-lowercase headers (occ_code, o_group, tot_emp, a_pct10, ...) and has no PRIM_STATE column
+// at all; 2020 is uppercase with PRIM_STATE added; 2021+ additionally adds PCT_RPT. The parser
+// must resolve the fields it reads case-insensitively so 2019 doesn't crash the zero-rows guard.
+describe('parseOewsNational - column casing drift (2019 lowercase, no PRIM_STATE)', () => {
+  // Same values as the base fixture above, but with 2019's actual lowercase headers and no
+  // PRIM_STATE key at all.
+  const rowLower = (over: Record<string, unknown> = {}) => ({
+    area: '99', area_title: 'U.S.', area_type: '1',
+    naics: '000000', naics_title: 'Cross-industry', i_group: 'cross-industry', own_code: '1235',
+    occ_code: '15-1252', occ_title: 'Software Developers', o_group: 'detailed',
+    tot_emp: 1687890, emp_prse: 0.6, jobs_1000: null, loc_quotient: null, pct_total: null,
+    h_mean: 71.2, a_mean: 148100, mean_prse: 0.4,
+    h_pct10: 39.64, h_pct25: 50.58, h_median: 65.38, h_pct75: 82.68, h_pct90: 103.21,
+    a_pct10: 82460, a_pct25: 105210, a_median: 135980, a_pct75: 171980, a_pct90: 214670,
+    annual: '', hourly: '',
+    ...over,
+  })
+
+  it('parses a lowercase-header row (2019 shape) identically to the uppercase equivalent', () => {
+    const upper = parseOewsNational([row()], TOP_CODE)
+    const lower = parseOewsNational([rowLower()], TOP_CODE)
+    expect(lower).toEqual(upper)
+  })
+
+  it('resolves mixed/odd casing headers (Occ_Code, a_MEDIAN, ...)', () => {
+    const mixed = {
+      Occ_Code: '15-1252', O_Group: 'detailed', Tot_Emp: 1687890,
+      a_PCT10: 82460, A_pct25: 105210, a_MEDIAN: 135980, A_Pct75: 171980, a_pct90: 214670,
+    }
+    const out = parseOewsNational([mixed], TOP_CODE)
+    expect(out['15-1252']).toEqual({
+      emp: 1687890, p10: 82460, p25: 105210, p50: 135980, p75: 171980, p90: 214670, capped: [],
+    })
+  })
+
+  it('does not silently drop every row when O_GROUP is absent entirely from the file', () => {
+    const { O_GROUP, ...noOGroup } = row()
+    const out = parseOewsNational([noOGroup], TOP_CODE)
+    expect(out['15-1252']).toBeDefined()
+    expect(out['15-1252'].p50).toBe(135980)
+  })
+})
