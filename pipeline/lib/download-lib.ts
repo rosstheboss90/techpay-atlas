@@ -111,7 +111,7 @@ export async function runDownloads(sources: readonly Source[], rawDir: string): 
         // Migrate legacy 1- and 2-line markers to the canonical 3-line format in place, so this
         // is the LAST run that ever has to accept the weaker legacy comparison for this source.
         const lines = markerContent.split('\n').map(s => s.trim()).filter(Boolean)
-        if (lines.length !== 3) {
+        if (lines.length < 3) {
           const [fetchedUrl, basename] = lines.length === 1 ? [src.urls[0], lines[0]] : lines
           writeFileSync(marker, formatMarker(fetchedUrl, basename, fetchedUrl))
         }

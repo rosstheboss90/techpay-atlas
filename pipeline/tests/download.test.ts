@@ -30,8 +30,10 @@ describe('markerIsCurrent', () => {
   const rawFiles = new Set(['oesm25ma.zip', 'ZIP_CBSA_032026.xlsx'])
   const urls25 = ['https://www.bls.gov/oes/special-requests/oesm25ma.zip']
   const urls26 = ['https://www.bls.gov/oes/special-requests/oesm26ma.zip']
+  const urls24 = ['https://www.bls.gov/oes/special-requests/oesm24ma.zip']
   const url25 = urls25[0]
   const url26 = urls26[0]
+  const url24 = urls24[0]
   const marker25 = `${url25}\noesm25ma.zip`
 
   it('is true when the marker URL is still configured and its file is present', () => {
@@ -79,6 +81,23 @@ describe('markerIsCurrent', () => {
     expect(markerIsCurrent('oesm25ma.zip', urls26, rawFiles)).toBe(false)
   })
 
+  it('invalidates a legacy basename-only marker when the vintage bumped and the old URL was demoted to fallback', () => {
+    // The pre-f72f5db format actually sitting in data/raw today: a bare basename. The FIRST real
+    // vintage bump exercises exactly this -- [url26, url25] -- so this branch is the one that has
+    // to get it right, not just the already-tested single-URL case above.
+    expect(markerIsCurrent('oesm25ma.zip', [url26, url25], rawFiles)).toBe(false)
+  })
+
+  it('is false when a legacy marker names a file that no longer exists', () => {
+    expect(markerIsCurrent('oesm25ma.zip', urls25, new Set(['ZIP_CBSA_032026.xlsx']))).toBe(false)
+  })
+
+  it('is false when the fetched fallback URL was removed from the config', () => {
+    // Guards the case where a fallback is deliberately dropped to force the preferred vintage.
+    expect(markerIsCurrent(formatMarker(url24, 'oesm24ma.zip', url25), [url25],
+      new Set(['oesm24ma.zip']))).toBe(false)
+  })
+
   it('is false for empty/blank marker content', () => {
     expect(markerIsCurrent('', urls25, rawFiles)).toBe(false)
     expect(markerIsCurrent('   ', urls25, rawFiles)).toBe(false)
@@ -86,10 +105,6 @@ describe('markerIsCurrent', () => {
 
   it('tolerates incidental whitespace around the recorded lines', () => {
     expect(markerIsCurrent(`  ${url25}  \n  oesm25ma.zip \n`, urls25, rawFiles)).toBe(true)
-  })
-
-  it('a 2-line marker written by f72f5db reads as current when config is unchanged (back-compat)', () => {
-    expect(markerIsCurrent(marker25, urls25, rawFiles)).toBe(true)
   })
 
   it('a marker written by formatMarker reads back as current', () => {
