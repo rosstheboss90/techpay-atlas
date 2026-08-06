@@ -2,6 +2,44 @@
 
 Newest decisions first. v1 (map + panel) shipped 2026-08-03.
 
+## `/trends` Phase A — LANDED on `feat/data-refresh-and-archive` 2026-08-06
+
+Real-wage trends for the 21 registry roles, built from the committed OEWS national archive
+deflated by CPI-U. Headline ranked bars over **2021–2025** — the earliest window in which every
+role exists as its own BLS code, so every bar is comparable and none is excluded — then a path
+chart showing each role's full real history on a shared 2019–2025 axis with a ragged left edge.
+
+Design decisions and the measurements behind them:
+`docs/superpowers/specs/2026-08-06-trends-and-data-refresh-design.md` (see the ⚠️ CORRECTION
+block, which supersedes the original window choice). Plan:
+`docs/superpowers/plans/2026-08-06-trends-phase-a.md`.
+
+**What the data actually says:** Software Developers' median went $120,730 → $135,980 nominal
+2021→2025, which is **−5.7% in real terms**. Range across the 21 roles is +9.0%
+(Web & Digital Interface Designers) to −11.1% (Software QA Analysts & Testers).
+
+Three things found by building it, each recorded because they will recur:
+
+- **The window premise was wrong and had to be re-decided mid-build.** The spec assumed two roles
+  were too young for a 2019 start. Measuring the archive showed **eight**, including Software
+  Developers — a headline chart missing the flagship role. Hence the 2021 headline window.
+- **`22ch` for the label column truncated 8 of 21 role names**, leaving "Computer & Information
+  Res…" indistinguishable from "…Sys…". Measured in the browser: the longest name needs 261px at
+  13px, but 22ch resolved to 178px while the track held 869px it did not need. A `ch` value chosen
+  without measuring is a fixed cap in disguise — the exact failure the sizing rule exists to stop.
+- **`NEXT_PUBLIC_BASE_PATH=/techpay-atlas npm run build` fails from git-bash**, because MSYS
+  rewrites the leading `/` into a Windows path. Run that build from PowerShell. CI is unaffected —
+  it sets the variable through the workflow `env:` block.
+
+Known limits, deliberate:
+- **2021 is a hot baseline.** It is the earliest comparable year but also an unusually strong one
+  for pay, so the headline measures change from a high start. Stated on the page, not footnoted.
+- **`/trends/` with a trailing slash 404s**, same as `/about/`. Fix with the custom-domain move.
+- **`11-3021`'s p90 is censored 2019–2024**, so any future p90 view must read `cappedP90`. Phase A
+  plots medians only, which are uncensored for every role in every vintage.
+- **Phase B (metro-level) not started.** Needs a CBSA-delineation crosswalk over time and a
+  suppression policy, and p90 becomes load-bearing there.
+
 ## Data refresh + vintage archive — LANDED on `feat/data-refresh-and-archive` 2026-08-06
 
 `pipeline/vintages.ts` is now the single source of truth for every year-encoded URL; the runbook is
