@@ -51,16 +51,28 @@ export function buildNationalArchive(
   return { year, topCode, source, roles }
 }
 
+const PCTS: readonly Pct[] = ['p10', 'p25', 'p50', 'p75', 'p90']
+
 export interface ImplausibleJump {
-  soc: string; from: number; to: number; fromValue: number; toValue: number; change: number
+  soc: string; pct: Pct; from: number; to: number; fromValue: number; toValue: number; change: number
 }
 
-/** Nominal year-over-year median moves larger than `threshold` (fraction, e.g. 0.4 = 40%).
+/** Nominal year-over-year moves, on any percentile, larger than `threshold` (fraction, e.g.
+ *  0.4 = 40%).
  *
- *  This is a tripwire, not a statistic: a wrong vintage top code or a misaligned deflator
- *  produces exactly this signature, and without it the result is a plausible-looking wrong chart
- *  rather than an error. Roles absent from either vintage are skipped — a young SOC code appearing
- *  for the first time is not a jump. */
+ *  Checks all five percentiles, not just the median: a national median never approaches the
+ *  top-coding ceiling, so p50 alone is blind to exactly the failure this exists to catch (a wrong
+ *  vintage top code shows up in the upper percentiles, if anywhere). Roles absent from either
+ *  vintage are skipped — a young SOC code appearing for the first time is not a jump.
+ *
+ *  KNOWN BLIND SPOTS — do not read a clean run here as "the archive is fine":
+ *   - Gradual drift: a systematic error applied consistently across vintages (e.g. a stale
+ *     deflator, or a top code that is wrong the SAME way in consecutive years — see
+ *     findTopCodeAnomaly's doc comment) never produces a single-year jump and is invisible here.
+ *   - A role silently disappearing from the archive between vintages produces no jump record,
+ *     because a jump requires the role to be present in BOTH years being compared.
+ *   - The threshold is a caller-supplied constant, not adaptive — a genuinely volatile
+ *     small-population SOC that legitimately swings past it needs a code change to silence. */
 export function findImplausibleJumps(
   vintages: readonly NationalArchive[],
   threshold: number,
@@ -72,13 +84,54 @@ export function findImplausibleJumps(
     for (const [soc, curRole] of Object.entries(cur.roles)) {
       const prevRole = prev.roles[soc]
       if (!prevRole) continue
-      const a = prevRole.p50, b = curRole.p50
-      if (a === null || b === null || a === 0) continue
-      const change = (b - a) / a
-      if (Math.abs(change) > threshold) {
-        out.push({ soc, from: prev.year, to: cur.year, fromValue: a, toValue: b, change })
+      for (const pct of PCTS) {
+        const a = prevRole[pct], b = curRole[pct]
+        if (a === null || b === null || a === 0) continue
+        const change = (b - a) / a
+        if (Math.abs(change) > threshold) {
+          out.push({ soc, pct, from: prev.year, to: cur.year, fromValue: a, toValue: b, change })
+        }
       }
     }
   }
   return out
+}
+
+export interface TopCodeAnomaly {
+  year: number; topCode: number; maxUncapped: number; cappedCells: number; gap: number
+}
+
+/** A vintage whose recorded top code sits far above every UNCAPPED percentile in the same file.
+ *
+ *  This is the real detector for a wrong per-year top code. A year-over-year check cannot find
+ *  that bug: if the wrong ceiling is applied to several vintages consistently, every censored
+ *  cell moves together and no jump appears. But within one file the error is visible as a gap —
+ *  censored cells pinned at `topCode` with nothing uncapped anywhere near it.
+ *
+ *  Returns null when the vintage has no censored cells at all (nothing to check). */
+export function findTopCodeAnomaly(
+  archive: NationalArchive,
+  maxGapFraction: number,
+): TopCodeAnomaly | null {
+  let maxUncapped = -Infinity
+  let cappedCells = 0
+  for (const role of Object.values(archive.roles)) {
+    for (const pct of PCTS) {
+      if (role.capped.includes(pct)) {
+        cappedCells++
+        continue
+      }
+      const value = role[pct]
+      if (value !== null && value > maxUncapped) maxUncapped = value
+    }
+  }
+  if (cappedCells === 0) return null
+  // No uncapped value anywhere in the archive: treat the missing signal as the worst case (0)
+  // rather than propagating -Infinity/NaN through the gap calculation below.
+  const safeMaxUncapped = Number.isFinite(maxUncapped) ? maxUncapped : 0
+  const gap = (archive.topCode - safeMaxUncapped) / archive.topCode
+  if (gap > maxGapFraction) {
+    return { year: archive.year, topCode: archive.topCode, maxUncapped: safeMaxUncapped, cappedCells, gap }
+  }
+  return null
 }

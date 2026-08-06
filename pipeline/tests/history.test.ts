@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { assertWritable, buildNationalArchive, findImplausibleJumps } from '../lib/history'
+import { assertWritable, buildNationalArchive, findImplausibleJumps, findTopCodeAnomaly, type NationalArchive } from '../lib/history'
+import type { Pct } from '../lib/parse-oews'
 
 describe('assertWritable', () => {
   it('allows writing a vintage that has not been archived yet', () => {
@@ -56,7 +57,7 @@ describe('findImplausibleJumps', () => {
   it('flags a jump beyond the threshold — the signature of a wrong top code or deflator', () => {
     const jumps = findImplausibleJumps([vintage(2023, 130_000), vintage(2024, 260_000)], 0.4)
     expect(jumps).toHaveLength(1)
-    expect(jumps[0]).toMatchObject({ soc: '15-1252', from: 2023, to: 2024 })
+    expect(jumps[0]).toMatchObject({ soc: '15-1252', pct: 'p50', from: 2023, to: 2024 })
   })
 
   it('flags large drops as well as rises', () => {
@@ -79,5 +80,63 @@ describe('findImplausibleJumps', () => {
     const cur = { year: 2024, topCode: 239_200, source: 'b', roles: { '15-1252': band(0) } }
     cur.roles['15-1252'].p50 = null as unknown as number
     expect(findImplausibleJumps([prev, cur], 0.4)).toEqual([])
+  })
+
+  it('flags a p90-only distortion while leaving an unmoved p50 alone', () => {
+    // p50 median is a poor detector for a wrong top code precisely because a national median
+    // never approaches the ceiling — the censoring shows up in the upper percentiles instead.
+    const bandFull = (p50: number, p90: number) =>
+      ({ emp: 1, p10: null, p25: null, p50, p75: null, p90, capped: [] })
+    const v = (year: number, p50: number, p90: number) => ({
+      year, topCode: 239_200, source: `national_M${year}_dl.xlsx`, roles: { '15-1252': bandFull(p50, p90) },
+    })
+    const jumps = findImplausibleJumps([v(2023, 130_000, 160_000), v(2024, 130_000, 300_000)], 0.4)
+    expect(jumps).toHaveLength(1)
+    expect(jumps[0]).toMatchObject({ soc: '15-1252', pct: 'p90', from: 2023, to: 2024 })
+  })
+})
+
+describe('findTopCodeAnomaly', () => {
+  const role = (vals: Partial<{
+    p10: number | null; p25: number | null; p50: number | null; p75: number | null; p90: number | null
+  }>, capped: Pct[]) =>
+    ({ emp: 1, p10: null, p25: null, p50: null, p75: null, p90: null, ...vals, capped })
+
+  it('finds no anomaly when uncapped values run close under the recorded top code', () => {
+    const archive: NationalArchive = {
+      year: 2025, topCode: 239_200, source: 'f.xlsx',
+      roles: { '15-1252': role({ p75: 230_000, p90: 239_200 }, ['p90']) },
+    }
+    expect(findTopCodeAnomaly(archive, 0.1)).toBeNull()
+  })
+
+  it('flags a vintage with capped cells at 239,200 but nothing uncapped above ~185,000', () => {
+    const archive: NationalArchive = {
+      year: 2019, topCode: 239_200, source: 'f.xlsx',
+      roles: { '15-1252': role({ p75: 185_000, p90: 239_200 }, ['p90']) },
+    }
+    const anomaly = findTopCodeAnomaly(archive, 0.1)
+    expect(anomaly).not.toBeNull()
+    expect(anomaly).toMatchObject({ year: 2019, topCode: 239_200, maxUncapped: 185_000, cappedCells: 1 })
+    expect(anomaly!.gap).toBeGreaterThan(0.1)
+  })
+
+  it('finds no anomaly when a vintage has zero capped cells, no matter how low its values are', () => {
+    const archive: NationalArchive = {
+      year: 2019, topCode: 239_200, source: 'f.xlsx',
+      roles: { '15-1252': role({ p10: 20_000, p50: 40_000, p90: 60_000 }, []) },
+    }
+    expect(findTopCodeAnomaly(archive, 0.1)).toBeNull()
+  })
+
+  it('does not throw or produce -Infinity when a role has capped cells but no uncapped values at all', () => {
+    const archive: NationalArchive = {
+      year: 2019, topCode: 239_200, source: 'f.xlsx',
+      roles: { '15-1252': role({}, ['p90']) },
+    }
+    const anomaly = findTopCodeAnomaly(archive, 0.1)
+    expect(anomaly).not.toBeNull()
+    expect(Number.isFinite(anomaly!.maxUncapped)).toBe(true)
+    expect(Number.isFinite(anomaly!.gap)).toBe(true)
   })
 })
