@@ -46,6 +46,7 @@ describe('buildTrends', () => {
     expect(swe.firstYear).toBe(2021)
     expect(swe.nominal).toEqual([null, 120730])
     expect(swe.real[0]).toBeNull()
+    expect(swe.emp).toEqual([null, 100])
   })
 
   it('keeps the full history of a long-running role rather than windowing it', () => {
@@ -63,6 +64,20 @@ describe('buildTrends', () => {
     const out = buildTrends([a, archive(2025, { '11-3021': 180000 })], cpi, 2025, 2021)
     expect(out.roles['11-3021'].cappedP90).toEqual([true, false])
     expect(out.roles['11-3021'].nominal).toEqual([150000, 180000])
+  })
+
+  it('does not treat a non-p90 censored percentile as a censored p90', () => {
+    const a = archive(2021, { '11-3021': 150000 })
+    a.roles['11-3021'].p25 = 90_000
+    a.roles['11-3021'].capped = ['p25']
+    const out = buildTrends([a], cpi, 2025, 2021)
+    expect(out.roles['11-3021'].cappedP90).toEqual([false])
+  })
+
+  it('excludes a role whose history ends before the headline window opens', () => {
+    const out = buildTrends([archive(2021, { '15-1252': 1 }), archive(2019, { '11-3021': 1 })], cpi, 2025, 2021)
+    expect(out.roles['11-3021']).toBeUndefined()
+    expect(out.skippedRoles).toContain('11-3021')
   })
 
   it('throws when the headline start year is missing from the archives', () => {
