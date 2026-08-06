@@ -124,11 +124,15 @@ Consequences, all of which the watcher is built around:
 
 ## Observed vintage coverage
 
-_Not yet recorded — the 2019–2025 national backfill has not been run (see "Status" below). Once
-`npm run archive:nat` completes, record here the role count per vintage and the first year each of
-`15-2051` (Data Scientists) and `13-1082` (Project Management Specialists) appears. Those two are
-2018-SOC carve-outs from combined codes and do not exist in the earliest vintages; the `/trends`
-page depends on the measured years, not on an estimate._
+| Vintage | Registry roles | `15-2051` | `13-1082` | Any `capped` |
+|---|---|---|---|---|
+| May 2025 | 21 / 21 | present | present | none |
+
+_2019–2024 not yet archived — see "Status" below. Fill each row in as its vintage lands. The two
+columns that matter for `/trends` are `15-2051` (Data Scientists) and `13-1082` (Project Management
+Specialists): both are 2018-SOC carve-outs from combined codes and are expected to be **absent**
+from the earliest vintages. The page depends on the measured first-appearance year, not an
+estimate, so record what the archive actually shows._
 
 ## Status
 
