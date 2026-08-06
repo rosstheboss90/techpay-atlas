@@ -2,6 +2,46 @@
 
 Newest decisions first. v1 (map + panel) shipped 2026-08-03.
 
+## Data refresh + vintage archive — LANDED on `feat/data-refresh-and-archive` 2026-08-06
+
+`pipeline/vintages.ts` is now the single source of truth for every year-encoded URL; the runbook is
+`docs/REFRESH.md`. The pipeline is no longer destructive — `data/history/` will hold the committed
+per-vintage national OEWS archive that `/trends` consumes. Spec:
+`docs/superpowers/specs/2026-08-06-trends-and-data-refresh-design.md`.
+
+**Four latent defects found and fixed on the way** (each would have produced a plausible-looking
+wrong result rather than an error):
+
+- **`npm test` downloaded ~500MB on every CI run.** `download.test.ts` imported `download.ts`, whose
+  loop executes at module level, so on a fresh checkout the suite attempted every real download.
+  Invisible because vitest 4 swallows module-level console output. Logic now lives in
+  `lib/download-lib.ts`; `download.ts` is a thin entry point nothing imports.
+- **`.done` markers keyed on basename.** Bumping a vintage URL while the old file was still in
+  `data/raw` printed `skip (already downloaded)` and refreshed nothing. Markers now record the
+  *preferred* URL; membership-only checking was tried first and still failed, because the runbook
+  demotes the superseded URL to fallback rather than removing it.
+- **`TOP_CODE` was a constant** while BLS's threshold is vintage-specific — reading an older file
+  with the current value would have manufactured a real-terms decline at the top end.
+- **The plausibility tripwire was blind to the bug it targeted.** It compared medians only, but a
+  wrong top code distorts the censored upper percentiles, and a *consistently* wrong ceiling
+  produces no year-over-year jump at all. Now also checks every percentile plus an intra-vintage
+  top-code gap.
+
+**Operational gotchas now documented in `docs/REFRESH.md`:** `rpp` downloads from a stable
+`MARPP.zip` with no year in it, so its marker can never invalidate — delete `data/raw/rpp.done`
+every December or the pipeline silently reuses last year's price parities. A source that fell back
+to an older vintage will not auto-retry the preferred one. And the `data-refresh` label must be
+created manually or the watcher opens a duplicate issue monthly.
+
+**Blocked, not done:** the 2019–2025 backfill has not run. bls.gov and dol.gov sit behind Akamai,
+which 403s automated requests after a modest rate — tripped during this work and still active
+hours later. Outstanding: the national parser (its real column shape must be read, not assumed),
+the unverified CPI filename, the unverified top-code boundary year, and the backfill itself. Full
+list under "Status" in `docs/REFRESH.md`.
+
+**Still open:** `/trends` Phase A — spec written, plan to follow once the archive exists and the
+boundary years are measured.
+
 ## 🆕 2026-08-06 intake — public-data project slate
 
 Five "what else could we build from public data" ideas, generated 2026-08-06 and then checked
@@ -28,9 +68,11 @@ Not built, in rough order of distinctness:
 - **PERM ingest.** Only LCA is loaded today. PERM (permanent labor certification) is a separate
   DOL file with a different population — skews more senior, different wage semantics. The single
   biggest genuinely-new data addition available.
-- **Multi-year time series.** FY2025 only. "How has employer X's filed wage moved YoY" needs
-  FY2020–FY2024 ingest, and a decision on SOC/schema drift across vintages (the 2018 SOC
-  revision lands inside that window).
+- **H-1B multi-year ingest (LCA FY2020–FY2024).** FY2025 only today. "How has employer X's filed
+  wage moved YoY" needs FY2020–FY2024 ingest, and a decision on SOC/schema drift across vintages
+  (the 2018 SOC revision lands inside that window). *Renamed from "Multi-year time series"
+  2026-08-06: that name also described the **OEWS** real-wage trends work, which is a different
+  source, a different page, and different failure modes. See the `/trends` spec.*
 - **Employer-centric lens.** Employer data exists but surfaces only as a "Top employers"
   disclosure inside a role bucket. A first-class "what does Employer X file, by role, by city"
   view does not exist.
@@ -85,6 +127,9 @@ Still open from this pass:
 nothing is broken in-app, but a shared or hand-typed URL with a trailing slash dead-ends.
 One-line fix (`trailingSlash: true`) but it changes **every** URL on the site — do it together
 with the custom-domain move below, not on its own.
+
+`/trends`, when it lands, inherits the identical defect — `/trends/` will 404 for the same reason.
+That does not change the "do it with the custom-domain move" call, but it is now two URLs, not one.
 
 ## Site polish — description + custom domain (2026-08-05)
 
