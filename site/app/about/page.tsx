@@ -10,7 +10,8 @@ import { fmtUsd, fmtUsdCompact } from '../../lib/format'
 import './about.css'
 
 const HERO_ROLE = '15-1252' // Software Developers — the emblematic role for the live figures
-const short = (name: string) => name.split(',')[0]
+// Primary city only ("San Jose-Sunnyvale-Santa Clara, CA" -> "San Jose") so slopegraph labels fit.
+const cityOf = (name: string) => name.split(',')[0].split(/[-–]/)[0].trim()
 
 export default function About() {
   const [meta, setMeta] = useState<Meta | null>(null)
@@ -24,6 +25,7 @@ export default function About() {
   }, [])
 
   const anchorLabel = meta?.roles.find(r => r.soc === HERO_ROLE)?.label ?? 'Software Developers'
+  const shortOf = (soc: string) => meta?.roles.find(r => r.soc === soc)?.short ?? soc
   const slope = useMemo(() => (meta && salaries ? slopeRows(meta.metros, salaries, HERO_ROLE, 8) : null), [meta, salaries])
   const sims = useMemo(() => (meta && salaries ? similarByPay(meta, salaries, HERO_ROLE) : null), [meta, salaries])
   const conf = useMemo(() => {
@@ -130,7 +132,7 @@ export default function About() {
         {/* FIG 3 — similarity ladder */}
         <div className="ab-fig">
           <div className="ab-fig-head"><span className="ab-fno">FIG. 3</span><h3>Which roles are paid interchangeably.</h3></div>
-          <div className="ab-fig-body ab-scroll">{sims ? <SimilarityFig sims={sims} /> : <div className="ab-placeholder">computing from salaries.json…</div>}</div>
+          <div className="ab-fig-body ab-scroll">{sims ? <SimilarityFig sims={sims} shortOf={shortOf} /> : <div className="ab-placeholder">computing from salaries.json…</div>}</div>
           <p className="ab-fig-note">
             How interchangeably each role is paid with {anchorLabel} across metros (1.00 = identical everywhere).
             Because it’s a <em>within-metro</em> ratio, cost of living cancels out entirely.
@@ -239,8 +241,8 @@ function SlopeFig({ rows }: { rows: ReturnType<typeof slopeRows> }) {
             <line x1={LEFT} y1={y1} x2={RIGHT} y2={y2} className={stroke} strokeWidth={Math.abs(r.delta) >= 3 ? 2.2 : 1.4} opacity={cls === 'ab-mut' ? 0.7 : 1} />
             <circle cx={LEFT} cy={y1} r={3} className={fill || undefined} fill={fill ? undefined : 'var(--ink-muted)'} />
             <circle cx={RIGHT} cy={y2} r={3} className={fill || undefined} fill={fill ? undefined : 'var(--ink-muted)'} />
-            <text x={LEFT - 10} y={y1} dy="0.32em" textAnchor="end" className="ab-val">{short(r.name)} · {fmtUsdCompact(r.nominal)}</text>
-            <text x={RIGHT + 10} y={y2} dy="0.32em" textAnchor="start" className="ab-val">{fmtUsdCompact(r.adjusted)} · {short(r.name)}</text>
+            <text x={LEFT - 10} y={y1} dy="0.32em" textAnchor="end" className="ab-val">{cityOf(r.name)} · {fmtUsdCompact(r.nominal)}</text>
+            <text x={RIGHT + 10} y={y2} dy="0.32em" textAnchor="start" className="ab-val">{fmtUsdCompact(r.adjusted)} · {cityOf(r.name)}</text>
           </g>
         )
       })}
@@ -267,7 +269,7 @@ function ConflationFig({ tpm, tproj }: { tpm: number; tproj: number }) {
   )
 }
 
-function SimilarityFig({ sims }: { sims: ReturnType<typeof similarByPay> }) {
+function SimilarityFig({ sims, shortOf }: { sims: ReturnType<typeof similarByPay>; shortOf: (soc: string) => string }) {
   const split = sims.length > 6           // enough roles to show "nearest four … the far end"
   const rows = split ? [...sims.slice(0, 4), ...sims.slice(-2)] : sims
   const boundary = split ? 4 : rows.length
@@ -282,7 +284,7 @@ function SimilarityFig({ sims }: { sims: ReturnType<typeof similarByPay> }) {
         const near = i < boundary
         return (
           <g key={s.soc}>
-            <text x={0} y={y + 10} className="ab-val">{s.label}</text>
+            <text x={0} y={y + 10} className="ab-val">{shortOf(s.soc)}</text>
             <rect x={X} y={y} width={BARW} height={12} rx={3} className="ab-track" />
             <rect x={X} y={y} width={Math.max(2, s.overlap * BARW)} height={12} rx={3} className={near ? 'ab-navy-f' : 'ab-rust-f'} />
             <text x={X + BARW + 8} y={y + 10} className="ab-val" fontWeight={600}>{s.overlap.toFixed(2)}</text>
