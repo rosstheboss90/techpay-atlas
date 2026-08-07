@@ -579,3 +579,30 @@ button, select, input { font-family: inherit; }
 .page .t-method p { color: var(--ink-muted); font-size: var(--fs-sm); max-width: var(--measure); margin-top: var(--s3); }
 .page .t-method p:first-of-type { margin-top: 0; }
 .page .t-method a { color: var(--accent); display: inline-block; margin-top: var(--s4); }
+
+/* ── Metro trend (panel section) ──────────────────────────────────────
+   Reuses the /trends chart tokens: --accent for the subject line, --ink-muted
+   for subordinate chrome. The national comparison is deliberately faint — it is
+   context for the metro line, not a second subject competing with it.
+   viewBox scales to the panel; no fixed pixel canvas (house rule above). */
+.page .mt-trend { margin: var(--s2) 0 var(--s4); }
+.page .mt-svg { width: 100%; height: auto; display: block; }
+.page .mt-line { fill: none; stroke-linejoin: round; stroke-linecap: round; }
+.page .mt-line:not(.mt-national) { stroke: var(--accent); stroke-width: 2.5; }
+.page .mt-national { stroke: var(--ink-muted); stroke-width: 1.5; opacity: 0.45; stroke-dasharray: 3 3; }
+/* A lone published year has no neighbour to draw a line to; it renders as a dot
+   so a real observation is not invisible. */
+.page .mt-point { fill: var(--accent); }
+.page .mt-break { stroke: var(--ink-muted); stroke-width: 1; stroke-dasharray: 4 3; opacity: 0.6; }
+.page .mt-legend {
+  display: flex; gap: var(--s3); flex-wrap: wrap;
+  font-size: var(--fs-micro); color: var(--ink-muted); margin-top: var(--s1);
+}
+.page .mt-legend-metro::before,
+.page .mt-legend-national::before {
+  content: ''; display: inline-block; width: 14px; height: 0;
+  border-top-width: 2px; border-top-style: solid; vertical-align: middle; margin-right: 6px;
+}
+.page .mt-legend-metro::before { border-top-color: var(--accent); }
+.page .mt-legend-national::before { border-top-color: var(--ink-muted); border-top-style: dashed; }
+.page .mt-tick { font-size: 9px; color: var(--ink-muted); fill: currentColor; }

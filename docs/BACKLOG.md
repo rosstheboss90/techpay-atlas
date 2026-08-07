@@ -2,6 +2,46 @@
 
 Newest decisions first. v1 (map + panel) shipped 2026-08-03.
 
+## `/trends` Phase B (metro-level) — LANDED on `main` 2026-08-07
+
+"How has pay in my metro changed?" — a new "Pay over time" section inside the existing metro
+panel (`site/components/MetroTrend.tsx`, rendered from `MetroPanel.tsx` below "Pay by role"),
+built from a new append-only per-vintage MSA archive (`data/history/oews-msa-<year>.json`,
+`pipeline/archive-msa.ts`) run through a pure delineation detector (`pipeline/lib/delineation.ts`)
+and a pure trend builder (`pipeline/lib/build-metro-trends.ts`) that emit one small JSON per metro
+under `site/public/data/trends/<cbsa>.json`. Plan:
+`docs/superpowers/plans/2026-08-07-trends-phase-b-metro.md`. Spec:
+`docs/superpowers/specs/2026-08-07-trends-phase-b-metro-design.md`.
+
+**The spec's deferred open question is answered: 66 of 429 metros (15.4%) have a delineation
+break, and every single one falls in 2024** (the OMB 2023-delineation adoption, e.g. Austin
+`12420`: "Austin-Round Rock, TX" → "Austin-Round Rock-San Marcos, TX"). That is the measurement
+that justified keeping the "break the line" design as specced rather than narrowing to
+stable-definition metros only — 15.4% is a labelled exception, not most of the page.
+
+**Payload:** the MSA archive is 1.7MB across seven vintages in `data/history/`; the emitted
+per-metro trend files are 2.6MB total in `site/public/data/trends/` (429 files). Both are
+committed.
+
+**Schema drift, same shape as before:** 2019's MSA file (`MSA_M2019_dl.xlsx`) has lowercase column
+headers and no `PRIM_STATE`, exactly the drift already documented for the national OEWS file and
+for HUD in `crosswalk.ts`. `parse-oews.ts` resolves columns case-insensitively for this reason —
+verified against the real 2019 vintage, not assumed.
+
+**Known limits, deliberate:**
+- **Metro-level p90 is out of scope.** National p90 is already censored for some SOCs
+  (`11-3021` 2019–2024); metro-level censoring is worse, so the trend plots medians only, same
+  as Phase A.
+- **The delineation detector is a name-change heuristic, not a county-composition diff.** It
+  flags a break when a CBSA's published `AREA_TITLE` changes between vintages. OMB can move a
+  boundary without a rename, or rename cosmetically without moving one; the alternative — ingesting
+  OMB's delineation files and diffing county membership — is an entire additional dataset for a
+  marginal gain over a signal that already catches the large, real redefinitions. The panel's
+  boundary note says the break is name-detected, not a boundary read.
+- **The RPP guard holds at both levels**, structural (no `adjusted` prop on `MetroTrend`, a source
+  scan test) and behavioral (`site/e2e/metro-trend.spec.ts` toggles cost-of-living in a real
+  browser and asserts the plotted `points` are byte-identical).
+
 ## `/trends` Phase A — LANDED on `feat/data-refresh-and-archive` 2026-08-06
 
 Real-wage trends for the 21 registry roles, built from the committed OEWS national archive
@@ -37,8 +77,7 @@ Known limits, deliberate:
 - **`/trends/` with a trailing slash 404s**, same as `/about/`. Fix with the custom-domain move.
 - **`11-3021`'s p90 is censored 2019–2024**, so any future p90 view must read `cappedP90`. Phase A
   plots medians only, which are uncensored for every role in every vintage.
-- **Phase B (metro-level) not started.** Needs a CBSA-delineation crosswalk over time and a
-  suppression policy, and p90 becomes load-bearing there.
+- ~~**Phase B (metro-level) not started.**~~ LANDED 2026-08-07 — see the entry above.
 
 ## Data refresh + vintage archive — LANDED on `feat/data-refresh-and-archive` 2026-08-06
 
