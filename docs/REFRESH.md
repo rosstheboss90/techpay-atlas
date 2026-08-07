@@ -93,12 +93,28 @@ Two cases this cannot detect. Both need a manual `rm data/raw/<name>.done`:
 What neither catches, by design: slow compounding bias (a systematic error under 40%/yr), a role
 silently vanishing from the archive, and a top code wrong by only a small margin.
 
-## Manual setup (once)
+## Manual setup (once) — DONE
 
-- The **`data-refresh` label must exist** in the repo. The watcher looks up open issues by that
-  label to decide whether to comment or create; if the label does not exist the lookup returns
-  nothing and it opens a fresh duplicate issue every month. Repo → Issues → Labels → New label →
-  `data-refresh`.
+- ✅ The **`data-refresh` label exists** (created 2026-08-06). The watcher looks up open issues by
+  that label to decide whether to comment or create a new one. If the label is ever deleted, the
+  lookup returns nothing and the watcher opens a fresh duplicate issue every month — so if you see
+  duplicates piling up, check the label first.
+
+## If a workflow run goes missing
+
+GitHub drops queued webhook events during an Actions incident rather than replaying them, so a PR
+opened or pushed mid-incident can end up with **no checks at all** and never self-heal — the
+`opened`/`synchronize` events are simply gone. This happened to PR #11 during the 2026-08-06
+Actions outage.
+
+The fix is a fresh event. In order of preference:
+
+1. **Actions tab → CI → "Run workflow"**, choosing the branch. `ci.yml` already declares
+   `workflow_dispatch` for exactly this. No repo history impact.
+2. Push any commit to the branch.
+3. Close and reopen the pull request.
+
+Check `githubstatus.com` before assuming a missing run means a broken workflow file.
 
 ## Upstream probing: read this before touching the watcher
 
