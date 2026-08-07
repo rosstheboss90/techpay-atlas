@@ -1,5 +1,6 @@
 import type { MetroMeta, Metric, Salaries } from './types'
 import { metricValue } from './derive'
+import { fmtNum, fmtUsdCompact } from './format'
 
 /** Sum of employment across all roles for a metro (null cells skipped). */
 export function totalEmployment(salaries: Salaries, cbsa: string): number {
@@ -39,6 +40,25 @@ export function columnDomain(
     if (v > hi) hi = v
   }
   return hi === -Infinity ? null : [lo, hi]
+}
+
+/**
+ * Compact "min–max" label for a column's domain, formatted for the active metric so it reads
+ * naturally beside the printed cell values (compact currency for pay, plain counts for
+ * employment, two decimals for location quotient).
+ *
+ * Callers MUST pass the exact domain `columnDomain` produced for that column's colors — never
+ * recompute the range independently. If the label and the shading were derived separately they
+ * could silently drift apart, and a wrong range is worse than no range. A null domain (no visible
+ * metro has a value in this column) gets an explicit "no data" label rather than rendering blank
+ * or `$NaN–$NaN`.
+ */
+export function formatColumnRange(domain: [number, number] | null, metric: Metric): string {
+  if (domain == null) return 'no data'
+  const [lo, hi] = domain
+  if (metric === 'pay') return `${fmtUsdCompact(lo)}–${fmtUsdCompact(hi)}`
+  if (metric === 'emp') return `${fmtNum(lo)}–${fmtNum(hi)}`
+  return `${lo.toFixed(2)}–${hi.toFixed(2)}`
 }
 
 /**

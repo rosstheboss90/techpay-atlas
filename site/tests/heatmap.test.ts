@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { MetroMeta, Salaries, SalaryRow } from '../lib/types'
-import { columnDomain, inkOn, sortMetros, topMetrosByEmployment } from '../lib/heatmap'
+import { columnDomain, formatColumnRange, inkOn, sortMetros, topMetrosByEmployment } from '../lib/heatmap'
 import { RAMP_LIGHT, RAMP_DARK } from '../lib/map-scales'
 
 const metro = (cbsa: string, name: string, rpp: number | null = 100): MetroMeta =>
@@ -44,6 +44,38 @@ describe('columnDomain', () => {
   it('excludes rpp-null metros from the adjusted-pay domain', () => {
     // adjusted pay: C (rpp null) drops out of S1; A=200k/1.0, B=100k/1.0 remain
     expect(columnDomain(metros, salaries, 'S1', 'pay', true)).toEqual([100_000, 200_000])
+  })
+})
+
+describe('formatColumnRange', () => {
+  it('formats a pay domain compactly, from the same domain columnDomain returns', () => {
+    const dom = columnDomain(metros, salaries, 'S1', 'pay', false)
+    expect(dom).toEqual([100_000, 200_000]) // sanity: same fixture as the columnDomain tests above
+    expect(formatColumnRange(dom, 'pay')).toBe('$100k–$200k')
+  })
+  it('gives two different columns two different labels when their domains differ', () => {
+    const s1 = formatColumnRange(columnDomain(metros, salaries, 'S1', 'pay', false), 'pay')
+    const s2 = formatColumnRange(columnDomain(metros, salaries, 'S2', 'pay', false), 'pay')
+    expect(s1).not.toBe(s2)
+    expect(s1).toBe('$100k–$200k')
+    expect(s2).toBe('$80k–$500k')
+  })
+  it('formats an employment domain as plain counts, not currency', () => {
+    const dom = columnDomain(metros, salaries, 'S1', 'emp', false)
+    expect(dom).toEqual([100, 300])
+    expect(formatColumnRange(dom, 'emp')).toBe('100–300')
+  })
+  it('formats a location-quotient domain to two decimals', () => {
+    const dom = columnDomain(metros, salaries, 'S1', 'lq', false)
+    expect(formatColumnRange(dom, 'lq')).toBe('1.00–1.00')
+  })
+  it('gives a null domain an explicit no-data label, never blank or NaN', () => {
+    const dom = columnDomain(metros, salaries, 'S9', 'pay', false)
+    expect(dom).toBeNull() // sanity: S9 doesn't exist in any metro's row
+    const label = formatColumnRange(dom, 'pay')
+    expect(label.toLowerCase()).toContain('no data')
+    expect(label).not.toBe('')
+    expect(label).not.toContain('NaN')
   })
 })
 
