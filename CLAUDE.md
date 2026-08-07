@@ -103,6 +103,16 @@ Flow: `data/raw/*` (gitignored) → `npm run pipeline` (parse → validate → e
 Annual refresh: `npm run download` + one manual HUD download, then `npm run pipeline`.
 See `docs/BACKLOG.md` "Standing notes" for vintage-specific gotchas.
 
+⚠️ **Read `docs/REFRESH.md` before touching `bls.gov` or `dol.gov` — including a single probe.**
+Both sit behind Akamai, which 403s automated requests after a modest rate and stays blocked for
+an hour-plus, taking `npm run download` down with it. Two traps that cost real time: `curl -I`
+(HEAD) is refused outright (use a ranged GET), and **the 403 is returned for every URL — files
+that exist and files that cannot possibly exist** — so an availability check that treats only
+`200` as "published" reports "nothing new" while actually being blocked. Any such check needs
+three outcomes: `200/206` published · `404` not yet · anything else **inconclusive, and
+inconclusive must be surfaced**. `api.bls.gov` is a separate host and is not blocked, but it
+serves only the current reference period, so it cannot replace the OEWS file downloads.
+
 ## Development practices
 
 - **Tests live next to what they cover** and gate every change: `pipeline/tests/*.test.ts`
@@ -134,6 +144,31 @@ See `docs/BACKLOG.md` "Standing notes" for vintage-specific gotchas.
   `main` triggers the Pages deploy (`.github/workflows/deploy.yml`, which runs `npm ci` +
   `npm run build` in `site/`). Keep commits scoped with conventional-commit prefixes
   (`feat`/`fix`/`data`/`docs`/`test`/`chore`), matching the existing history.
+- ⚠️ **The deploy workflow runs NO tests — `ci.yml` is the gate, and it only gates PRs.** So a
+  direct push to `main` ships whatever it contains, unverified, and even a docs-only push
+  triggers a Pages rebuild. The branch → PR shape above is a safety requirement, not a
+  preference: push the branch (no deploy), open the PR, wait for **all three** checks, then
+  merge. `ci.yml` gates eslint as well as tests, and tsc runs with `noUnusedLocals` /
+  `noUnusedParameters`.
+- ⚠️ **Unpushed commits on `main` accumulate here on purpose.** Because pushing deploys, local
+  work sits until it is deliberately shipped. Never push to "clean up" an ahead count, and
+  never assume unpushed means forgotten.
+- ⚠️ **The local clone drifts in BOTH directions — use `git status -sb`, never a behind-only
+  count.** `git rev-list --count HEAD..origin/main` measures only *behind*: on 2026-08-06 local
+  main was 0 behind and 1 ahead, which a behind-only check calls "up to date". Features also
+  land from the Claude cloud environment, so the local tree can be far behind (37 commits on
+  2026-08-05, four whole sections missing) — judging the site from the local tree, or from
+  `site/e2e-scratch/*.png`, can mean judging a months-old app. That folder is gitignored
+  scratch, not a record of current state.
+- ⚠️ **Two sessions share this main checkout.** Run `git branch --show-current` before any
+  `checkout`, `pull`, or `reset` — on 2026-08-07 a session moved the tree off another session's
+  branch by assuming it was on `main`. Scope every commit with a pathspec on **both** `git add`
+  and `git commit -- <paths>` so a parallel session's dirty files are never swept in. For
+  anything beyond a read, prefer a worktree (`.worktrees/` is gitignored as of `f279f52`).
+- **Worktrees need real setup.** `data/raw` is gitignored (~0.47 GB) — junction it to the main
+  clone's copy rather than re-downloading (see the Akamai warning above). Run a real `npm ci`
+  in both the root and `site/`: junctioned `node_modules` is the documented cause of Next build
+  failures on this box. With real installs, `next build` works fine in a worktree.
 
 ### Design-doc house style
 
