@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { cell, num } from './num'
+import { cell as currentCell, num } from './num'
 import { SOC_SET } from './soc'
 
 export type Pct = 'p10' | 'p25' | 'p50' | 'p75' | 'p90'
@@ -27,7 +27,10 @@ const toCbsa = (area: string | number) => String(area).trim().padStart(5, '0')
  *  Throws (zod) if a matching row is missing required columns. Non-target rows (incl. O_GROUP
  *  rollups like 00-0000) fall out via the SOC filter itself, so the schema stays tolerant of
  *  vintage differences in optional columns. */
-export function parseOews(rows: Record<string, unknown>[]):
+export function parseOews(
+  rows: Record<string, unknown>[],
+  cell: (v: unknown) => { value: number | null; capped: boolean } = currentCell,
+):
   { records: SalaryRecord[]; areas: Map<string, { name: string; state: string }> } {
   const records: SalaryRecord[] = []
   const areas = new Map<string, { name: string; state: string }>()

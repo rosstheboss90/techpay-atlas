@@ -490,3 +490,85 @@ button, select, input { font-family: inherit; }
   .tl-median { font-size: var(--fs-body); }
   .hm-rowh { max-width: 18ch; }
 }
+
+/* ── Pay trends (/trends) ────────────────────────────────────────────── */
+/* Sizing follows the house rule at the top of this file: the label column
+   below is ch-based (sized to content, not a fixed px guess) with
+   minmax(0, …) so it can still shrink on narrow viewports, the track and
+   value columns are fr/auto so they claim whatever space is left, and the
+   path-chart SVG is width:100% so it always fills its figure rather than
+   sitting half-empty.
+   The path chart plots 21 roles across a 3.2x y-domain ($59.4k-$189.9k),
+   and most individual-contributor roles cluster in the middle third — at
+   equal visual weight that band reads as a tangle. The ghost treatment
+   below is therefore deliberately aggressive (low opacity + thin stroke)
+   so the selected line still reads clearly against the other 20. */
+
+.page .t-lead { margin-top: var(--s4); font-size: var(--fs-h3); font-weight: 650; }
+.page .t-lead-sub { color: var(--ink-muted); font-weight: 400; font-size: var(--fs-sm); margin-left: var(--s1); }
+
+.page .tr-ranked { margin-top: var(--s6); }
+.page .tr-toggle-row { margin: var(--s5) 0; }
+.page .tr-path { margin-top: var(--s7); }
+
+/* Reuses .role-table's base rules (border-collapse, header casing) from the metro panel table —
+   only the bits specific to this table's base-year marker and no-data cells live here. */
+.page .tr-table-wrap { margin-top: var(--s7); }
+.page .tr-table tr.is-base { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+.page .tr-table-base-tag { font-weight: 400; color: var(--ink-muted); font-size: var(--fs-micro); }
+.page .tr-table-nodata { color: var(--ink-muted); font-style: italic; }
+
+.page .tr-rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.page .tr-row {
+  /* 36ch, not 22ch. Measured in the browser: the longest role name ("Computer & Information
+     Research Scientists") needs 261px at the 13px label size, while 22ch resolved to 178px and
+     truncated 8 of 21 labels — leaving "Computer & Information Res…" indistinguishable from
+     "Computer & Information Sys…". The track had 869px it did not need; it still has ~756px.
+     Sizing to the content is the rule, and 22ch was a guess that behaved as a fixed cap in
+     disguise. If the label font or the role registry changes, re-measure: compare each
+     .tr-label's scrollWidth against its clientWidth WHILE it overflows — once it fits, the two
+     are equal and the reading tells you nothing. */
+  display: grid; grid-template-columns: minmax(0, 36ch) minmax(0, 1fr) minmax(6.5ch, auto);
+  align-items: center; gap: var(--s3) var(--s4);
+  padding: var(--s2) 0; border-top: 1px solid var(--line-soft); cursor: pointer;
+}
+.page .tr-row:first-child { border-top: none; }
+.page .tr-row:hover .tr-label { color: var(--accent); }
+.page .tr-row:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+/* Selection must not rely on colour alone: pair the accent tint with a
+   font-weight change on the label so it still reads under a colour-vision
+   deficiency or in print. */
+.page .tr-row[data-selected='true'] { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+.page .tr-row[data-selected='true'] .tr-label { font-weight: 650; color: var(--accent); }
+
+.page .tr-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-sm); }
+
+.page .tr-track { position: relative; height: 18px; }
+.page .tr-track::before {
+  content: ''; position: absolute; top: 0; bottom: 0; left: 50%; width: 1px;
+  background: var(--line); transform: translateX(-50%);
+}
+.page .tr-bar { position: absolute; top: 3px; bottom: 3px; border-radius: 2px; }
+.page .tr-bar.tr-pos { background: var(--soc-1); }
+.page .tr-bar.tr-neg { background: var(--soc-2); }
+
+.page .tr-value { font-variant-numeric: tabular-nums; text-align: right; font-size: var(--fs-sm); font-weight: 650; }
+
+.page .tr-svg { width: 100%; height: auto; display: block; }
+.page .tr-line { fill: none; stroke-linejoin: round; stroke-linecap: round; }
+.page .tr-line-ghost { stroke: var(--ink-muted); stroke-width: 1; opacity: 0.16; }
+.page .tr-line-sel { stroke: var(--accent); stroke-width: 3; opacity: 1; }
+.page .tr-break { stroke: var(--ink-muted); stroke-width: 1; stroke-dasharray: 4 3; opacity: 0.6; }
+.page .tr-tick { font-size: 10px; color: var(--ink-muted); fill: currentColor; }
+
+.page .t-h1 { font-size: var(--fs-display); letter-spacing: -0.035em; }
+.page .t-lede { color: var(--ink-muted); margin-top: var(--s2); font-size: var(--fs-body); max-width: var(--measure); }
+.page .t-caption { font-size: var(--fs-sm); color: var(--ink-muted); margin-bottom: var(--s3); max-width: var(--measure); }
+.page .t-note { font-size: var(--fs-sm); color: var(--ink-muted); margin: var(--s5) 0; max-width: var(--measure); }
+.page .t-h2 { font-size: var(--fs-h2); }
+
+.page .t-method { margin-top: var(--s8); padding-top: var(--s4); border-top: var(--rule); }
+.page .t-method h2 { margin-bottom: var(--s4); }
+.page .t-method p { color: var(--ink-muted); font-size: var(--fs-sm); max-width: var(--measure); margin-top: var(--s3); }
+.page .t-method p:first-of-type { margin-top: 0; }
+.page .t-method a { color: var(--accent); display: inline-block; margin-top: var(--s4); }
