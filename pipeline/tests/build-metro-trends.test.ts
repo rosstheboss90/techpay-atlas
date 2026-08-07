@@ -44,11 +44,19 @@ describe('buildMetroTrend', () => {
     expect(t!.roles['15-1252'].nominal).toEqual([120730, null])
   })
 
-  it('carries the delineation breaks through', () => {
-    const t = buildMetroTrend('12420', [v(2021, 1), v(2025, 2)], cpi, 2025,
-      { '12420': { breaks: [2025], firstYear: 2021, lastYear: 2025, absentYears: [] } })
+  it('carries the delineation breaks through, titles and all', () => {
+    // Full break objects, not just years — see the doc comment on MetroTrend.breaks. The panel
+    // needs `from`/`to` to name what changed, not only when.
+    const t = buildMetroTrend('12420', [v(2021, 1), v(2025, 2)], cpi, 2025, {
+      '12420': {
+        breaks: [{ year: 2025, from: 'Austin-Round Rock, TX', to: 'Austin-Round Rock-San Marcos, TX' }],
+        firstYear: 2021, lastYear: 2025, absentYears: [],
+      },
+    })
     expect(t).not.toBeNull()
-    expect(t!.breaks).toEqual([2025])
+    expect(t!.breaks).toEqual([
+      { year: 2025, from: 'Austin-Round Rock, TX', to: 'Austin-Round Rock-San Marcos, TX' },
+    ])
   })
 
   it('marks a censored cell without altering the plotted median', () => {

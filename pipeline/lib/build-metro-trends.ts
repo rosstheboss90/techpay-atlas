@@ -1,6 +1,6 @@
 import { ROLES } from './soc'
 import type { MsaArchive } from './history'
-import type { MetroDelineation } from './delineation'
+import type { DelineationBreak, MetroDelineation } from './delineation'
 
 export interface MetroTrendRole {
   nominal: (number | null)[]
@@ -12,7 +12,10 @@ export interface MetroTrend {
   cbsa: string
   name: string
   years: number[]
-  breaks: number[]
+  /** Full break objects, not just years, are emitted deliberately: the panel can then say
+   *  *what* changed ("Austin-Round Rock-Georgetown -> Austin-Round Rock-San Marcos") rather than
+   *  only *when*, which is materially more honest for a few dozen bytes per metro. */
+  breaks: DelineationBreak[]
   deflator: { series: string; period: string; base: number }
   roles: Record<string, MetroTrendRole>
 }

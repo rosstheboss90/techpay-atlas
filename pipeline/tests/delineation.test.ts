@@ -18,7 +18,9 @@ describe('detectDelineation', () => {
       v(2019, { '12420': 'Austin-Round Rock, TX' }),
       v(2020, { '12420': 'Austin-Round Rock-Georgetown, TX' }),
     ])
-    expect(d['12420'].breaks).toEqual([2020])
+    expect(d['12420'].breaks).toEqual([
+      { year: 2020, from: 'Austin-Round Rock, TX', to: 'Austin-Round Rock-Georgetown, TX' },
+    ])
   })
 
   it('reports every break when the title changed more than once', () => {
@@ -28,7 +30,27 @@ describe('detectDelineation', () => {
       v(2021, { '12420': 'Austin-Round Rock-Georgetown, TX' }),
       v(2022, { '12420': 'Austin-Round Rock-San Marcos, TX' }),
     ])
-    expect(d['12420'].breaks).toEqual([2020, 2022])
+    expect(d['12420'].breaks).toEqual([
+      { year: 2020, from: 'Austin-Round Rock, TX', to: 'Austin-Round Rock-Georgetown, TX' },
+      { year: 2022, from: 'Austin-Round Rock-Georgetown, TX', to: 'Austin-Round Rock-San Marcos, TX' },
+    ])
+  })
+
+  it('is not fooled by whitespace-only drift between vintages', () => {
+    // BLS export noise, not a redelineation: same content, extra internal space.
+    const d = detectDelineation([
+      v(2019, { '12420': 'Austin-Round Rock, TX' }),
+      v(2020, { '12420': 'Austin-Round Rock,  TX' }),
+    ])
+    expect(d['12420'].breaks).toEqual([])
+  })
+
+  it('is not fooled by case-only drift between vintages', () => {
+    const d = detectDelineation([
+      v(2019, { '12420': 'Austin-Round Rock, TX' }),
+      v(2020, { '12420': 'AUSTIN-ROUND ROCK, TX' }),
+    ])
+    expect(d['12420'].breaks).toEqual([])
   })
 
   it('records first and last year a metro appears', () => {
@@ -48,6 +70,19 @@ describe('detectDelineation', () => {
     expect(d['99999'].breaks).toEqual([])
   })
 
+  it('reports a break as a plain object without a shared reference to the archive title', () => {
+    // Regression guard for the DelineationBreak shape: from/to must be the ORIGINAL, unnormalized
+    // titles (not normalized copies) so a human reviewing the emitted data can tell a real
+    // redefinition from formatting noise that happened to be ambiguous.
+    const d = detectDelineation([
+      v(2019, { '12420': 'austin-round rock, tx' }),
+      v(2020, { '12420': 'Austin-Round Rock-San Marcos, TX' }),
+    ])
+    expect(d['12420'].breaks).toEqual([
+      { year: 2020, from: 'austin-round rock, tx', to: 'Austin-Round Rock-San Marcos, TX' },
+    ])
+  })
+
   it('a gap in appearance is recorded so the series can break there', () => {
     const d = detectDelineation([
       v(2019, { '10180': 'Abilene, TX' }),
@@ -62,7 +97,9 @@ describe('detectDelineation', () => {
       v(2021, { '12420': 'Austin-Round Rock-San Marcos, TX' }),
       v(2019, { '12420': 'Austin-Round Rock, TX' }),
     ])
-    expect(d['12420'].breaks).toEqual([2021])
+    expect(d['12420'].breaks).toEqual([
+      { year: 2021, from: 'Austin-Round Rock, TX', to: 'Austin-Round Rock-San Marcos, TX' },
+    ])
     expect(d['12420'].firstYear).toBe(2019)
   })
 })
