@@ -68,6 +68,11 @@ change, not a UI layer over existing output.
    Prerendering everything is 8,000+ pages minimum, most of them single-filing pages whose own
    caption would say they mean nothing.
 
+   ⚠️ **These counts are floors, not measurements.** They come from the top-15-truncated emitted
+   data, so the true filer count is several times larger and the per-band counts will rise. The
+   floor of 25 is a starting hypothesis; re-derive it from a real pipeline run before fixing
+   `employerPrerenderFloor` in code. See "Lessons the landed work hands this spec".
+
 6. **Staffing firms are labelled and filterable, never removed or left unmarked.** Ranked by
    filing volume the head is dominated by staffing and outsourcing firms — Cognizant #2, TCS #5,
    Infosys #7, with EY and Deloitte close behind — whose filed wages run systematically lower.
@@ -184,8 +189,13 @@ In the existing `fail()` idiom — a bad run stops rather than emitting quietly-
 |---|---|---|
 | `minEmployerProfiles: 200` | fewer filers clear the floor | normalization or the SOC filter broke |
 | `maxAliasCollapse: 0.25` | alias merging absorbs >25% of all filings | an over-broad alias rule |
+| `minAliasCoverage` | alias resolution covers **less** than a floor share of the top-N filers' filings | the opposite bound to `maxAliasCollapse` — catches a rotted or half-applied alias file, which otherwise fails silently by fragmenting the head back into variants |
 | stale-alias check | any alias entry matches zero filed names | prevents the alias file rotting silently as vintages change |
 | slug uniqueness | two canonical employers produce one slug | would otherwise overwrite a profile file |
+
+Both alias tripwires are stated because a one-directional check is what let the `/trends` top-code
+error through: it tested only for a value too high and was blind to one too low. See "Lessons the
+landed work hands this spec".
 
 **Stale-output deletion follows the existing rule at `run.ts:195–198`**: `employers-by-name/` and
 `employer-index/` are removed and recreated *only after every assertion has passed*, exactly as
@@ -214,47 +224,64 @@ from the shard without a profile fetch; the entity disclosure expands.
 
 ## Interaction with the data-refresh / `/trends` work
 
-Ref: `docs/superpowers/specs/2026-08-06-trends-and-data-refresh-design.md`, implemented on
-`feat/data-refresh-and-archive` (15 commits, §1 data layer only; `/trends` Phase A not started).
+Ref: `docs/superpowers/specs/2026-08-06-trends-and-data-refresh-design.md`. **Both halves have
+shipped** — merged as `a820ded` (PR #11, three green CI checks) and deployed 2026-08-07. The §1
+data layer, the seven-vintage archive (2019–2025) and `/trends` Phase A are all live. This section
+was rewritten against the deployed tree; what follows is measured, not predicted.
 
-### What does not collide
+### What did not collide
 
-The landed branch touches `download.ts`, `lib/download-lib.ts`, `lib/history.ts`, `lib/num.ts`,
-`lib/parse-oews.ts`, `vintages.ts`, `archive-verify.ts` and their tests. It does **not** touch
-`run.ts`, `emit.ts`, `aggregate.ts`, `config.ts`, or `SectionNav.tsx`. Nothing in this spec reads
-or writes OEWS vintages, `data/history/`, the CPI deflator, or the top-code table. The two data
-paths are genuinely disjoint: `/trends` is OEWS-national-longitudinal, this is
-LCA-cross-sectional-by-employer.
+An earlier draft predicted collisions in `run.ts`, `emit.ts` and `SectionNav.tsx`. **None
+occurred.** `git diff 8b5212d a820ded` over `run.ts · emit.ts · aggregate.ts · config.ts ·
+SectionNav.tsx · next.config.ts` is **empty**, and the emitted-data diff is a single added file
+(`trends.json`) — `salaries.json`, `titles.json`, `meta.json` and all 371 employer files are
+byte-identical. The LCA path this spec builds on did not move at all.
+
+Two predictions were aimed at the wrong file, and both corrections change the plan:
+
+- `/trends` emitted through a **new `emit-trends.ts` entry point** and never touched `run.ts`.
+- `/trends` linked itself from the masthead at **`site/app/page.tsx:91`**
+  (`<Link href="/trends" className="masthead-link">Pay over time →</Link>`), not `SectionNav.tsx`.
 
 ### Real dependencies
 
 | # | Interaction | Resolution |
 |---|---|---|
-| D1 | **`trailingSlash` is unset**, so the export emits `employers.html` and `/employers/` 404s — the defect `/about` has and `/trends` will inherit. | **Elevated to a prerequisite for this work.** The backlog defers it to the custom-domain move because it changes every URL; that was a reasonable call for two routes. This spec adds ~435 URLs whose entire point is being linkable and indexable, and a shared link with a trailing slash dead-ends. Land `trailingSlash: true` **before** the employer lens ships, together with the custom-domain move if that is close, standalone if not. |
-| D2 | **`run.ts` emit phase** — `/trends` Phase A adds `trends.json`; this adds three artifacts. Both are additive in the same region of the file. | Whichever lands second rebases. Low risk, but do not run them concurrently in the same working tree. |
-| D3 | **`SectionNav.tsx`** — both add a nav link. The site goes from 2 routes to 4. | Textual conflict is trivial; the design question is not. A masthead carrying one link is not a site nav carrying four. Whoever lands second should reassess the nav as a whole rather than appending a third `<a>`. |
-| D4 | **`pipeline/config.ts` `THRESHOLDS`** — both add keys. | Additive, trivial. |
-| D5 | **`run.ts` heap.** `run.ts` already needs `--max-old-space-size=6144` and holds the full `matched` array (500k+ rows). Employer profiles add a second nested Map over the same records. | Build profiles in the **existing employer phase**, reusing the traversal that `aggregateEmployers` already makes, rather than adding an independent pass. If headroom is still short, the profile aggregation is pure and can move to its own entry point exactly as `archive-nat.ts` did — and for the same stated reason. |
-| D6 | **`npm test` used to download ~500 MB** because `download.test.ts` imported a module whose loop ran at import. Fixed on the branch by splitting `download-lib.ts` out of `download.ts`. | This spec adds no new entry-point script, so the hazard does not recur — but if D5 forces one, it must follow the `download-lib.ts` split pattern, not the old shape. |
-| D7 | **Deploy is ungated** (`deploy.yml` runs no tests; `ci.yml` gates PRs only), per Decision 7 of the trends spec. | Same conclusion: this lands as a PR. Never push `main` directly. |
+| D1 | **`trailingSlash` is unset.** Confirmed live post-deploy: `/trends/` and `/about/` both return **HTTP 404**. This is no longer a prediction. | **Prerequisite for this work.** The backlog defers it to the custom-domain move because it changes every URL — a reasonable call at two routes, now demonstrably broken at three. This spec adds ~435 URLs whose entire point is being linkable and indexable. Land `trailingSlash: true` **before** the employer lens ships. |
+| D2 | **`run.ts` emit phase.** `/trends` avoided it entirely via `emit-trends.ts`, setting a house precedent: a new artifact gets its own emit entry point. | **The precedent does not rescue this work.** `emit-trends.ts` is separable because it reads the *committed* archive. Employer profiles need the in-memory `employerRecords` that exist only during an LCA run, and rebuilding them from the emitted per-CBSA files is precisely the `topN = 15` truncation trap in Decision 3. Profiles must live inside `run.ts`, which makes D5 the live constraint rather than a hypothetical. |
+| D3 | **Masthead, not `SectionNav.tsx`.** `/trends` added `<Link href="/trends" className="masthead-link">` at `site/app/page.tsx:91`. `SectionNav.tsx` is untouched and is a within-page section nav, not a site nav. | Follow the established pattern: add a masthead link in `page.tsx`. The "four routes need a real nav" question stands, but it is now a deliberate design item rather than an accidental merge conflict, and it is out of scope here. |
+| D4 | **`pipeline/config.ts` `THRESHOLDS`** — this adds keys; `/trends` added none. | No conflict. Purely additive. |
+| D5 | **`run.ts` heap — now the binding constraint** (see D2). `run.ts` needs `--max-old-space-size=6144` and holds the full `matched` array (500k+ rows); profiles add a second nested structure over the same records. | Build profiles inside the **existing employer phase**, reusing the traversal `aggregateEmployers` already makes, rather than adding an independent pass. If headroom is short, raise the heap flag — do **not** split to a separate entry point, because D2 shows that path re-introduces the truncation trap. |
+| D6 | **`npm test` used to download ~500 MB** because `download.test.ts` imported a module whose loop ran at import; fixed by splitting `download-lib.ts` out of `download.ts`. | This spec adds no new entry-point script (D2/D5), so the hazard does not recur. The pattern still governs any future script. |
+| D7 | **Deploy is ungated** (`deploy.yml` runs no tests; `ci.yml` gates PRs only). | Confirmed working in practice: PR #11 passed three checks — pipeline typecheck+tests, site typecheck+tests+build, Playwright e2e — before merge. This lands as a PR. Never push `main` directly. |
 
 ### Sequencing
 
-The refresh work's §1 should land first, and not because this depends on it — it does not. Its own
-spec notes it is worth landing before the next data refresh regardless, since a vintage overwritten
-without being archived can only be recovered by re-downloading it. It is also already implemented
-and reported near-complete as of 2026-08-06, whereas this is unstarted. Rebasing an unwritten
-feature onto a landed data layer is free; the reverse is not.
+**Resolved.** The refresh work landed and deployed on 2026-08-07, including the full 2019–2025
+backfill and all three items the trends spec wanted measured rather than assumed. The employer
+lens is unblocked and can start whenever, subject only to D1.
 
-The one caveat on "near-complete": the backfill itself was blocked on an Akamai 403, and the trends
-spec flags three things it wants **measured against the real files rather than assumed** — the
-national parser's column shape, the top-code boundary year, and each young role's first-appearance
-year. Those are open questions inside that work, not blockers on this one, but they mean "§1 has
-landed" and "the archive is populated and verified" are different milestones. Only the first
-gates a rebase here.
+The two projects are genuinely disjoint — `/trends` is OEWS-national-longitudinal, this is
+LCA-cross-sectional-by-employer — and the byte-identical emitted-data diff is the evidence.
 
-`/trends` Phase A and the employer lens are then genuinely parallel — different sources, different
-pages, different failure modes — subject to D2 and D3.
+### Lessons the landed work hands this spec
+
+Two things that work discovered by running it apply directly here, and both are cheap to act on:
+
+- **Measure, don't guess.** That project assumed two young SOC roles and found eight, and guessed a
+  2023 top-code boundary that was actually 2022 — the wrong guess archived a value 15% low and
+  produced a fake step in the charts. **The distribution table under Decision 5 has the same
+  weakness**: it is derived from the already-truncated top-15 emitted data, so every count in it is
+  a *floor*, not a measurement. The true filer count is several times larger. Re-derive the
+  prerender floor from a real pipeline run before fixing `employerPrerenderFloor` in code; 25 is a
+  starting hypothesis, not a decision.
+- **Tripwires need both directions.** `findTopCodeAnomaly` fires only when the recorded top code is
+  too *high* relative to observed values, so the real error — a code that was too *low*, yielding a
+  negative gap — passed silently, as did the 15% step (under the 40% jump threshold). It was caught
+  by eye. `maxAliasCollapse: 0.25` in this spec has the identical shape: it catches over-merging and
+  is blind to under-merging. Add the opposite bound — assert that alias coverage over the top-N
+  filers exceeds a floor — so a rotted or half-applied alias file fails loudly instead of quietly
+  fragmenting Amazon back into six rows.
 
 ### Forward compatibility with LCA multi-year
 
