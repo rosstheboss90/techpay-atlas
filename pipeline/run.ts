@@ -138,40 +138,6 @@ const employerRecords = matched.filter(r => r.targetSoc).map(r => ({ ...r, soc: 
 const lcaNonTargetSoc = matched.length - employerRecords.length
 if (employerRecords.length < THRESHOLDS.minLcaRecords) fail(`only ${employerRecords.length} target-SOC LCA records for the employer layer (< ${THRESHOLDS.minLcaRecords})`)
 
-// 3d. Employer layer — same target-SOC stream, transposed to employer-major. Built here, in the
-// existing employer phase, rather than from the emitted per-CBSA files: those are truncated at
-// topN=15, so a rollup over them would undercount any employer ranked 16th in a metro.
-const aliasFile: AliasFile = JSON.parse(readFileSync(EMPLOYER_ALIASES, 'utf8'))
-const aliasIndex = indexAliases(aliasFile)
-const employerProfiles = aggregateEmployerProfiles(employerRecords, aliasIndex)
-console.log(`  employers: ${employerProfiles.size} canonical filers`)
-
-if (employerProfiles.size < THRESHOLDS.minEmployerProfiles)
-  fail(`only ${employerProfiles.size} canonical employers (< ${THRESHOLDS.minEmployerProfiles}) — normalization likely broke`)
-
-// Every alias entry must match a real filed name, or the file rots silently as vintages change.
-const seenKeys = new Set([...employerProfiles.values()].filter(p => p.aliased).map(p => p.key))
-const staleAliases = aliasFile.entities.filter(e => !seenKeys.has(e.canonical)).map(e => e.canonical)
-if (staleAliases.length) fail(`alias entries match no filed employer: ${staleAliases.join(', ')}`)
-
-const collapse = aliasCollapse(employerProfiles)
-if (collapse > THRESHOLDS.maxAliasCollapse)
-  fail(`alias merging absorbed ${(collapse * 100).toFixed(1)}% of filings (> ${THRESHOLDS.maxAliasCollapse * 100}%) — over-broad alias rule`)
-const coverage = aliasCoverage(employerProfiles, THRESHOLDS.employerPrerenderCount)
-if (coverage < THRESHOLDS.minAliasCoverage)
-  fail(`alias file covers only ${(coverage * 100).toFixed(1)}% of top-${THRESHOLDS.employerPrerenderCount} filings (< ${THRESHOLDS.minAliasCoverage * 100}%) — rotted or half-applied`)
-console.log(`  alias collapse ${(collapse * 100).toFixed(1)}%, head coverage ${(coverage * 100).toFixed(1)}%`)
-
-// Slugs become filenames and route segments. A collision would silently overwrite a profile
-// file; an empty slug would write ".json" and produce an unroutable page.
-const slugOwners = new Map<string, string>()
-for (const p of employerProfiles.values()) {
-  if (!p.slug) fail(`employer "${p.display}" (key ${p.key}) produced an empty slug`)
-  const owner = slugOwners.get(p.slug)
-  if (owner) fail(`slug collision "${p.slug}": both ${owner} and ${p.key}`)
-  slugOwners.set(p.slug, p.key)
-}
-
 // meta.metros[].lcaFilings must stay scoped to target-SOC (registry-role) filings, NOT all of
 // `matched` — the site treats lcaFilings > 0 as "an employers/<cbsa>.json file exists" (it skips
 // fetching when 0). buildEmployerFiles below is built from employerRecords, so this has to match
@@ -231,6 +197,57 @@ meta.sources = {
 // Stale output is deleted only now, after every assertion above has passed — a failed run must
 // never destroy the previously-committed good output.
 const keepCbsa = new Set(meta.metros.map(m => m.cbsa))
+
+// 5a. Employer layer — the target-SOC stream transposed to employer-major. Built from the
+// in-memory records, never from the emitted per-CBSA files: those are truncated at topN=15, so a
+// rollup over them would undercount any employer ranked 16th in a metro.
+//
+// Scoped to keepCbsa FIRST. buildMeta drops metros with no OEWS area title or gazetteer
+// coordinates, and an unscoped aggregation carried those CBSAs into employer profiles where the
+// site has no name for them — they rendered as bare codes like "18180" next to dollar figures,
+// in 96 of 500 profiles. Filtering the records (rather than the emitted metros) also keeps
+// national filings equal to the sum of per-metro filings, which a unit test pins.
+const employerScoped = employerRecords.filter(r => keepCbsa.has(r.cbsa))
+const employerOutOfScope = employerRecords.length - employerScoped.length
+const aliasFile: AliasFile = JSON.parse(readFileSync(EMPLOYER_ALIASES, 'utf8'))
+const aliasIndex = indexAliases(aliasFile)
+const employerProfiles = aggregateEmployerProfiles(employerScoped, aliasIndex)
+console.log(`  employers: ${employerProfiles.size} canonical filers ` +
+  `(${employerOutOfScope} filings outside the ${keepCbsa.size} covered metros excluded)`)
+
+if (employerProfiles.size < THRESHOLDS.minEmployerProfiles)
+  fail(`only ${employerProfiles.size} canonical employers (< ${THRESHOLDS.minEmployerProfiles}) — normalization likely broke`)
+
+// Every alias entry must match a real filed name, or the file rots silently as vintages change.
+const seenKeys = new Set([...employerProfiles.values()].filter(p => p.aliased).map(p => p.key))
+const staleAliases = aliasFile.entities.filter(e => !seenKeys.has(e.canonical)).map(e => e.canonical)
+if (staleAliases.length) fail(`alias entries match no filed employer: ${staleAliases.join(', ')}`)
+
+const collapse = aliasCollapse(employerProfiles)
+if (collapse > THRESHOLDS.maxAliasCollapse)
+  fail(`alias merging absorbed ${(collapse * 100).toFixed(1)}% of filings (> ${THRESHOLDS.maxAliasCollapse * 100}%) — over-broad alias rule`)
+const coverage = aliasCoverage(employerProfiles, THRESHOLDS.employerPrerenderCount)
+if (coverage < THRESHOLDS.minAliasCoverage)
+  fail(`alias file covers only ${(coverage * 100).toFixed(1)}% of top-${THRESHOLDS.employerPrerenderCount} filings (< ${THRESHOLDS.minAliasCoverage * 100}%) — rotted or half-applied`)
+console.log(`  alias collapse ${(collapse * 100).toFixed(1)}%, head coverage ${(coverage * 100).toFixed(1)}%`)
+
+// Slugs become filenames and route segments. A collision would silently overwrite a profile
+// file; an empty slug would write ".json" and produce an unroutable page.
+const slugOwners = new Map<string, string>()
+for (const p of employerProfiles.values()) {
+  if (!p.slug) fail(`employer "${p.display}" (key ${p.key}) produced an empty slug`)
+  const owner = slugOwners.get(p.slug)
+  if (owner) fail(`slug collision "${p.slug}": both ${owner} and ${p.key}`)
+  slugOwners.set(p.slug, p.key)
+}
+
+// No emitted profile may name a metro the site cannot label. This is the assertion the bare-CBSA
+// leak got past: the scoping above is the fix, this is the guard that it stays fixed.
+for (const p of employerProfiles.values())
+  for (const [soc, role] of Object.entries(p.roles))
+    for (const m of role.metros)
+      if (!keepCbsa.has(m.cbsa)) fail(`employer "${p.slug}" role ${soc} references uncovered CBSA ${m.cbsa}`)
+
 rmSync(path.join(OUT_DIR, 'employers'), { recursive: true, force: true })
 mkdirSync(path.join(OUT_DIR, 'employers'), { recursive: true })
 writeFileSync(path.join(OUT_DIR, 'meta.json'), JSON.stringify(meta)) // meta.rppYear/topCodeValue already stamped by buildMeta
@@ -280,6 +297,7 @@ writeFileSync(path.join(REPORT_DIR, `run-${meta.generated.slice(0, 10)}.json`), 
   conflationTotalFilings: conflationAgg.totalFilings,
   topUnmatchedZips: [...unmatchedZips.entries()].sort((a, b) => b[1] - a[1]).slice(0, 25),
   employerProfiles: employerProfiles.size,
+  employerOutOfScopeFilings: employerOutOfScope,
   employerPrerendered: employerArtifacts.stats.prerendered,
   employerEquivalentFloor: employerArtifacts.stats.equivalentFloor,
   employerTail: employerArtifacts.stats.tail,
