@@ -72,10 +72,16 @@ export function EmployerSearch({ head, loadShard }: Props) {
       for (const r of shardRows) {
         if (r.slug.startsWith(normalized)) byslug.set(r.slug, r)
       }
-      // ...then head hits (substring on display) OVERWRITE — head wins on shared fields, but
-      // keeps whatever topCbsa/median the shard already supplied for that slug.
+      // ...then head hits OVERWRITE — head wins on shared fields, but keeps whatever
+      // topCbsa/median the shard already supplied for that slug.
+      //
+      // Head matching tests `display` AND the filed names in `search`. An aliased employer's
+      // display is the curated short form ("Amazon"), so testing display alone made its real
+      // filed names unreachable — "amazon" matched but "amazon web" did not, even though
+      // "Amazon Web Services, Inc." is thousands of filings.
       for (const h of head) {
-        if (h.display.toLowerCase().includes(trimmedLower)) byslug.set(h.slug, toRow(h, byslug.get(h.slug)))
+        const haystack = h.search ? `${h.display.toLowerCase()} | ${h.search}` : h.display.toLowerCase()
+        if (haystack.includes(trimmedLower)) byslug.set(h.slug, toRow(h, byslug.get(h.slug)))
       }
       merged = Array.from(byslug.values())
     }

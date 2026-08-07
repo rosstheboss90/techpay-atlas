@@ -46,6 +46,28 @@ describe('EmployerSearch', () => {
     expect(screen.getByText('Amazon').closest('a')).toHaveAttribute('href', '/employers/amazon')
   })
 
+  it('finds an aliased employer by a name it actually filed under', async () => {
+    // "Amazon" is the curated display; "Amazon Web Services, Inc." is what was filed. Matching
+    // display alone meant typing more made the result vanish, on the largest employers on the
+    // site.
+    const withSearch: EmployerHeadRow[] = [{
+      ...head[0],
+      search: 'amazon.com services llc | amazon web services, inc. | amazon data services, inc',
+    }]
+    const loadShard = vi.fn().mockResolvedValue(shardOf([]))
+    render(<EmployerSearch head={withSearch} loadShard={loadShard} />)
+    await userEvent.type(screen.getByRole('searchbox'), 'amazon web')
+    expect(await screen.findByText('Amazon')).toBeInTheDocument()
+  })
+
+  it('does not match an employer whose filed names do not contain the query', async () => {
+    const withSearch: EmployerHeadRow[] = [{ ...head[0], search: 'amazon web services, inc.' }]
+    const loadShard = vi.fn().mockResolvedValue(shardOf([]))
+    render(<EmployerSearch head={withSearch} loadShard={loadShard} />)
+    await userEvent.type(screen.getByRole('searchbox'), 'microsoft azure')
+    await waitFor(() => expect(screen.queryByText('Amazon')).not.toBeInTheDocument())
+  })
+
   it('derives the shard from the normalised query, not the raw one', async () => {
     // ".NET Solutions" normalises to "net-solutions", so the shard is `n`. Keying off the raw
     // first character asked for a `_` shard the pipeline never writes — a 404 the catch

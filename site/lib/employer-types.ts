@@ -28,6 +28,11 @@ export interface EmployerHeadRow {
   category: 'staffing' | 'direct'
   aliased: boolean
   topRole: string
+  /** Extra lowercased names this employer filed under, `|`-joined, present only when they add
+   *  something `display` does not already contain. An aliased employer's display is the curated
+   *  short form, so without this "amazon web" matches nothing despite thousands of filings under
+   *  "Amazon Web Services, Inc.". */
+  search?: string
 }
 
 export interface EmployerHeadJson { lcaPeriod: string; employers: EmployerHeadRow[] }
