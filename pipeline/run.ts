@@ -1,7 +1,7 @@
 // pipeline/run.ts
-import { mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
-import { OUT_DIR, RAW_DIR, REPORT_DIR, THRESHOLDS } from './config'
+import { EMPLOYER_ALIASES, OUT_DIR, RAW_DIR, REPORT_DIR, THRESHOLDS } from './config'
 import { readDelimitedRows, readLcaRows, readSheetRows } from './loaders'
 import { parseOews } from './lib/parse-oews'
 import { rppRowsToMap } from './lib/parse-rpp'
@@ -9,6 +9,9 @@ import { gazetteerRowsToMap } from './lib/parse-gazetteer'
 import { hudRowsToZipCbsa } from './lib/crosswalk'
 import { lcaRowsToRecords, type DropReason, type LcaRecord } from './lib/parse-lca'
 import { aggregateEmployers, attachCbsa } from './lib/aggregate'
+import { aggregateEmployerProfiles } from './lib/aggregate-employer-profiles'
+import { indexAliases, type AliasFile } from './lib/employer-identity'
+import { aliasCollapse, aliasCoverage, buildEmployerArtifacts } from './lib/emit-employers'
 import { aggregateTitles } from './lib/aggregate-titles'
 import { aggregateConflation } from './lib/aggregate-conflation'
 import { FAMILIES } from './lib/titles'
@@ -135,6 +138,40 @@ const employerRecords = matched.filter(r => r.targetSoc).map(r => ({ ...r, soc: 
 const lcaNonTargetSoc = matched.length - employerRecords.length
 if (employerRecords.length < THRESHOLDS.minLcaRecords) fail(`only ${employerRecords.length} target-SOC LCA records for the employer layer (< ${THRESHOLDS.minLcaRecords})`)
 
+// 3d. Employer layer — same target-SOC stream, transposed to employer-major. Built here, in the
+// existing employer phase, rather than from the emitted per-CBSA files: those are truncated at
+// topN=15, so a rollup over them would undercount any employer ranked 16th in a metro.
+const aliasFile: AliasFile = JSON.parse(readFileSync(EMPLOYER_ALIASES, 'utf8'))
+const aliasIndex = indexAliases(aliasFile)
+const employerProfiles = aggregateEmployerProfiles(employerRecords, aliasIndex)
+console.log(`  employers: ${employerProfiles.size} canonical filers`)
+
+if (employerProfiles.size < THRESHOLDS.minEmployerProfiles)
+  fail(`only ${employerProfiles.size} canonical employers (< ${THRESHOLDS.minEmployerProfiles}) — normalization likely broke`)
+
+// Every alias entry must match a real filed name, or the file rots silently as vintages change.
+const seenKeys = new Set([...employerProfiles.values()].filter(p => p.aliased).map(p => p.key))
+const staleAliases = aliasFile.entities.filter(e => !seenKeys.has(e.canonical)).map(e => e.canonical)
+if (staleAliases.length) fail(`alias entries match no filed employer: ${staleAliases.join(', ')}`)
+
+const collapse = aliasCollapse(employerProfiles)
+if (collapse > THRESHOLDS.maxAliasCollapse)
+  fail(`alias merging absorbed ${(collapse * 100).toFixed(1)}% of filings (> ${THRESHOLDS.maxAliasCollapse * 100}%) — over-broad alias rule`)
+const coverage = aliasCoverage(employerProfiles, THRESHOLDS.employerPrerenderCount)
+if (coverage < THRESHOLDS.minAliasCoverage)
+  fail(`alias file covers only ${(coverage * 100).toFixed(1)}% of top-${THRESHOLDS.employerPrerenderCount} filings (< ${THRESHOLDS.minAliasCoverage * 100}%) — rotted or half-applied`)
+console.log(`  alias collapse ${(collapse * 100).toFixed(1)}%, head coverage ${(coverage * 100).toFixed(1)}%`)
+
+// Slugs become filenames and route segments. A collision would silently overwrite a profile
+// file; an empty slug would write ".json" and produce an unroutable page.
+const slugOwners = new Map<string, string>()
+for (const p of employerProfiles.values()) {
+  if (!p.slug) fail(`employer "${p.display}" (key ${p.key}) produced an empty slug`)
+  const owner = slugOwners.get(p.slug)
+  if (owner) fail(`slug collision "${p.slug}": both ${owner} and ${p.key}`)
+  slugOwners.set(p.slug, p.key)
+}
+
 // meta.metros[].lcaFilings must stay scoped to target-SOC (registry-role) filings, NOT all of
 // `matched` — the site treats lcaFilings > 0 as "an employers/<cbsa>.json file exists" (it skips
 // fetching when 0). buildEmployerFiles below is built from employerRecords, so this has to match
@@ -203,6 +240,22 @@ const { files: employerFiles, excluded: employerFilesExcluded } = buildEmployerF
 for (const { cbsa, body } of employerFiles) {
   writeFileSync(path.join(OUT_DIR, 'employers', `${cbsa}.json`), JSON.stringify(body))
 }
+const employerArtifacts = buildEmployerArtifacts(
+  employerProfiles, lcaPeriod, THRESHOLDS.employerPrerenderCount)
+rmSync(path.join(OUT_DIR, 'employers-by-name'), { recursive: true, force: true })
+rmSync(path.join(OUT_DIR, 'employer-index'), { recursive: true, force: true })
+mkdirSync(path.join(OUT_DIR, 'employers-by-name'), { recursive: true })
+mkdirSync(path.join(OUT_DIR, 'employer-index'), { recursive: true })
+writeFileSync(path.join(OUT_DIR, 'employer-head.json'), JSON.stringify(employerArtifacts.head))
+for (const [shard, body] of Object.entries(employerArtifacts.index)) {
+  writeFileSync(path.join(OUT_DIR, 'employer-index', `${shard}.json`), JSON.stringify(body))
+}
+for (const p of employerArtifacts.profiles) {
+  writeFileSync(path.join(OUT_DIR, 'employers-by-name', `${p.slug}.json`), JSON.stringify(p))
+}
+console.log(`  prerendered ${employerArtifacts.stats.prerendered} employers ` +
+  `(equivalent floor ${employerArtifacts.stats.equivalentFloor} filings), ` +
+  `${employerArtifacts.stats.tail} searchable tail`)
 const titlesJson = buildTitles(titleAgg, lcaPeriod)
 writeFileSync(path.join(OUT_DIR, 'titles.json'), JSON.stringify(titlesJson))
 writeFileSync(path.join(OUT_DIR, 'conflation.json'), JSON.stringify(buildConflation(conflationAgg, lcaPeriod)))
@@ -226,5 +279,11 @@ writeFileSync(path.join(REPORT_DIR, `run-${meta.generated.slice(0, 10)}.json`), 
   conflationTitles: conflationAgg.titles.length, conflationDistinctTitles: conflationAgg.distinctTitles,
   conflationTotalFilings: conflationAgg.totalFilings,
   topUnmatchedZips: [...unmatchedZips.entries()].sort((a, b) => b[1] - a[1]).slice(0, 25),
+  employerProfiles: employerProfiles.size,
+  employerPrerendered: employerArtifacts.stats.prerendered,
+  employerEquivalentFloor: employerArtifacts.stats.equivalentFloor,
+  employerTail: employerArtifacts.stats.tail,
+  employerAliasCollapse: collapse,
+  employerAliasCoverage: coverage,
 }, null, 2))
 console.log(`DONE: ${meta.metros.length} metros, ${employerFiles.length} employer files -> ${OUT_DIR}`)
