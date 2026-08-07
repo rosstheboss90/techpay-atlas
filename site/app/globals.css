@@ -580,6 +580,72 @@ button, select, input { font-family: inherit; }
 .page .t-method p:first-of-type { margin-top: 0; }
 .page .t-method a { color: var(--accent); display: inline-block; margin-top: var(--s4); }
 
+/* ── Employer search ─────────────────────────────────────────────────── */
+.employer-search { margin-top: var(--s5); }
+.es-controls {
+  display: flex; align-items: center; gap: var(--s3) var(--s4); flex-wrap: wrap;
+}
+.es-input {
+  background: var(--surface); color: var(--ink); border: var(--rule);
+  border-radius: 7px; padding: var(--s2) var(--s3); font-size: var(--fs-body);
+  min-width: 260px; flex: 1 1 260px;
+}
+.es-toggle {
+  display: flex; align-items: center; gap: var(--s1);
+  font-size: var(--fs-sm); color: var(--ink-muted); white-space: nowrap;
+}
+.es-note { font-size: var(--fs-sm); color: var(--ink-muted); margin: var(--s3) 0 var(--s4); max-width: var(--measure); }
+.es-rows { list-style: none; border-top: var(--rule); padding: 0; margin: 0; }
+.es-row {
+  display: flex; align-items: center; gap: var(--s3);
+  padding: var(--s2) 0; border-bottom: 1px solid var(--line-soft);
+}
+.es-name { color: var(--ink); text-decoration: none; font-weight: 600; }
+a.es-name:hover, a.es-name:focus-visible { color: var(--accent); text-decoration: underline; }
+/* Employers outside the prerendered head have no page, so their name is not a link and must not
+   invite a click — no pointer, no hover affordance. */
+.es-name-nolink { font-weight: 500; color: var(--ink-muted); cursor: default; }
+.es-filings {
+  margin-left: auto; font-size: var(--fs-sm); color: var(--ink-muted); font-variant-numeric: tabular-nums;
+}
+.es-chip {
+  font-size: var(--fs-micro); text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--ink-muted); border: var(--rule); border-radius: 999px; padding: 2px var(--s2);
+}
+.es-chip-quiet { border-color: var(--line-soft); opacity: 0.8; }
+
+/* ── Employer profile ────────────────────────────────────────────────── */
+.emp-name { display: flex; align-items: baseline; gap: var(--s3); flex-wrap: wrap; }
+.emp-chip { font-weight: 500; letter-spacing: 0.05em; }
+
+.emp-entities { margin-top: var(--s4); font-size: var(--fs-sm); }
+.emp-entities summary {
+  cursor: pointer; color: var(--accent); font-weight: 600;
+}
+.emp-entities summary:hover, .emp-entities summary:focus-visible { text-decoration: underline; }
+.emp-entity-list {
+  list-style: none; margin: var(--s3) 0 0; padding: 0;
+  display: flex; flex-direction: column; gap: var(--s2); max-width: var(--measure);
+}
+.emp-entity-list li { display: flex; justify-content: space-between; gap: var(--s3); }
+.emp-entity-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.emp-entity-filings { color: var(--ink-muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+.emp-roles { display: flex; flex-direction: column; gap: var(--s7); margin-top: var(--s6); }
+.emp-role { padding-top: var(--s5); border-top: 1px solid var(--line-soft); }
+.emp-role:first-child { border-top: none; padding-top: 0; }
+.emp-role-title {
+  display: flex; align-items: baseline; gap: var(--s3); flex-wrap: wrap;
+  font-size: var(--fs-h3); letter-spacing: -0.01em;
+}
+.emp-role-summary {
+  color: var(--ink-muted); font-size: var(--fs-sm); margin: var(--s2) 0 var(--s4);
+  max-width: var(--measure);
+}
+/* Metro name is content-sized (ch), never a fixed px — the house rule. Filings and median stay
+   as narrow as their numbers, and the metro column claims whatever's left. */
+.emp-metro-table th[scope="row"] { min-width: 16ch; }
+.emp-metro-table .cell-num .tl-chip-thin { margin-left: var(--s2); }
 /* ── Metro trend (panel section) ──────────────────────────────────────
    Reuses the /trends chart tokens: --accent for the subject line, --ink-muted
    for subordinate chrome. The national comparison is deliberately faint — it is

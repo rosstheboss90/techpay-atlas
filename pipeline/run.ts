@@ -1,7 +1,7 @@
 // pipeline/run.ts
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
-import { OUT_DIR, RAW_DIR, REPORT_DIR, THRESHOLDS } from './config'
+import { EMPLOYER_ALIASES, OUT_DIR, RAW_DIR, REPORT_DIR, THRESHOLDS } from './config'
 import { readDelimitedRows, readLcaRows, readSheetRows } from './loaders'
 import { parseOews } from './lib/parse-oews'
 import { rppRowsToMap } from './lib/parse-rpp'
@@ -10,6 +10,9 @@ import { hudRowsToZipCbsa } from './lib/crosswalk'
 import { HISTORY_DIR } from './lib/history'
 import { lcaRowsToRecords, type DropReason, type LcaRecord } from './lib/parse-lca'
 import { aggregateEmployers, attachCbsa } from './lib/aggregate'
+import { aggregateEmployerProfiles } from './lib/aggregate-employer-profiles'
+import { baseKey, indexAliases, type AliasFile } from './lib/employer-identity'
+import { aliasCollapse, aliasCoverage, buildEmployerArtifacts, maxEntityShare } from './lib/emit-employers'
 import { aggregateTitles } from './lib/aggregate-titles'
 import { aggregateConflation } from './lib/aggregate-conflation'
 import { FAMILIES } from './lib/titles'
@@ -215,6 +218,86 @@ meta.sources = {
 // Stale output is deleted only now, after every assertion above has passed — a failed run must
 // never destroy the previously-committed good output.
 const keepCbsa = new Set(meta.metros.map(m => m.cbsa))
+
+// 5a. Employer layer — the target-SOC stream transposed to employer-major. Built from the
+// in-memory records, never from the emitted per-CBSA files: those are truncated at topN=15, so a
+// rollup over them would undercount any employer ranked 16th in a metro.
+//
+// Scoped to keepCbsa FIRST. buildMeta drops metros with no OEWS area title or gazetteer
+// coordinates, and an unscoped aggregation carried those CBSAs into employer profiles where the
+// site has no name for them — they rendered as bare codes like "18180" next to dollar figures,
+// in 96 of 500 profiles. Filtering the records (rather than the emitted metros) also keeps
+// national filings equal to the sum of per-metro filings, which a unit test pins.
+const employerScoped = employerRecords.filter(r => keepCbsa.has(r.cbsa))
+const employerOutOfScope = employerRecords.length - employerScoped.length
+const aliasFile: AliasFile = JSON.parse(readFileSync(EMPLOYER_ALIASES, 'utf8'))
+const aliasIndex = indexAliases(aliasFile)
+const employerProfiles = aggregateEmployerProfiles(employerScoped, aliasIndex)
+console.log(`  employers: ${employerProfiles.size} canonical filers ` +
+  `(${employerOutOfScope} filings outside the ${keepCbsa.size} covered metros excluded)`)
+
+if (employerProfiles.size < THRESHOLDS.minEmployerProfiles)
+  fail(`only ${employerProfiles.size} canonical employers (< ${THRESHOLDS.minEmployerProfiles}) — normalization likely broke`)
+
+// Alias-file integrity. These three checks are PER-MATCH, not per-entity. The previous version
+// only asked whether each entity's canonical id appeared among aliased keys, which an entity
+// with five match keys passes while four of them are dead — the comment claimed a guarantee the
+// code did not provide.
+//
+// (a) A match value is looked up as `index.get(baseKey(name))`, so anything not already in
+//     baseKey form can never fire. The natural thing to write — the raw filed name, or a name
+//     ending in a legal suffix — is exactly what silently never matches.
+for (const e of aliasFile.entities)
+  for (const m of e.match)
+    if (baseKey(m) !== m)
+      fail(`alias match "${m}" (${e.canonical}) is not in baseKey form — it can never fire; use "${baseKey(m)}"`)
+
+// (b) Two entities claiming one key resolved last-wins, in file order, with no signal.
+const claimedBy = new Map<string, string>()
+for (const e of aliasFile.entities)
+  for (const m of e.match) {
+    const prev = claimedBy.get(m)
+    if (prev && prev !== e.canonical) fail(`alias key "${m}" claimed by both ${prev} and ${e.canonical}`)
+    claimedBy.set(m, e.canonical)
+  }
+
+// (c) Liveness per match, not per entity. A key that matches no filing is stale curation: the
+//     merge it was written to perform silently stopped happening.
+const filedKeys = new Set<string>()
+for (const r of employerScoped) filedKeys.add(baseKey(r.employer))
+const deadMatches = aliasFile.entities
+  .flatMap(e => e.match.filter(m => !filedKeys.has(m)).map(m => `${e.canonical}:${m}`))
+if (deadMatches.length) fail(`alias match keys matched no filed employer: ${deadMatches.join(', ')}`)
+
+const collapse = aliasCollapse(employerProfiles) // reported, not enforced — see its doc comment
+const coverage = aliasCoverage(employerProfiles, THRESHOLDS.employerPrerenderCount)
+if (coverage < THRESHOLDS.minAliasCoverage)
+  fail(`alias file covers only ${(coverage * 100).toFixed(1)}% of top-${THRESHOLDS.employerPrerenderCount} filings (< ${THRESHOLDS.minAliasCoverage * 100}%) — rotted or half-applied`)
+if (coverage > THRESHOLDS.maxAliasCoverage)
+  fail(`alias file covers ${(coverage * 100).toFixed(1)}% of top-${THRESHOLDS.employerPrerenderCount} filings (> ${THRESHOLDS.maxAliasCoverage * 100}%) — resolution is swallowing more than curation explains`)
+const biggest = maxEntityShare(employerProfiles)
+if (biggest.share > THRESHOLDS.maxEntityShare)
+  fail(`"${biggest.slug}" holds ${(biggest.share * 100).toFixed(1)}% of all filings (> ${THRESHOLDS.maxEntityShare * 100}%) — an over-broad match rule is swallowing unrelated companies`)
+console.log(`  alias collapse ${(collapse * 100).toFixed(1)}% (reported), head coverage ${(coverage * 100).toFixed(1)}%, ` +
+  `largest entity ${biggest.slug} ${(biggest.share * 100).toFixed(1)}%`)
+
+// Slugs become filenames and route segments. A collision would silently overwrite a profile
+// file; an empty slug would write ".json" and produce an unroutable page.
+const slugOwners = new Map<string, string>()
+for (const p of employerProfiles.values()) {
+  if (!p.slug) fail(`employer "${p.display}" (key ${p.key}) produced an empty slug`)
+  const owner = slugOwners.get(p.slug)
+  if (owner) fail(`slug collision "${p.slug}": both ${owner} and ${p.key}`)
+  slugOwners.set(p.slug, p.key)
+}
+
+// No emitted profile may name a metro the site cannot label. This is the assertion the bare-CBSA
+// leak got past: the scoping above is the fix, this is the guard that it stays fixed.
+for (const p of employerProfiles.values())
+  for (const [soc, role] of Object.entries(p.roles))
+    for (const m of role.metros)
+      if (!keepCbsa.has(m.cbsa)) fail(`employer "${p.slug}" role ${soc} references uncovered CBSA ${m.cbsa}`)
+
 rmSync(path.join(OUT_DIR, 'employers'), { recursive: true, force: true })
 mkdirSync(path.join(OUT_DIR, 'employers'), { recursive: true })
 writeFileSync(path.join(OUT_DIR, 'meta.json'), JSON.stringify(meta)) // meta.rppYear/topCodeValue already stamped by buildMeta
@@ -224,6 +307,22 @@ const { files: employerFiles, excluded: employerFilesExcluded } = buildEmployerF
 for (const { cbsa, body } of employerFiles) {
   writeFileSync(path.join(OUT_DIR, 'employers', `${cbsa}.json`), JSON.stringify(body))
 }
+const employerArtifacts = buildEmployerArtifacts(
+  employerProfiles, lcaPeriod, THRESHOLDS.employerPrerenderCount)
+rmSync(path.join(OUT_DIR, 'employers-by-name'), { recursive: true, force: true })
+rmSync(path.join(OUT_DIR, 'employer-index'), { recursive: true, force: true })
+mkdirSync(path.join(OUT_DIR, 'employers-by-name'), { recursive: true })
+mkdirSync(path.join(OUT_DIR, 'employer-index'), { recursive: true })
+writeFileSync(path.join(OUT_DIR, 'employer-head.json'), JSON.stringify(employerArtifacts.head))
+for (const [shard, body] of Object.entries(employerArtifacts.index)) {
+  writeFileSync(path.join(OUT_DIR, 'employer-index', `${shard}.json`), JSON.stringify(body))
+}
+for (const p of employerArtifacts.profiles) {
+  writeFileSync(path.join(OUT_DIR, 'employers-by-name', `${p.slug}.json`), JSON.stringify(p))
+}
+console.log(`  prerendered ${employerArtifacts.stats.prerendered} employers ` +
+  `(equivalent floor ${employerArtifacts.stats.equivalentFloor} filings), ` +
+  `${employerArtifacts.stats.tail} searchable tail`)
 const titlesJson = buildTitles(titleAgg, lcaPeriod)
 writeFileSync(path.join(OUT_DIR, 'titles.json'), JSON.stringify(titlesJson))
 writeFileSync(path.join(OUT_DIR, 'conflation.json'), JSON.stringify(buildConflation(conflationAgg, lcaPeriod)))
@@ -247,5 +346,14 @@ writeFileSync(path.join(REPORT_DIR, `run-${meta.generated.slice(0, 10)}.json`), 
   conflationTitles: conflationAgg.titles.length, conflationDistinctTitles: conflationAgg.distinctTitles,
   conflationTotalFilings: conflationAgg.totalFilings,
   topUnmatchedZips: [...unmatchedZips.entries()].sort((a, b) => b[1] - a[1]).slice(0, 25),
+  employerProfiles: employerProfiles.size,
+  employerOutOfScopeFilings: employerOutOfScope,
+  employerPrerendered: employerArtifacts.stats.prerendered,
+  employerEquivalentFloor: employerArtifacts.stats.equivalentFloor,
+  employerTail: employerArtifacts.stats.tail,
+  employerAliasCollapse: collapse,
+  employerAliasCoverage: coverage,
+  employerMaxEntitySlug: biggest.slug,
+  employerMaxEntityShare: biggest.share,
 }, null, 2))
 console.log(`DONE: ${meta.metros.length} metros, ${employerFiles.length} employer files -> ${OUT_DIR}`)

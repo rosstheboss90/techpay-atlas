@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "entities": [
+    { "canonical": "amazon", "display": "Amazon", "category": "direct",
+      "match": ["AMAZONCOM SERVICES", "AMAZON WEB SERVICES", "AMAZON DATA SERVICES",
+                "AMAZON DEVELOPMENT CENTER", "AMAZON ADVERTISING"] },
+    { "canonical": "google", "display": "Google", "category": "direct",
+      "match": ["GOOGLE", "GOOGLE PUBLIC SECTOR"] },
+    { "canonical": "microsoft", "display": "Microsoft", "category": "direct",
+      "match": ["MICROSOFT"] },
+    { "canonical": "meta", "display": "Meta", "category": "direct",
+      "match": ["META PLATFORMS"] },
+    { "canonical": "apple", "display": "Apple", "category": "direct",
+      "match": ["APPLE"] },
+    { "canonical": "walmart", "display": "Walmart", "category": "direct",
+      "match": ["WAL MART ASSOCIATES"] },
+    { "canonical": "cognizant", "display": "Cognizant", "category": "staffing",
+      "match": ["COGNIZANT TECHNOLOGY SOLUTIONS"] },
+    { "canonical": "tcs", "display": "Tata Consultancy Services", "category": "staffing",
+      "match": ["TATA CONSULTANCY SERVICES"] },
+    { "canonical": "infosys", "display": "Infosys", "category": "staffing",
+      "match": ["INFOSYS"] },
+    { "canonical": "ey", "display": "Ernst & Young", "category": "staffing",
+      "match": ["ERNST YOUNG"] },
+    { "canonical": "deloitte", "display": "Deloitte", "category": "staffing",
+      "match": ["DELOITTE CONSULTING"] }
+  ]
+}

@@ -94,6 +94,7 @@ export default function Page() {
         </div>
         <Link href="/about" className="masthead-link">About the data →</Link>
         <Link href="/trends" className="masthead-link">Pay over time →</Link>
+        <Link href="/employers" className="masthead-link">Employers →</Link>
       </header>
       <SectionNav />
       <FilterBar roles={meta.roles} state={state} onChange={update} />
