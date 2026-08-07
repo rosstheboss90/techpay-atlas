@@ -14,7 +14,7 @@ describe('baseKey', () => {
   it('strips legal suffixes, including stacked ones', () => {
     expect(baseKey('Google LLC')).toBe('GOOGLE')
     expect(baseKey('Google Inc')).toBe('GOOGLE')
-    expect(baseKey('Ernst & Young US LLP')).toBe('ERNST & YOUNG')
+    expect(baseKey('Ernst & Young US LLP')).toBe('ERNST YOUNG')
     expect(baseKey('Tata Consultancy Services Limited')).toBe('TATA CONSULTANCY SERVICES')
   })
 
@@ -24,6 +24,52 @@ describe('baseKey', () => {
 
   it('leaves distinct second words distinct — suffix stripping alone does not merge Amazon', () => {
     expect(baseKey('Amazon Web Services, Inc.')).not.toBe(baseKey('Amazon.com Services LLC'))
+  })
+
+  it('deletes intra-word punctuation but treats other punctuation as a separator', () => {
+    // '.' is deleted so "Amazon.com" stays one token and "U.S." strips as a legal suffix...
+    expect(baseKey('Amazon.com Services LLC')).toBe('AMAZONCOM SERVICES')
+    expect(baseKey('Amazon Development Center U.S., Inc.')).toBe('AMAZON DEVELOPMENT CENTER')
+    // ...while '-' and '&' separate words, so spacing around them cannot change the key.
+    expect(baseKey('Wal-Mart Associates, Inc')).toBe('WAL MART ASSOCIATES')
+  })
+
+  it('merges one company filed with and without a space after a hyphen', () => {
+    // Both spellings appear in the real FY2025 LCA data and previously produced two employers
+    // whose slugs collided, failing the pipeline.
+    expect(baseKey('CIGNA- EVERNORTH SERVICES')).toBe(baseKey('CIGNA-EVERNORTH SERVICES'))
+    expect(baseKey('CIGNA- EVERNORTH SERVICES')).toBe('CIGNA EVERNORTH SERVICES')
+  })
+})
+
+describe('baseKey -> slugify is injective', () => {
+  it('produces keys containing only A-Z, 0-9 and single spaces', () => {
+    for (const name of [
+      'Ernst & Young US LLP', 'Wal-Mart Associates, Inc', "O'Reilly Media, Inc.",
+      'CIGNA- EVERNORTH SERVICES', 'AT&T Services, Inc.', '3M Company', 'Amazon.com Services LLC',
+    ]) {
+      expect(baseKey(name)).toMatch(/^[A-Z0-9]+( [A-Z0-9]+)*$/)
+    }
+  })
+
+  it('never maps two distinct keys onto one slug', () => {
+    // This property is what makes run.ts's slug-collision tripwire structurally unreachable
+    // rather than merely unobserved. Keep the tripwire anyway: it guards against a future
+    // change to either function reintroducing the gap.
+    const names = [
+      'A & B', 'A&B', 'A-B', 'A - B', 'CIGNA- EVERNORTH SERVICES', 'CIGNA-EVERNORTH SERVICES',
+      'Wal-Mart Associates', 'Wal Mart Associates', 'Amazon.com Services', 'Amazon com Services',
+    ]
+    const bySlug = new Map<string, Set<string>>()
+    for (const n of names) {
+      const key = baseKey(n)
+      const slug = slugify(key)
+      if (!bySlug.has(slug)) bySlug.set(slug, new Set())
+      bySlug.get(slug)!.add(key)
+    }
+    for (const [slug, keys] of bySlug) {
+      expect(`${slug} -> ${[...keys].join(' | ')}`).toBe(`${slug} -> ${[...keys][0]}`)
+    }
   })
 })
 

@@ -5,13 +5,27 @@ const LEGAL_SUFFIXES = new Set([
   'LTD', 'LIMITED', 'PC', 'CO', 'USA', 'US',
 ])
 
-/** Filed name -> comparison key: uppercase, punctuation removed, whitespace collapsed, trailing
- *  legal suffixes stripped. Stacked suffixes ("US LLP") strip in one pass, tail-first. */
+/** Filed name -> comparison key: uppercase, punctuation normalized, whitespace collapsed,
+ *  trailing legal suffixes stripped. Stacked suffixes ("US LLP") strip in one pass, tail-first.
+ *
+ *  Punctuation is handled in two deliberately different ways:
+ *
+ *  - `.` `,` `'` are DELETED, because they sit inside a token without separating it:
+ *    "Amazon.com" is one word, and "U.S." must become "US" so it strips as a legal suffix.
+ *  - every OTHER non-alphanumeric run becomes a single SPACE, because it separates words.
+ *
+ *  The second rule exists to keep this key space at least as coarse as slugify()'s. Deleting
+ *  only `.`/`,` left hyphens and ampersands in the key while slugify collapsed them, so two
+ *  distinct keys could produce one slug — real filings include both "CIGNA- EVERNORTH SERVICES"
+ *  and "CIGNA-EVERNORTH SERVICES", one company filed two ways. With this rule the key contains
+ *  only [A-Z0-9] and single spaces, so slugify is injective over keys and a slug collision is
+ *  structurally impossible rather than merely detected. run.ts still asserts it, as a guard
+ *  against a future change to either function reintroducing the gap. */
 export function baseKey(name: string): string {
   const cleaned = String(name ?? '')
     .toUpperCase()
-    .replace(/[.,]/g, '')
-    .replace(/\s+/g, ' ')
+    .replace(/['’.,]/g, '')
+    .replace(/[^A-Z0-9]+/g, ' ')
     .trim()
   const tokens = cleaned.split(' ').filter(Boolean)
   // Never strip down to nothing: a name that IS a suffix keeps it.

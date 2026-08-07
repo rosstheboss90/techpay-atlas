@@ -13,7 +13,7 @@
     { "canonical": "apple", "display": "Apple", "category": "direct",
       "match": ["APPLE"] },
     { "canonical": "walmart", "display": "Walmart", "category": "direct",
-      "match": ["WAL-MART ASSOCIATES"] },
+      "match": ["WAL MART ASSOCIATES"] },
     { "canonical": "cognizant", "display": "Cognizant", "category": "staffing",
       "match": ["COGNIZANT TECHNOLOGY SOLUTIONS"] },
     { "canonical": "tcs", "display": "Tata Consultancy Services", "category": "staffing",
@@ -21,7 +21,7 @@
     { "canonical": "infosys", "display": "Infosys", "category": "staffing",
       "match": ["INFOSYS"] },
     { "canonical": "ey", "display": "Ernst & Young", "category": "staffing",
-      "match": ["ERNST & YOUNG"] },
+      "match": ["ERNST YOUNG"] },
     { "canonical": "deloitte", "display": "Deloitte", "category": "staffing",
       "match": ["DELOITTE CONSULTING"] }
   ]
