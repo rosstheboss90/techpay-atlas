@@ -39,13 +39,14 @@ export function TrendsPath({ trends, selected, mode = 'real' }: {
         {mode === 'nominal' ? (
           <>
             Nominal median pay — the dollar amount actually reported that year
-            {sel ? <>, <b>{sel.label}</b> highlighted</> : null}. Not adjusted for inflation, so
-            values are not comparable year to year.
+            {sel ? <>, <b>{sel.label}</b> highlighted</> : null}. These are the amounts actually
+            reported, not restated in {trends.deflator.base} dollars, so they are not comparable
+            year to year.
           </>
         ) : (
           <>
             Median pay in {trends.deflator.base} dollars{sel ? <> — <b>{sel.label}</b> highlighted</> : null}.
-            Adjusted for inflation with CPI-U ({trends.deflator.period}-to-{trends.deflator.period}).
+            Restated using CPI-U ({trends.deflator.period}-to-{trends.deflator.period}).
           </>
         )}
       </figcaption>

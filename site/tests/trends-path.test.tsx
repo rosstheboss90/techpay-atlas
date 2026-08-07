@@ -92,17 +92,17 @@ describe('TrendsPath', () => {
     expect(a).toBe(b)
   })
 
-  it('states it is adjusted for inflation in real mode', () => {
+  it('states the figures are restated in base-year dollars in real mode', () => {
     render(<TrendsPath trends={fixture} selected="15-1252" mode="real" />)
-    expect(screen.getByText(/adjusted for inflation/i)).toBeInTheDocument()
+    expect(screen.getByText(/restated using cpi-u/i)).toBeInTheDocument()
   })
 
   it('does not claim inflation adjustment in nominal mode', () => {
     render(<TrendsPath trends={fixture} selected="15-1252" mode="nominal" />)
-    // "Not adjusted for inflation" legitimately contains the substring "adjusted for inflation",
+    // The nominal caption must not imply the figures are comparable across years.
     // so assert against the real-mode-only affirmative phrasing rather than that substring.
-    expect(screen.queryByText(/adjusted for inflation with cpi-u/i)).not.toBeInTheDocument()
-    expect(screen.getByText(/not adjusted for inflation/i)).toBeInTheDocument()
+    expect(screen.queryByText(/restated using cpi-u/i)).not.toBeInTheDocument()
+    expect(screen.getByText(/not comparable/i)).toBeInTheDocument()
   })
 
   it('labels the nominal svg distinctly so assistive tech doesn\'t hear "real" for as-paid figures', () => {

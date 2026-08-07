@@ -61,7 +61,7 @@ export default function TrendsPage() {
           <h1 className="t-h1">Pay trends</h1>
           <p className="t-lede">
             How real median pay moved across {roleCount} tech occupations, {trends.headlineFrom}–{trends.headlineTo},
-            adjusted for inflation. Click a role in either figure to follow it through both.
+            in {trends.deflator.base} dollars. Click a role in either figure to follow it through both.
           </p>
         </div>
         <Link href="/" className="masthead-link">← TechPay Atlas</Link>
@@ -89,7 +89,7 @@ export default function TrendsPage() {
         <button type="button" className="col-toggle" aria-pressed={nominal}
                 onClick={() => setNominal(v => !v)}>
           {nominal
-            ? 'Showing as-paid dollars — switch to inflation-adjusted'
+            ? `Showing as-paid dollars — switch to ${trends.deflator.base} dollars`
             : `Showing ${trends.deflator.base} dollars — switch to as-paid`}
         </button>
       </div>
@@ -97,6 +97,16 @@ export default function TrendsPage() {
       <TrendsPath trends={trends} selected={selected} mode={mode} />
 
       <TrendsTable trends={trends} selected={selected} />
+
+      {/* The other half of this question. The same series exists per metro inside the map's panel,
+          and a reader who has just read the national story most often wants their own city next —
+          without this they would have to know that feature exists. Role is carried across so the
+          answer stays about the occupation they were reading. */}
+      <p className="t-note">
+        This is the national picture.{' '}
+        <Link href={`/?role=${selected}`}>Open a metro on the map</Link>{' '}
+        to see the same series for one city, with the national line drawn behind it for comparison.
+      </p>
 
       {trends.skippedRoles.length > 0 && (
         <p className="t-note">

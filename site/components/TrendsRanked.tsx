@@ -24,8 +24,8 @@ export function TrendsRanked({ trends, selected, onSelect }: {
   return (
     <figure className="tr-ranked">
       <figcaption className="t-caption">
-        Real change in median pay, {trends.headlineFrom}–{trends.headlineTo}, adjusted for
-        inflation (CPI-U, {trends.deflator.base} dollars). Bars right of the line beat inflation.
+        Real change in median pay, {trends.headlineFrom}–{trends.headlineTo}, measured in{' '}
+        {trends.deflator.base} dollars using CPI-U. Bars right of the line beat inflation.
       </figcaption>
       <ul className="tr-rows">
         {ranked.map(r => {

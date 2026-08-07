@@ -39,7 +39,10 @@ describe('MetroTrend', () => {
   it('draws the national series, labelled so it is not mistaken for a second metro', () => {
     const { container } = render(<MetroTrend metro={metro} national={national} soc="15-1252" roleLabel="Software Developers" />)
     expect(container.querySelector('[data-national-series]')).toBeInTheDocument()
-    expect(screen.getByText(/national/i)).toBeInTheDocument()
+    // Scoped to the legend. An unscoped /national/i also matches the "see every role nationally"
+    // link below the chart — the ambiguity is the point of the assertion, so pin the element that
+    // actually identifies the ghosted series rather than any text containing the word.
+    expect(container.querySelector('.mt-legend-national')?.textContent).toMatch(/national/i)
   })
 
   it('says the figures are inflation-adjusted, not cost-of-living adjusted', () => {

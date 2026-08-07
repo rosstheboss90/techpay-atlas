@@ -139,12 +139,12 @@ describe('/trends page', () => {
     await waitFor(() => expect(screen.getByRole('table')).toBeInTheDocument())
   })
 
-  it('keeps the ranked figure describing itself as inflation-adjusted after switching to nominal mode', async () => {
+  it('keeps the ranked figure describing itself as CPI-based after switching to nominal mode', async () => {
     const Page = (await import('../app/trends/page')).default
     render(<Page />)
     const toggle = await screen.findByRole('button', { name: /as-paid/i })
     toggle.click()
     const rankedCaption = document.querySelector('.tr-ranked .t-caption')
-    expect(rankedCaption?.textContent).toMatch(/adjusted for.*inflation/i)
+    expect(rankedCaption?.textContent).toMatch(/dollars using CPI-U/i)
   })
 })
