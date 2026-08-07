@@ -280,6 +280,12 @@ against the national file's 290KB, so it needs the larger heap." -- pipeline/lib
 
 ### Task 2: Delineation detection (pure, unblocked)
 
+> ✅ **SHIPPED** — `c80fc32`, hardened by `2cac12d`. The code below is the ORIGINAL plan text and is
+> superseded in one respect: titles are normalized (trim + collapse whitespace + lowercase) before
+> comparison, so BLS export noise does not register as a redelineation, and `breaks` is now
+> `{ year, from, to }[]` rather than `number[]` so the panel can name what changed. Read
+> `pipeline/lib/delineation.ts` for the shipped version.
+
 **Files:** create `pipeline/lib/delineation.ts`; test `pipeline/tests/delineation.test.ts`
 
 - [ ] **Step 1: Write the failing test:**
@@ -430,6 +436,11 @@ rigour than it has." -- pipeline/lib/delineation.ts pipeline/tests/delineation.t
 ---
 
 ### Task 3: Per-metro trend builder (pure, unblocked)
+
+> ✅ **SHIPPED** — `d19110e`, updated by `2cac12d`. `MetroTrend.breaks` is `{ year, from, to }[]`,
+> not `number[]`. The plan's test code also dereferenced a `T | null` return directly, which passes
+> at runtime but fails `tsc --noEmit` under strict; the shipped tests use the repo's
+> `expect(x).not.toBeNull()` + `x!` idiom. Read `pipeline/lib/build-metro-trends.ts`.
 
 **Files:** create `pipeline/lib/build-metro-trends.ts`; test `pipeline/tests/build-metro-trends.test.ts`
 
@@ -619,6 +630,15 @@ export interface MetroTrendRole {
   capped: boolean[]
 }
 
+/** A metro redefinition. `from`/`to` are the ORIGINAL published titles, so the panel can name
+ *  what actually changed ("Austin-Round Rock-Georgetown → Austin-Round Rock-San Marcos") rather
+ *  than just asserting that something did. */
+export interface DelineationBreak {
+  year: number
+  from: string
+  to: string
+}
+
 /** Named MetroTrendData, not MetroTrend, because `MetroTrend` is the COMPONENT in
  *  components/MetroTrend.tsx. A type and a component sharing a name forces an import alias at
  *  every call site and reads as a mistake. */
@@ -626,11 +646,14 @@ export interface MetroTrendData {
   cbsa: string
   name: string
   years: number[]
-  breaks: number[]
+  breaks: DelineationBreak[]
   deflator: { series: string; period: string; base: number }
   roles: Record<string, MetroTrendRole>
 }
 ```
+
+⚠️ **`breaks` carries objects, not years.** The pipeline emits `{ year, from, to }` per break — see
+`pipeline/lib/delineation.ts` (commit `2cac12d`). Anywhere you need just the years, map first.
 
 - [ ] **Step 2: Write the failing test** — create `site/tests/metro-trend.test.ts`:
 
@@ -639,7 +662,9 @@ import { describe, expect, it } from 'vitest'
 import { segments } from '../lib/metro-trend'
 import type { MetroTrendData } from '../lib/metro-trend-types'
 
-const t = (nominal: (number | null)[], breaks: number[] = []): MetroTrendData => ({
+const brk = (year: number) => ({ year, from: 'Old Name, TX', to: 'New Name, TX' })
+
+const t = (nominal: (number | null)[], breaks: { year: number; from: string; to: string }[] = []): MetroTrendData => ({
   cbsa: '12420', name: 'Austin, TX',
   years: [2019, 2020, 2021, 2022, 2023],
   breaks,
@@ -663,7 +688,7 @@ describe('segments', () => {
 
   it('splits at a delineation break even when values are continuous', () => {
     // The data is present on both sides; the geography changed, so the line must not connect.
-    const s = segments(t([1, 2, 3, 4, 5], [2022]), '15-1252')
+    const s = segments(t([1, 2, 3, 4, 5], [brk(2022)]), '15-1252')
     expect(s).toHaveLength(2)
     expect(s[0].map(p => p.year)).toEqual([2019, 2020, 2021])
     expect(s[1].map(p => p.year)).toEqual([2022, 2023])
@@ -714,14 +739,15 @@ export function segments(trend: MetroTrendData, soc: string, mode: 'real' | 'nom
   const role = trend.roles[soc]
   if (!role) return []
   const values = mode === 'nominal' ? role.nominal : role.real
-  const breaks = new Set(trend.breaks)
+  // breaks carry {year, from, to}; only the year matters for splitting.
+  const breakYears = new Set(trend.breaks.map(b => b.year))
 
   const out: TrendPoint[][] = []
   let run: TrendPoint[] = []
   trend.years.forEach((year, i) => {
     const v = values[i]
     if (v === null) { if (run.length) out.push(run); run = []; return }
-    if (breaks.has(year) && run.length) { out.push(run); run = [] }
+    if (breakYears.has(year) && run.length) { out.push(run); run = [] }
     run.push({ year, value: v })
   })
   if (run.length) out.push(run)
