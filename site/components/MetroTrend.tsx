@@ -1,4 +1,5 @@
 'use client'
+import Link from 'next/link'
 import { fmtUsdCompact } from '../lib/format'
 import { pathPoints } from '../lib/trends'
 import { segments } from '../lib/metro-trend'
@@ -104,8 +105,8 @@ export function MetroTrend({ metro, national, soc, roleLabel }: {
         <span className="mt-legend-metro">{metro.name}</span> vs <span className="mt-legend-national">National</span>
       </p>
       <p className="panel-note">
-        Inflation-adjusted (CPI-U), in {metro.deflator.base} dollars — not cost-of-living adjusted.
-        The cost-of-living toggle above does not change these figures.
+        In {metro.deflator.base} dollars (CPI-U) — this is inflation, not cost of living. The
+        cost-of-living toggle above does not change these figures.
       </p>
       {metro.breaks.length > 0 && (
         <p className="panel-note">
@@ -120,6 +121,14 @@ export function MetroTrend({ metro, national, soc, roleLabel }: {
       {yearCount < 3 && (
         <p className="panel-note">Only {yearCount} year{yearCount === 1 ? '' : 's'} of published data — not a trend.</p>
       )}
+      {/* The on-ramp, not an exit. A reader arrives asking one narrow question about one city;
+          having answered it, this offers the more interesting version of the same question. The
+          ghosted national line hints that the comparison exists but cannot answer it across every
+          occupation — that is what the link is for. Role is carried so the follow-up stays about
+          the job they came for. */}
+      <p className="panel-note">
+        <Link href={`/trends?role=${soc}`}>Is this just here, or everywhere? See every role nationally →</Link>
+      </p>
     </div>
   )
 }

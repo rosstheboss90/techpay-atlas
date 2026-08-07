@@ -2,6 +2,40 @@
 
 Newest decisions first. v1 (map + panel) shipped 2026-08-03.
 
+## Narrative reconciliation — audience settled, restructure deferred (2026-08-07)
+
+After both trends phases landed, the site was reviewed as a whole rather than feature by feature.
+Four seams were found; two were fixed, two deferred.
+
+**Audience, settled:** this is for **someone answering one specific question about their own pay** —
+not someone browsing a data essay. The refinement that matters: *pull them in with what appeals to
+them, and they stay for the more interesting information.* The specific answer is the hook; the
+honesty material and the time dimension are the payoff. That ordering — answer first, depth second
+— should decide any future structural work.
+
+**Fixed:**
+- **Two "over time" surfaces that didn't know about each other.** `/trends` (national) and the metro
+  panel's trend section answered the same question at different scopes with no path between them.
+  Each now links to the other, carrying the selected role across. The panel's link is framed as an
+  on-ramp ("Is this just here, or everywhere?"), not an exit.
+- **"Adjusted" meant two things to the reader.** Cost-of-living (BEA RPP, spatial) and inflation
+  (CPI-U, temporal) were both "adjusted". The code guard shipped in Phase B was structural, but the
+  reader still met one word with two meanings and the remedy was a disclaimer. **"Adjusted" is now
+  reserved for cost of living**; inflation is expressed as "in <base> dollars". No inflation context
+  uses the word anywhere in the site.
+
+**Deferred, wanted:**
+- **Re-order and re-label the home sections around questions, not chart types.** The nav currently
+  reads *Map · Cost of living · Head to head · Job titles · Similar roles · City × role* — which
+  names what each chart **is**. A reader arrives wanting *"am I underpaid?"* or *"should I move?"*.
+  Proposed spine: What am I actually called? → What does it pay? → Where? → Is that real money? →
+  Is it holding up? Note this is **more** valuable under the settled audience, not less: an
+  answer-seeker scans for the question matching theirs. Genuine restructure, needs its own spec.
+- **Surface the thesis.** `/about` holds the best writing on the site — *"Official data tells you
+  the number. This tells you what the number leaves out."* — behind a small masthead link in a
+  separate visual system. Lower priority under the "hook first" reading, but it is the payoff half
+  of that strategy and currently nobody reaches it.
+
 ## `/trends` Phase B (metro-level) — LANDED on `main` 2026-08-07
 
 "How has pay in my metro changed?" — a new "Pay over time" section inside the existing metro
