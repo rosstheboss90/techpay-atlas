@@ -572,3 +572,33 @@ button, select, input { font-family: inherit; }
 .page .t-method p { color: var(--ink-muted); font-size: var(--fs-sm); max-width: var(--measure); margin-top: var(--s3); }
 .page .t-method p:first-of-type { margin-top: 0; }
 .page .t-method a { color: var(--accent); display: inline-block; margin-top: var(--s4); }
+
+/* ── Employer search ─────────────────────────────────────────────────── */
+.employer-search { margin-top: var(--s5); }
+.es-controls {
+  display: flex; align-items: center; gap: var(--s3) var(--s4); flex-wrap: wrap;
+}
+.es-input {
+  background: var(--surface); color: var(--ink); border: var(--rule);
+  border-radius: 7px; padding: var(--s2) var(--s3); font-size: var(--fs-body);
+  min-width: 260px; flex: 1 1 260px;
+}
+.es-toggle {
+  display: flex; align-items: center; gap: var(--s1);
+  font-size: var(--fs-sm); color: var(--ink-muted); white-space: nowrap;
+}
+.es-note { font-size: var(--fs-sm); color: var(--ink-muted); margin: var(--s3) 0 var(--s4); max-width: var(--measure); }
+.es-rows { list-style: none; border-top: var(--rule); }
+.es-row {
+  display: flex; align-items: center; gap: var(--s3);
+  padding: var(--s2) 0; border-bottom: 1px solid var(--line-soft);
+}
+.es-name { color: var(--ink); text-decoration: none; font-weight: 600; }
+.es-name:hover, .es-name:focus-visible { color: var(--accent); text-decoration: underline; }
+.es-filings {
+  margin-left: auto; font-size: var(--fs-sm); color: var(--ink-muted); font-variant-numeric: tabular-nums;
+}
+.es-chip {
+  font-size: var(--fs-micro); text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--ink-muted); border: var(--rule); border-radius: 999px; padding: 2px var(--s2);
+}
