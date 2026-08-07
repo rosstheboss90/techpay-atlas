@@ -97,6 +97,48 @@ export function findImplausibleJumps(
   return out
 }
 
+/** One metro+role cell for a single MSA vintage. Medians only — Phase B plots p50, and
+ *  metro-level censoring of upper percentiles is worse than national (spec: out of scope). */
+export interface MsaMetroRecord {
+  p50: number | null
+  emp: number | null
+  capped: Pct[]
+}
+
+export interface MsaArchive {
+  year: number
+  topCode: number
+  source: string
+  /** cbsa -> AREA_TITLE for this vintage. Comparing this map across vintages is how a metro
+   *  redefinition is detected (spec: "Detecting a delineation change"). Without it the archive
+   *  cannot answer whether a series is continuous. */
+  areas: Record<string, string>
+  metros: Record<string, Record<string, MsaMetroRecord>>
+}
+
+export const msaArchiveFilename = (year: number): string => `oews-msa-${year}.json`
+export const msaArchivePath = (year: number): string => path.join(HISTORY_DIR, msaArchiveFilename(year))
+
+export function buildMsaArchive(
+  year: number,
+  topCode: number,
+  source: string,
+  areas: Map<string, { name: string; state: string }>,
+  metros: Record<string, Record<string, MsaMetroRecord>>,
+): MsaArchive {
+  const cbsas = Object.keys(metros)
+  if (cbsas.length === 0) {
+    throw new Error(`refusing to archive MSA vintage ${year} with 0 metros — the parse produced nothing`)
+  }
+  const areaRecord: Record<string, string> = {}
+  for (const cbsa of cbsas) {
+    const a = areas.get(cbsa)
+    if (!a) throw new Error(`${cbsa} has records but no area title in vintage ${year} — delineation signal would be lost`)
+    areaRecord[cbsa] = a.name
+  }
+  return { year, topCode, source, areas: areaRecord, metros }
+}
+
 export interface TopCodeAnomaly {
   year: number; topCode: number; maxUncapped: number; cappedCells: number; gap: number
 }

@@ -4,7 +4,7 @@ import type { Meta, Metric, MetroMeta, Salaries, SalaryRow } from '../lib/types'
 import { displayPct, metricValue } from '../lib/derive'
 import { RAMP_DARK, RAMP_LIGHT, bubbleColor } from '../lib/map-scales'
 import { fmtNum } from '../lib/format'
-import { columnDomain, inkOn, sortMetros, topMetrosByEmployment } from '../lib/heatmap'
+import { columnDomain, formatColumnRange, inkOn, sortMetros, topMetrosByEmployment } from '../lib/heatmap'
 
 interface Props {
   meta: Meta
@@ -64,15 +64,17 @@ export function RoleHeatmap({ meta, salaries, metric, adjusted, dark, selectedMe
   }
 
   const caption =
-    `${metricNoun(metric, adjusted)} by metro and role. Color is scaled within each role column ` +
-    `(comparable down a column, not across) — the printed values are the source of truth.`
+    `${metricNoun(metric, adjusted)} by metro and role. Color is scaled within each role column, ` +
+    `not across — each column header prints that column's own min–max range so the scales' ` +
+    `differences are visible rather than assumed; the printed cell values are the source of truth.`
 
   return (
     <section className="heatmap" aria-labelledby="hm-heading">
       <header className="hm-head">
         <h2 id="hm-heading">City × role</h2>
         <p className="hm-note">
-          {metricNoun(metric, adjusted)} · color scaled within each role column · click a cell to open that metro
+          {metricNoun(metric, adjusted)} · color scaled within each role column, its range printed under the header
+          · click a cell to open that metro
         </p>
       </header>
 
@@ -98,6 +100,7 @@ export function RoleHeatmap({ meta, salaries, metric, adjusted, dark, selectedMe
               <th scope="col" className="hm-corner">Metro</th>
               {roles.map(r => {
                 const active = r.soc === sortSoc
+                const rangeLabel = formatColumnRange(domains.get(r.soc) ?? null, metric)
                 return (
                   <th key={r.soc} scope="col" className={`hm-colh${r.soc === selectedRole ? ' is-selcol' : ''}`}
                       aria-sort={active ? (sortDir === 'desc' ? 'descending' : 'ascending') : 'none'}>
@@ -105,6 +108,9 @@ export function RoleHeatmap({ meta, salaries, metric, adjusted, dark, selectedMe
                             onClick={() => toggleSort(r.soc)}>
                       {r.short}{active ? (sortDir === 'desc' ? ' ▼' : ' ▲') : ''}
                     </button>
+                    {/* This column's own color-scale range — same domain the cell fills use
+                        (see columnDomain), so it can never disagree with the shading. */}
+                    <span className="hm-colrange">{rangeLabel}</span>
                   </th>
                 )
               })}

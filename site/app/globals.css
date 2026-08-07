@@ -343,6 +343,13 @@ button, select, input { font-family: inherit; }
   padding: var(--s2); white-space: nowrap; width: 100%;
 }
 .hm-sort:hover, .hm-sort:focus-visible { color: var(--accent); }
+/* Per-column color-scale range (see columnDomain / formatColumnRange) — printed so the
+   reader can see the scales differ, not just be told in the caption. font-variant-numeric
+   keeps the digits from jittering column to column; no fixed width, it sizes to content. */
+.page .hm-colrange {
+  display: block; padding: 0 var(--s2) var(--s2); font-weight: 400; font-size: var(--fs-micro);
+  color: var(--ink-muted); white-space: nowrap; text-align: right; font-variant-numeric: tabular-nums;
+}
 
 /* Metro names get room to breathe instead of a 160px guillotine. */
 .hm-rowh {

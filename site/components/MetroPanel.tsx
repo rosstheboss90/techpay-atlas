@@ -1,17 +1,21 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
 import type { EmployerFile, Meta, Pct, Salaries } from '../lib/types'
+import type { MetroTrendData } from '../lib/metro-trend-types'
+import type { TrendsJson } from '../lib/trends-types'
 import { adjust, displayPct, rankMetros } from '../lib/derive'
 import { fmtNum, fmtUsd } from '../lib/format'
-import { loadEmployers } from '../lib/data'
+import { loadEmployers, loadMetroTrend } from '../lib/data'
+import { MetroTrend } from './MetroTrend'
 import { PercentileBand } from './PercentileBand'
 
 interface Props {
   meta: Meta; salaries: Salaries; cbsa: string; soc: string; adjusted: boolean
+  national: TrendsJson
   onClose: () => void
 }
 
-export function MetroPanel({ meta, salaries, cbsa, soc, adjusted, onClose }: Props) {
+export function MetroPanel({ meta, salaries, cbsa, soc, adjusted, national, onClose }: Props) {
   const metro = meta.metros.find(m => m.cbsa === cbsa)
   // Adjusting is impossible without an RPP (e.g. Puerto Rico metros) — fall back to
   // nominal figures rather than blanking every number while the note implies they're shown.
@@ -19,12 +23,24 @@ export function MetroPanel({ meta, salaries, cbsa, soc, adjusted, onClose }: Pro
   const adj = adjusted && canAdjust
   const [employers, setEmployers] = useState<EmployerFile | null>(null)
   const [empError, setEmpError] = useState(false)
+  const [trend, setTrend] = useState<MetroTrendData | null>(null)
+  const [trendError, setTrendError] = useState(false)
 
   useEffect(() => {
     setEmployers(null); setEmpError(false)
     if (!metro || metro.lcaFilings === 0) return
     let live = true
     loadEmployers(cbsa).then(e => { if (live) setEmployers(e) }).catch(() => { if (live) setEmpError(true) })
+    return () => { live = false }
+  }, [cbsa, metro])
+
+  useEffect(() => {
+    setTrend(null); setTrendError(false)
+    // Mirrors the employers guard above: skip the fetch entirely when meta says there is
+    // nothing there, rather than fetching and discovering a 404.
+    if (!metro || (metro.trendYears ?? 0) === 0) return
+    let live = true
+    loadMetroTrend(cbsa).then(t => { if (live) setTrend(t) }).catch(() => { if (live) setTrendError(true) })
     return () => { live = false }
   }, [cbsa, metro])
 
@@ -79,6 +95,25 @@ export function MetroPanel({ meta, salaries, cbsa, soc, adjusted, onClose }: Pro
           })}
         </tbody>
       </table>
+
+      {/* `undefined` and `0` are different facts and must not collapse into one message.
+          undefined -> the pipeline never stamped trendYears, so the metro-trend dataset has not
+          been emitted at all and the feature is not live. Render nothing: a section claiming "no
+          published history" on every one of 393 metros would be false, since the history exists
+          and simply has not been built yet.
+          0 -> the pipeline DID stamp it and this metro genuinely has no published history. */}
+      {metro.trendYears === undefined ? null : (
+        <>
+          <h3 className="panel-sub">Pay over time — {role?.label}</h3>
+          {trendError
+            ? <p className="panel-note">Couldn't load trend data — try re-selecting the metro.</p>
+            : trend
+              ? <MetroTrend metro={trend} national={national} soc={soc} roleLabel={role?.label ?? soc} />
+              : metro.trendYears === 0
+                ? <p className="panel-note">No published history for this metro.</p>
+                : <p className="panel-note">Loading trend…</p>}
+        </>
+      )}
 
       <h3 className="panel-sub">Who actually pays what — H-1B filings, {meta.lcaPeriod}{adj ? ' · COL-adjusted' : ''}</h3>
       {metro.lcaFilings === 0 ? (
