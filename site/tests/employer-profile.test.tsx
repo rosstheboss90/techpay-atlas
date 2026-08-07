@@ -25,12 +25,26 @@ const profile: EmployerProfileJson = {
 
 const metroNames = { '42660': 'Seattle-Tacoma-Bellevue, WA', '12420': 'Austin-Round Rock, TX' }
 
+/** Matches a <p> by its full text content, tolerating inline markup inside it. getByText's
+ *  default matcher works on single text nodes, so wrapping a phrase in <strong> makes it stop
+ *  matching — which would otherwise pressure the disclaimer copy to drop its emphasis to suit
+ *  the test. These are the honesty disclaimers; the markup serves them, not the other way round. */
+const paragraphMatching = (re: RegExp) => (_: string, el: Element | null) =>
+  el?.tagName === 'P' && re.test(el.textContent ?? '')
+
 describe('EmployerProfile', () => {
   it('shows the total and both standing disclaimers', () => {
     render(<EmployerProfile profile={profile} metroNames={metroNames} />)
     expect(screen.getByText(/6,312/)).toBeInTheDocument()
-    expect(screen.getByText(/base-pay floor/i)).toBeInTheDocument()
-    expect(screen.getByText(/sponsors only/i)).toBeInTheDocument()
+    expect(screen.getByText(paragraphMatching(/base-pay floors/i))).toBeInTheDocument()
+    expect(screen.getByText(paragraphMatching(/sponsors only/i))).toBeInTheDocument()
+  })
+
+  it('keeps the emphasis on the two load-bearing disclaimer phrases', () => {
+    const { container } = render(<EmployerProfile profile={profile} metroNames={metroNames} />)
+    const emphasised = [...container.querySelectorAll('.t-note strong')].map(e => e.textContent)
+    expect(emphasised).toContain('floors')
+    expect(emphasised).toContain('sponsors only')
   })
 
   it('discloses the merged filing entities on demand', async () => {

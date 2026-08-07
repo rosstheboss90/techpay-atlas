@@ -46,8 +46,8 @@ export function EmployerProfile({ profile, metroNames }: Props) {
       )}
 
       <p className="t-note">
-        These are filed base-pay floors — no equity, no bonus, no signing bonus — and they
-        cover H-1B sponsors only, not a market-wide sample.
+        These are filed base-pay <strong>floors</strong> — no equity, no bonus, no signing
+        bonus — and they cover H-1B <strong>sponsors only</strong>, not a market-wide sample.
       </p>
 
       <div className="emp-roles">
