@@ -24,9 +24,12 @@ export const THRESHOLDS = {
                                 // is reported by the run, not configured.
   minEmployerProfiles: 500,     // canonical filers that must exist at all — a top-500 cut is
                                 // meaningless if normalization collapsed everything
-  maxAliasCollapse: 0.25,       // alias merging absorbing >25% of filings means an over-broad rule
-  minAliasCoverage: 0.20,       // ...and covering <20% of the top-500's filings means a rotted or
-                                // half-applied alias file. Both bounds are stated because a
-                                // one-directional check is what let the /trends top-code error
-                                // through: it tested only for a value too high.
+  // Alias-file health. Both bounds share ONE denominator (top-500 filings) so they stay
+  // comparable as the head's share of total filings shifts between vintages.
+  minAliasCoverage: 0.20,       // below: the file rotted or was half-applied; the head fragments
+  maxAliasCoverage: 0.60,       // above: resolution is swallowing more head than curation explains
+  // Over-breadth is a PER-ENTITY property. A ceiling on total aliased share cannot detect it —
+  // that number rises when you curate correctly — so it is reported, not enforced. A `match`
+  // rule that swallows unrelated companies instead shows up as one entity ballooning.
+  maxEntityShare: 0.15,         // largest single employer's share of all filings (Amazon ≈ 0.057)
 }

@@ -10,8 +10,8 @@ import { hudRowsToZipCbsa } from './lib/crosswalk'
 import { lcaRowsToRecords, type DropReason, type LcaRecord } from './lib/parse-lca'
 import { aggregateEmployers, attachCbsa } from './lib/aggregate'
 import { aggregateEmployerProfiles } from './lib/aggregate-employer-profiles'
-import { indexAliases, type AliasFile } from './lib/employer-identity'
-import { aliasCollapse, aliasCoverage, buildEmployerArtifacts } from './lib/emit-employers'
+import { baseKey, indexAliases, type AliasFile } from './lib/employer-identity'
+import { aliasCollapse, aliasCoverage, buildEmployerArtifacts, maxEntityShare } from './lib/emit-employers'
 import { aggregateTitles } from './lib/aggregate-titles'
 import { aggregateConflation } from './lib/aggregate-conflation'
 import { FAMILIES } from './lib/titles'
@@ -218,18 +218,47 @@ console.log(`  employers: ${employerProfiles.size} canonical filers ` +
 if (employerProfiles.size < THRESHOLDS.minEmployerProfiles)
   fail(`only ${employerProfiles.size} canonical employers (< ${THRESHOLDS.minEmployerProfiles}) — normalization likely broke`)
 
-// Every alias entry must match a real filed name, or the file rots silently as vintages change.
-const seenKeys = new Set([...employerProfiles.values()].filter(p => p.aliased).map(p => p.key))
-const staleAliases = aliasFile.entities.filter(e => !seenKeys.has(e.canonical)).map(e => e.canonical)
-if (staleAliases.length) fail(`alias entries match no filed employer: ${staleAliases.join(', ')}`)
+// Alias-file integrity. These three checks are PER-MATCH, not per-entity. The previous version
+// only asked whether each entity's canonical id appeared among aliased keys, which an entity
+// with five match keys passes while four of them are dead — the comment claimed a guarantee the
+// code did not provide.
+//
+// (a) A match value is looked up as `index.get(baseKey(name))`, so anything not already in
+//     baseKey form can never fire. The natural thing to write — the raw filed name, or a name
+//     ending in a legal suffix — is exactly what silently never matches.
+for (const e of aliasFile.entities)
+  for (const m of e.match)
+    if (baseKey(m) !== m)
+      fail(`alias match "${m}" (${e.canonical}) is not in baseKey form — it can never fire; use "${baseKey(m)}"`)
 
-const collapse = aliasCollapse(employerProfiles)
-if (collapse > THRESHOLDS.maxAliasCollapse)
-  fail(`alias merging absorbed ${(collapse * 100).toFixed(1)}% of filings (> ${THRESHOLDS.maxAliasCollapse * 100}%) — over-broad alias rule`)
+// (b) Two entities claiming one key resolved last-wins, in file order, with no signal.
+const claimedBy = new Map<string, string>()
+for (const e of aliasFile.entities)
+  for (const m of e.match) {
+    const prev = claimedBy.get(m)
+    if (prev && prev !== e.canonical) fail(`alias key "${m}" claimed by both ${prev} and ${e.canonical}`)
+    claimedBy.set(m, e.canonical)
+  }
+
+// (c) Liveness per match, not per entity. A key that matches no filing is stale curation: the
+//     merge it was written to perform silently stopped happening.
+const filedKeys = new Set<string>()
+for (const r of employerScoped) filedKeys.add(baseKey(r.employer))
+const deadMatches = aliasFile.entities
+  .flatMap(e => e.match.filter(m => !filedKeys.has(m)).map(m => `${e.canonical}:${m}`))
+if (deadMatches.length) fail(`alias match keys matched no filed employer: ${deadMatches.join(', ')}`)
+
+const collapse = aliasCollapse(employerProfiles) // reported, not enforced — see its doc comment
 const coverage = aliasCoverage(employerProfiles, THRESHOLDS.employerPrerenderCount)
 if (coverage < THRESHOLDS.minAliasCoverage)
   fail(`alias file covers only ${(coverage * 100).toFixed(1)}% of top-${THRESHOLDS.employerPrerenderCount} filings (< ${THRESHOLDS.minAliasCoverage * 100}%) — rotted or half-applied`)
-console.log(`  alias collapse ${(collapse * 100).toFixed(1)}%, head coverage ${(coverage * 100).toFixed(1)}%`)
+if (coverage > THRESHOLDS.maxAliasCoverage)
+  fail(`alias file covers ${(coverage * 100).toFixed(1)}% of top-${THRESHOLDS.employerPrerenderCount} filings (> ${THRESHOLDS.maxAliasCoverage * 100}%) — resolution is swallowing more than curation explains`)
+const biggest = maxEntityShare(employerProfiles)
+if (biggest.share > THRESHOLDS.maxEntityShare)
+  fail(`"${biggest.slug}" holds ${(biggest.share * 100).toFixed(1)}% of all filings (> ${THRESHOLDS.maxEntityShare * 100}%) — an over-broad match rule is swallowing unrelated companies`)
+console.log(`  alias collapse ${(collapse * 100).toFixed(1)}% (reported), head coverage ${(coverage * 100).toFixed(1)}%, ` +
+  `largest entity ${biggest.slug} ${(biggest.share * 100).toFixed(1)}%`)
 
 // Slugs become filenames and route segments. A collision would silently overwrite a profile
 // file; an empty slug would write ".json" and produce an unroutable page.
@@ -303,5 +332,7 @@ writeFileSync(path.join(REPORT_DIR, `run-${meta.generated.slice(0, 10)}.json`), 
   employerTail: employerArtifacts.stats.tail,
   employerAliasCollapse: collapse,
   employerAliasCoverage: coverage,
+  employerMaxEntitySlug: biggest.slug,
+  employerMaxEntityShare: biggest.share,
 }, null, 2))
 console.log(`DONE: ${meta.metros.length} metros, ${employerFiles.length} employer files -> ${OUT_DIR}`)

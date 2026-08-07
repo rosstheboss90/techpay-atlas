@@ -3,6 +3,14 @@ import type { EmployerProfile } from './aggregate-employer-profiles'
 export interface EmployerHeadRow {
   slug: string; display: string; filings: number
   category: 'staffing' | 'direct'; aliased: boolean; topRole: string
+  /** Extra lowercased names this employer actually filed under, for search. Present only when
+   *  they add something `display` does not already contain.
+   *
+   *  Without it, an aliased employer is unreachable by its real name: `display` is the curated
+   *  short form ("Amazon"), so typing "amazon web" matched nothing even though
+   *  "Amazon Web Services, Inc." is thousands of real filings. That is the "typing more makes
+   *  the result vanish" failure, and it hit the eleven largest employers on the site. */
+  search?: string
 }
 export interface EmployerHeadJson { lcaPeriod: string; employers: EmployerHeadRow[] }
 
@@ -25,6 +33,23 @@ const INDEX_COLUMNS = ['slug', 'display', 'filings', 'category', 'aliased', 'top
 function topRoleOf(p: EmployerProfile): string {
   return Object.entries(p.roles)
     .sort((a, b) => b[1].national.filings - a[1].national.filings || a[0].localeCompare(b[0]))[0][0]
+}
+
+/** Cap on filed names carried into the head file for search. The head is fetched eagerly, so
+ *  this is a size bound; entities are ordered by filings, so the cap keeps the ones that matter. */
+const MAX_SEARCH_ENTITIES = 8
+
+/** Lowercased filed names that `display` does not already contain, joined for substring search.
+ *  Returns undefined when display already covers every entity — which is the common case for an
+ *  unaliased employer, whose variants differ only in case and punctuation. */
+function searchTermsFor(p: EmployerProfile): string | undefined {
+  const display = p.display.toLowerCase()
+  const seen = new Set<string>()
+  for (const e of p.entities.slice(0, MAX_SEARCH_ENTITIES)) {
+    const name = e.name.toLowerCase()
+    if (name !== display && !display.includes(name)) seen.add(name)
+  }
+  return seen.size ? [...seen].join(' | ') : undefined
 }
 
 export function buildEmployerArtifacts(
@@ -56,10 +81,14 @@ export function buildEmployerArtifacts(
   return {
     head: {
       lcaPeriod,
-      employers: head.map(p => ({
-        slug: p.slug, display: p.display, filings: p.totalFilings,
-        category: p.category, aliased: p.aliased, topRole: topRoleOf(p),
-      })),
+      employers: head.map(p => {
+        const search = searchTermsFor(p)
+        return {
+          slug: p.slug, display: p.display, filings: p.totalFilings,
+          category: p.category, aliased: p.aliased, topRole: topRoleOf(p),
+          ...(search ? { search } : {}),
+        }
+      }),
     },
     index,
     profiles: head.map(p => ({ ...p, lcaPeriod })),
@@ -71,7 +100,14 @@ export function buildEmployerArtifacts(
   }
 }
 
-/** Share of ALL filings absorbed by aliased entities. High means an over-broad alias rule. */
+/** Share of ALL filings absorbed by aliased entities.
+ *
+ *  REPORTED ONLY — deliberately no longer a tripwire. It measures alias *coverage*, so curating
+ *  one more correct entry raises it monotonically; it cannot distinguish "we curated more" from
+ *  "a rule over-merged", which is the thing a ceiling on it was supposed to catch. At a 0.25 cap
+ *  the real value of 0.235 left ~5,600 filings of headroom, so adding any three of HCL,
+ *  Accenture or Capgemini would have failed the build with "over-broad alias rule" — a false
+ *  accusation about correct curation. Over-breadth is a per-entity property; see maxEntityShare. */
 export function aliasCollapse(profiles: Map<string, EmployerProfile>): number {
   let total = 0, aliased = 0
   for (const p of profiles.values()) {
@@ -81,8 +117,26 @@ export function aliasCollapse(profiles: Map<string, EmployerProfile>): number {
   return total === 0 ? 0 : aliased / total
 }
 
-/** Share of the top-N filers' filings that resolved through the alias file. Low means the file
- *  has rotted or was half-applied — the head fragments back into variants, silently. */
+/** The largest share of all filings held by any single canonical employer, with its slug.
+ *
+ *  This is the real over-breadth detector: a `match` rule that swallows unrelated companies
+ *  shows up as one entity ballooning, regardless of how many entries the alias file has. Adding
+ *  a correct twelfth entry cannot trip it. Amazon, the largest, currently sits near 5.7%. */
+export function maxEntityShare(profiles: Map<string, EmployerProfile>): { slug: string; share: number } {
+  let total = 0, top = { slug: '', filings: 0 }
+  for (const p of profiles.values()) {
+    total += p.totalFilings
+    if (p.totalFilings > top.filings) top = { slug: p.slug, filings: p.totalFilings }
+  }
+  return { slug: top.slug, share: total === 0 ? 0 : top.filings / total }
+}
+
+/** Share of the top-N filers' filings that resolved through the alias file. Bounded on BOTH
+ *  sides: too low means the file rotted or was half-applied and the head fragments back into
+ *  variants; too high means alias resolution is swallowing more of the head than curation
+ *  plausibly accounts for. Both bounds use this same denominator, unlike the old pairing of
+ *  aliasCollapse (over all filings) with aliasCoverage (over head filings), which moved relative
+ *  to each other whenever the head's share of total filings shifted. */
 export function aliasCoverage(profiles: Map<string, EmployerProfile>, topN: number): number {
   const ranked = [...profiles.values()]
     .sort((a, b) => b.totalFilings - a.totalFilings || a.slug.localeCompare(b.slug))
