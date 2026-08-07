@@ -29,6 +29,34 @@ describe('EmployerSearch', () => {
     expect(await screen.findByText('Cognizant')).toBeInTheDocument()
   })
 
+  it('links a head employer but NOT a tail employer, which has no page', async () => {
+    // Only the head is emitted as employers-by-name/<slug>.json, and generateStaticParams
+    // enumerates that directory — so linking a tail slug is a guaranteed 404. 28,300 of 28,800
+    // filers are in that position.
+    const loadShard = vi.fn().mockResolvedValue(shardOf([
+      ['sheetz', 'Sheetz, Inc.', 3, 'direct', false, '15-2051', '11020', 68201],
+    ]))
+    render(<EmployerSearch head={head} loadShard={loadShard} />)
+    await userEvent.type(screen.getByRole('searchbox'), 'sheetz')
+    const tail = await screen.findByText('Sheetz, Inc.')
+    expect(tail.closest('a')).toBeNull()
+    expect(screen.getByText(/indexed only/i)).toBeInTheDocument()
+
+    await userEvent.clear(screen.getByRole('searchbox'))
+    expect(screen.getByText('Amazon').closest('a')).toHaveAttribute('href', '/employers/amazon')
+  })
+
+  it('derives the shard from the normalised query, not the raw one', async () => {
+    // ".NET Solutions" normalises to "net-solutions", so the shard is `n`. Keying off the raw
+    // first character asked for a `_` shard the pipeline never writes — a 404 the catch
+    // swallows, silently contributing no tail results at all.
+    const loadShard = vi.fn().mockResolvedValue(shardOf([]))
+    render(<EmployerSearch head={head} loadShard={loadShard} />)
+    await userEvent.type(screen.getByRole('searchbox'), '.NET Solutions')
+    await waitFor(() => expect(loadShard).toHaveBeenCalledWith('n'))
+    expect(loadShard).not.toHaveBeenCalledWith('_')
+  })
+
   it('fetches the shard for the typed first character and shows a tail hit by prefix', async () => {
     const loadShard = vi.fn().mockResolvedValue(shardOf([
       ['sheetz', 'Sheetz, Inc.', 3, 'direct', false, '15-2051', '11020', 68201],

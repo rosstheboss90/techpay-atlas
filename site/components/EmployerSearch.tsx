@@ -18,11 +18,16 @@ const MAX_ROWS = 100
 const normalizeToSlug = (s: string) =>
   s.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
 
-/** The shard a query would live in: the first character of the trimmed, lowercased query, or
- *  `_` when that character isn't [a-z0-9] — mirrors loadEmployerIndex's own shard-key contract. */
-function shardKeyFor(trimmedLower: string): string {
-  const c = trimmedLower[0]
-  return c && /[a-z0-9]/.test(c) ? c : '_'
+/** The shard a query would live in: the first character of the SLUG-NORMALISED query.
+ *
+ *  Must be derived from the normalised form, not the raw one. The pipeline shards on
+ *  `slug.charAt(0)`, and run.ts asserts no empty slug is ever emitted, so every shard that
+ *  exists is named `[a-z0-9]`. Keying off raw text sent a query like ".NET Solutions" to a
+ *  `_` shard that is never written — a 404 the catch below swallows, silently contributing
+ *  no tail results at all. Normalised, that query correctly asks for `n`. */
+function shardKeyFor(normalizedSlug: string): string {
+  const c = normalizedSlug[0]
+  return c && /[a-z0-9]/.test(c) ? c : ''
 }
 
 const toRow = (h: EmployerHeadRow, tail?: EmployerSearchRow): EmployerSearchRow => ({
@@ -41,7 +46,12 @@ export function EmployerSearch({ head, loadShard }: Props) {
   // Only the first character drives which shard to fetch, so this key — not the full query —
   // is the effect dependency below: typing further letters within the same first character
   // never triggers a second fetch of a shard already in hand.
-  const shardKey = trimmedLower ? shardKeyFor(trimmedLower) : null
+  const shardKey = shardKeyFor(normalized) || null
+
+  /** Slugs that actually have a prerendered page. Only the head is emitted as
+   *  employers-by-name/<slug>.json, and generateStaticParams enumerates that directory, so a
+   *  link to any other slug 404s. 28,300 of 28,800 filers are in that position. */
+  const headSlugs = useMemo(() => new Set(head.map(h => h.slug)), [head])
 
   useEffect(() => {
     if (!shardKey) { setShardRows([]); return }
@@ -86,17 +96,26 @@ export function EmployerSearch({ head, loadShard }: Props) {
         </label>
       </div>
       <p className="es-note">
-        The top 500 filers above search instantly. Beyond that, matches are from the{' '}
-        <strong>start of</strong> the employer's name, not anywhere within it.
+        The top 500 filers have their own page and search instantly. Beyond those, employers are
+        indexed but have no page, and matches are from the <strong>start of</strong> the
+        employer&rsquo;s name, not anywhere within it.
       </p>
       <ul className="es-rows">
-        {rows.map(r => (
-          <li key={r.slug} className="es-row">
-            <Link href={`/employers/${r.slug}`} className="es-name">{r.display}</Link>
-            <span className="es-filings">{r.filings.toLocaleString()} filings</span>
-            {r.aliased && r.category === 'staffing' && <span className="es-chip">staffing</span>}
-          </li>
-        ))}
+        {rows.map(r => {
+          const hasPage = headSlugs.has(r.slug)
+          return (
+            <li key={r.slug} className="es-row">
+              {/* Only head employers get a link — the rest have no prerendered page, and an
+                  underlined link is a promise of a destination. */}
+              {hasPage
+                ? <Link href={`/employers/${r.slug}`} className="es-name">{r.display}</Link>
+                : <span className="es-name es-name-nolink">{r.display}</span>}
+              <span className="es-filings">{r.filings.toLocaleString()} filings</span>
+              {r.aliased && r.category === 'staffing' && <span className="es-chip">staffing</span>}
+              {!hasPage && <span className="es-chip es-chip-quiet">indexed only</span>}
+            </li>
+          )
+        })}
       </ul>
     </div>
   )

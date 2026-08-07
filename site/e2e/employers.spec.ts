@@ -17,11 +17,24 @@ test('the index lists head employers and links through to a profile', async ({ p
   await expect(page.locator('.t-lede')).toContainText(/[\d,]+ H-1B filings/)
 })
 
-test('a tail employer is reachable by search without having its own page', async ({ page }) => {
+test('a tail employer is searchable but is not linked to a page that does not exist', async ({ page }) => {
   await page.goto('/employers')
-  // "sheetz" is far outside the top 500, so it exists only in an index shard.
+  // "sheetz" is far outside the top 500, so it exists only in an index shard — no profile file
+  // is emitted for it, so generateStaticParams never produces /employers/sheetz.
   await page.getByRole('searchbox').fill('sheetz')
-  await expect(page.getByText(/Sheetz/i).first()).toBeVisible()
+  const row = page.locator('.es-row', { hasText: /Sheetz/i }).first()
+  await expect(row).toBeVisible()
+  await expect(row.locator('a')).toHaveCount(0)
+  await expect(row.getByText(/indexed only/i)).toBeVisible()
+})
+
+test('a head employer IS linked, and the link resolves', async ({ page }) => {
+  await page.goto('/employers')
+  await page.getByRole('searchbox').fill('cognizant')
+  const row = page.locator('.es-row', { hasText: /^Cognizant/ }).first()
+  await row.locator('a').click()
+  await expect(page).toHaveURL(/\/employers\/cognizant/)
+  await expect(page.getByRole('heading', { level: 1 })).toContainText(/Cognizant/)
 })
 
 test('the entity disclosure makes the alias merge auditable', async ({ page }) => {
