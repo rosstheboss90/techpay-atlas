@@ -123,4 +123,49 @@ describe('canonicalEmployer', () => {
     expect(canonicalEmployer('Sheetz, Inc.', aliases).category).toBe('direct')
     expect(canonicalEmployer('Sheetz, Inc.', aliases).aliased).toBe(false)
   })
+
+  it('claims a bare filing under the canonical name, closing the alias/base namespace collision', () => {
+    // Real data has "Deloitte Consulting LLP" (matched) alongside a bare "Deloitte" (not
+    // matched). Their keys were `deloitte` and `DELOITTE`, which slug identically and failed
+    // the pipeline's collision tripwire. The implicit claim resolves the bare form INTO the
+    // alias instead of leaving it a separate employer.
+    const withDeloitte: AliasFile = {
+      version: 1,
+      entities: [{ canonical: 'deloitte', display: 'Deloitte', category: 'staffing',
+                   match: ['DELOITTE CONSULTING'] }],
+    }
+    const bare = canonicalEmployer('Deloitte LLP', withDeloitte)
+    const matched = canonicalEmployer('Deloitte Consulting LLP', withDeloitte)
+    expect(bare.key).toBe('deloitte')
+    expect(bare.aliased).toBe(true)
+    expect(bare.key).toBe(matched.key)
+    expect(bare.slug).toBe(matched.slug)
+  })
+
+  it('lets an explicit match win over another entity\'s implicit claim', () => {
+    const contested: AliasFile = {
+      version: 1,
+      entities: [
+        { canonical: 'apple', display: 'Apple', category: 'direct', match: [] },
+        { canonical: 'apple-bank', display: 'Apple Bank', category: 'direct', match: ['APPLE'] },
+      ],
+    }
+    expect(canonicalEmployer('Apple Inc', contested).key).toBe('apple-bank')
+  })
+
+  it('no unaliased key can slug onto an alias slug', () => {
+    // The property that makes the run.ts collision tripwire unreachable across the two
+    // namespaces, not just within the deterministic one.
+    const file: AliasFile = {
+      version: 1,
+      entities: [
+        { canonical: 'deloitte', display: 'Deloitte', category: 'staffing', match: ['DELOITTE CONSULTING'] },
+        { canonical: 'ey', display: 'Ernst & Young', category: 'staffing', match: ['ERNST YOUNG'] },
+        { canonical: 'tcs', display: 'Tata Consultancy Services', category: 'staffing', match: ['TATA CONSULTANCY SERVICES'] },
+      ],
+    }
+    for (const bare of ['Deloitte LLP', 'EY', 'TCS Inc', 'Ernst & Young US LLP']) {
+      expect(canonicalEmployer(bare, file).aliased).toBe(true)
+    }
+  })
 })

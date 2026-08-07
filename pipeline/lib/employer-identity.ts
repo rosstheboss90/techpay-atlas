@@ -60,9 +60,26 @@ export interface CanonicalEmployer {
   aliased: boolean
 }
 
-/** Build a base-key -> entity lookup once, rather than scanning `entities` per record. */
+/** Build a base-key -> entity lookup once, rather than scanning `entities` per record.
+ *
+ *  Each entity also implicitly claims `baseKey(canonical)` — the key a bare filing under its own
+ *  name produces. Without this, an aliased employer's key is its lowercase canonical id while an
+ *  unaliased one's is an uppercase base key, and the two namespaces collide under slugify: real
+ *  data contains "Deloitte Consulting LLP" (aliased -> `deloitte`) alongside a bare "Deloitte"
+ *  (unaliased -> `DELOITTE`), both slugging to "deloitte". Every alias id had this latent — a
+ *  bare "Amazon", "Meta", "TCS" or "EY" filing would each have hit it.
+ *
+ *  `baseKey(canonical)` is exactly the colliding key and no other: a slug collision requires the
+ *  two keys to differ only in case and separator style, and both sides are normalized by the same
+ *  function, so they must be equal. Claiming it is therefore complete, not a patch — and it is
+ *  also the semantically right answer, since a filing under the bare canonical name IS that
+ *  company. An explicit `match` entry always wins over the implicit claim. */
 export function indexAliases(file: AliasFile): Map<string, AliasEntity> {
   const out = new Map<string, AliasEntity>()
+  for (const e of file.entities) {
+    const implicit = baseKey(e.canonical)
+    if (implicit && !out.has(implicit)) out.set(implicit, e)
+  }
   for (const e of file.entities) for (const m of e.match) out.set(m, e)
   return out
 }
