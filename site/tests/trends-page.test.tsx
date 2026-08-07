@@ -117,6 +117,22 @@ describe('/trends page', () => {
     })
   })
 
+  it('states the CURRENT mode in the toggle label, not just aria-pressed', async () => {
+    // A static label that changes only aria-pressed and a fill colour leaves anyone who cannot
+    // rely on the pressed styling unsure which mode is active — and this chart means two
+    // different things in its two states.
+    const Page = (await import('../app/trends/page')).default
+    render(<Page />)
+    const toggle = await screen.findByRole('button', { name: /showing/i })
+    const realLabel = toggle.textContent ?? ''
+    expect(realLabel).toMatch(/showing 2022 dollars/i)
+
+    toggle.click()
+    await waitFor(() => expect(toggle.getAttribute('aria-pressed')).toBe('true'))
+    expect(toggle.textContent).not.toBe(realLabel)
+    expect(toggle.textContent).toMatch(/showing as-paid/i)
+  })
+
   it('renders the year-by-year table for the selected role', async () => {
     const Page = (await import('../app/trends/page')).default
     render(<Page />)
