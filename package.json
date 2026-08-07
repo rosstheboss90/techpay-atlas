@@ -13,7 +13,8 @@
     "archive:nat": "tsx pipeline/archive-nat.ts",
     "archive:msa": "tsx --max-old-space-size=6144 pipeline/archive-msa.ts",
     "emit:trends": "tsx pipeline/emit-trends.ts",
-    "test": "vitest run"
+    "test": "vitest run",
+    "emit:metro-trends": "tsx pipeline/emit-metro-trends.ts"
   },
   "devDependencies": {
     "@types/adm-zip": "^0.5.8",

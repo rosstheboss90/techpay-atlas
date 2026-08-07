@@ -5,7 +5,11 @@ import type { ConflationAgg } from './aggregate-conflation'
 import { ROLES, type Role } from './soc'
 import { TOP_CODE } from './num'
 
-export interface MetroMeta { cbsa: string; name: string; state: string; lat: number; lng: number; rpp: number | null; lcaFilings: number }
+/** `trendYears` is OPTIONAL on purpose. Absent means no MSA archive existed when the pipeline ran,
+ *  so the metro-trend feature is not live and the site renders nothing for it. 0 means the archive
+ *  existed and this metro genuinely has no published history. Making it required would erase that
+ *  distinction, and every metro would claim "no published history" whenever the archive is missing. */
+export interface MetroMeta { cbsa: string; name: string; state: string; lat: number; lng: number; rpp: number | null; lcaFilings: number; trendYears?: number }
 export interface Meta {
   year: number; generated: string | null; metros: MetroMeta[]; roles: Role[]
   topCodeValue: number; rppYear: number
