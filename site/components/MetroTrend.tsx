@@ -1,4 +1,5 @@
 'use client'
+import { fmtUsdCompact } from '../lib/format'
 import { pathPoints } from '../lib/trends'
 import { segments } from '../lib/metro-trend'
 import type { MetroTrendData } from '../lib/metro-trend-types'
@@ -86,6 +87,18 @@ export function MetroTrend({ metro, national, soc, roleLabel }: {
                         points={seg.map(p => `${x(p.year)},${y(p.value)}`).join(' ')}
                         fill="none" />
         ))}
+        {/* Year and value orientation. Without these the chart is a shape with no scale — a
+            reader cannot tell WHEN the line rises or WHAT it is worth, which is most of the
+            question this section exists to answer. Only the endpoints are labelled: the panel is
+            narrow, and a full tick set would crowd a 440-wide viewBox. The break year is named in
+            the prose below rather than on the axis, where it would collide with the 2025 label. */}
+        {/* Labels come from the PLOTTED domain (yearLo/yearHi, lo/hi), not from metro.years —
+            the axis must describe what is actually drawn, and the national series can widen the
+            span beyond this metro's own years. */}
+        <text x={PAD_L} y={H - 8} textAnchor="start" className="mt-tick">{yearLo}</text>
+        <text x={W - PAD_R} y={H - 8} textAnchor="end" className="mt-tick">{yearHi}</text>
+        <text x={PAD_L - 6} y={PAD_T + 8} textAnchor="end" className="mt-tick">{fmtUsdCompact(hi)}</text>
+        <text x={PAD_L - 6} y={H - PAD_B} textAnchor="end" className="mt-tick">{fmtUsdCompact(lo)}</text>
       </svg>
       <p className="mt-legend">
         <span className="mt-legend-metro">{metro.name}</span> vs <span className="mt-legend-national">National</span>
