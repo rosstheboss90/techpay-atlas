@@ -1,4 +1,9 @@
-export interface MetroMeta { cbsa: string; name: string; state: string; lat: number; lng: number; rpp: number | null; lcaFilings: number }
+// trendYears is optional rather than required: Phase B Task 5 (the pipeline stamp) is blocked on
+// data acquisition and hasn't shipped, so production meta.json does not carry it yet. Treating it
+// as absent-means-zero (`metro.trendYears ?? 0`, see MetroPanel) keeps the panel's skip-fetch guard
+// correct in the meantime, and avoids forcing every other test fixture in this file's blast radius
+// to grow a field it has no reason to know about yet.
+export interface MetroMeta { cbsa: string; name: string; state: string; lat: number; lng: number; rpp: number | null; lcaFilings: number; trendYears?: number }
 export interface Role { soc: string; label: string; short: string }
 export interface Meta {
   year: number; generated: string; metros: MetroMeta[]; roles: Role[]

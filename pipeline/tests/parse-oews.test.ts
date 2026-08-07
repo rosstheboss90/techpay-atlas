@@ -53,3 +53,43 @@ describe('parseOews (single-pass)', () => {
     expect(areas.get('09999')).toEqual({ name: 'Austin-Round Rock-San Marcos, TX', state: 'TX' })
   })
 })
+
+// MEASURED 2026-08-06 against data/raw/oesm19ma/MSA_M2019_dl.xlsx: May 2019's MSA file uses
+// all-lowercase headers (area, area_title, occ_code, tot_emp, a_pct10, ...) and has NO
+// prim_state column at all. 2020+ vintages are uppercase and include PRIM_STATE. The parser
+// must resolve the columns it reads case-insensitively, and treat PRIM_STATE as optional,
+// so 2019 doesn't fall out of the zod schema and trip the archiver's zero-metros guard.
+describe('parseOews - column casing drift (2019 lowercase, no PRIM_STATE)', () => {
+  // Same values as the base fixture above, but with 2019's actual lowercase headers and no
+  // prim_state key at all.
+  const rowLower = (over: Record<string, unknown> = {}) => ({
+    area: 12420, area_title: 'Austin-Round Rock-San Marcos, TX',
+    occ_code: '15-1252', o_group: 'detailed', tot_emp: '31,590', loc_quotient: '2.19',
+    a_pct10: '75,000', a_pct25: '96,000', a_median: '132,000', a_pct75: '168,000', a_pct90: '205,000',
+    ...over,
+  })
+
+  it('parses a lowercase-header row (2019 shape) to the same records as the uppercase equivalent', () => {
+    const upper = oewsRowsToRecords([row()])
+    const lower = oewsRowsToRecords([rowLower()])
+    expect(lower).toEqual(upper)
+  })
+
+  it('resolves mixed/odd casing headers (Occ_Code, a_MEDIAN, ...)', () => {
+    const mixed = {
+      Area: 12420, Area_Title: 'Austin-Round Rock-San Marcos, TX', Prim_State: 'TX',
+      Occ_Code: '15-1252', Tot_Emp: '31,590', Loc_Quotient: '2.19',
+      a_PCT10: '75,000', A_pct25: '96,000', a_MEDIAN: '132,000', A_Pct75: '168,000', a_pct90: '205,000',
+    }
+    const [r] = oewsRowsToRecords([mixed])
+    expect(r).toEqual({
+      cbsa: '12420', soc: '15-1252', emp: 31590, lq: 2.19,
+      p10: 75000, p25: 96000, p50: 132000, p75: 168000, p90: 205000, capped: [],
+    })
+  })
+
+  it('yields the metro in areas with state \'\' when PRIM_STATE is absent entirely (2019 shape)', () => {
+    const areas = extractAreas([rowLower()])
+    expect(areas.get('12420')).toEqual({ name: 'Austin-Round Rock-San Marcos, TX', state: '' })
+  })
+})

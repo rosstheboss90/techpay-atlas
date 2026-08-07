@@ -10,21 +10,26 @@ import { RoleSimilarity } from '../components/RoleSimilarity'
 import { SalaryMap } from '../components/SalaryMap'
 import { SectionNav } from '../components/SectionNav'
 import { TitleLens } from '../components/TitleLens'
-import { loadMeta, loadSalaries } from '../lib/data'
+import { loadMeta, loadSalaries, loadTrends } from '../lib/data'
 import type { Meta, Salaries } from '../lib/types'
+import type { TrendsJson } from '../lib/trends-types'
 import { DEFAULT_STATE, parseState, serializeState, type UrlState } from '../lib/url-state'
 
 export default function Page() {
   const [meta, setMeta] = useState<Meta | null>(null)
   const [salaries, setSalaries] = useState<Salaries | null>(null)
+  // National trends, loaded once here rather than inside MetroPanel — MetroTrend's "national"
+  // ghost line needs it on every metro selection, and re-fetching trends.json each time a metro
+  // is clicked would be wasteful when it is one small file shared by every metro.
+  const [trends, setTrends] = useState<TrendsJson | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [state, setState] = useState<UrlState>(DEFAULT_STATE)
   const [dark, setDark] = useState(false)
 
   useEffect(() => {
-    Promise.all([loadMeta(), loadSalaries()])
-      .then(([m, s]) => {
-        setMeta(m); setSalaries(s)
+    Promise.all([loadMeta(), loadSalaries(), loadTrends()])
+      .then(([m, s, t]) => {
+        setMeta(m); setSalaries(s); setTrends(t)
         const parsed = parseState(new URLSearchParams(window.location.search))
         setState({
           ...parsed,
@@ -72,7 +77,7 @@ export default function Page() {
   }, [meta, salaries, state.role])
 
   if (error) return <main className="page"><p className="load-error">Failed to load data: {error}</p></main>
-  if (!meta || !salaries || !role) return <main className="page"><p className="loading">Loading…</p></main>
+  if (!meta || !salaries || !role || !trends) return <main className="page"><p className="loading">Loading…</p></main>
 
   const metroA = state.metro ?? comparePair[0]
   const metroB = state.vs ?? (comparePair[0] && comparePair[0] !== metroA ? comparePair[0] : comparePair[1])
@@ -99,7 +104,7 @@ export default function Page() {
                    onSelect={cbsa => update({ metro: cbsa })} />
         {state.metro && (
           <MetroPanel meta={meta} salaries={salaries} cbsa={state.metro} soc={state.role}
-                      adjusted={state.adjusted} onClose={() => update({ metro: null })} />
+                      adjusted={state.adjusted} national={trends} onClose={() => update({ metro: null })} />
         )}
       </div>
       <RankSlopegraph meta={meta} salaries={salaries} soc={state.role} metric={state.metric}

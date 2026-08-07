@@ -82,9 +82,15 @@ export default function TrendsPage() {
       </p>
 
       <div className="tr-toggle-row">
+        {/* The label states the CURRENT mode, not the action. A static label that only changes
+            aria-pressed and a fill colour leaves anyone who can't rely on the pressed styling —
+            colour-vision deficiency, high-contrast mode — unsure which mode is active. This chart
+            means two different things in its two states, so that ambiguity is not cosmetic. */}
         <button type="button" className="col-toggle" aria-pressed={nominal}
                 onClick={() => setNominal(v => !v)}>
-          Show as-paid dollars (not inflation-adjusted)
+          {nominal
+            ? 'Showing as-paid dollars — switch to inflation-adjusted'
+            : `Showing ${trends.deflator.base} dollars — switch to as-paid`}
         </button>
       </div>
 

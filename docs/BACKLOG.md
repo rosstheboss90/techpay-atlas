@@ -2,6 +2,46 @@
 
 Newest decisions first. v1 (map + panel) shipped 2026-08-03.
 
+## `/trends` Phase B (metro-level) — LANDED on `main` 2026-08-07
+
+"How has pay in my metro changed?" — a new "Pay over time" section inside the existing metro
+panel (`site/components/MetroTrend.tsx`, rendered from `MetroPanel.tsx` below "Pay by role"),
+built from a new append-only per-vintage MSA archive (`data/history/oews-msa-<year>.json`,
+`pipeline/archive-msa.ts`) run through a pure delineation detector (`pipeline/lib/delineation.ts`)
+and a pure trend builder (`pipeline/lib/build-metro-trends.ts`) that emit one small JSON per metro
+under `site/public/data/trends/<cbsa>.json`. Plan:
+`docs/superpowers/plans/2026-08-07-trends-phase-b-metro.md`. Spec:
+`docs/superpowers/specs/2026-08-07-trends-phase-b-metro-design.md`.
+
+**The spec's deferred open question is answered: 66 of 429 metros (15.4%) have a delineation
+break, and every single one falls in 2024** (the OMB 2023-delineation adoption, e.g. Austin
+`12420`: "Austin-Round Rock, TX" → "Austin-Round Rock-San Marcos, TX"). That is the measurement
+that justified keeping the "break the line" design as specced rather than narrowing to
+stable-definition metros only — 15.4% is a labelled exception, not most of the page.
+
+**Payload:** the MSA archive is 1.7MB across seven vintages in `data/history/`; the emitted
+per-metro trend files are 2.6MB total in `site/public/data/trends/` (429 files). Both are
+committed.
+
+**Schema drift, same shape as before:** 2019's MSA file (`MSA_M2019_dl.xlsx`) has lowercase column
+headers and no `PRIM_STATE`, exactly the drift already documented for the national OEWS file and
+for HUD in `crosswalk.ts`. `parse-oews.ts` resolves columns case-insensitively for this reason —
+verified against the real 2019 vintage, not assumed.
+
+**Known limits, deliberate:**
+- **Metro-level p90 is out of scope.** National p90 is already censored for some SOCs
+  (`11-3021` 2019–2024); metro-level censoring is worse, so the trend plots medians only, same
+  as Phase A.
+- **The delineation detector is a name-change heuristic, not a county-composition diff.** It
+  flags a break when a CBSA's published `AREA_TITLE` changes between vintages. OMB can move a
+  boundary without a rename, or rename cosmetically without moving one; the alternative — ingesting
+  OMB's delineation files and diffing county membership — is an entire additional dataset for a
+  marginal gain over a signal that already catches the large, real redefinitions. The panel's
+  boundary note says the break is name-detected, not a boundary read.
+- **The RPP guard holds at both levels**, structural (no `adjusted` prop on `MetroTrend`, a source
+  scan test) and behavioral (`site/e2e/metro-trend.spec.ts` toggles cost-of-living in a real
+  browser and asserts the plotted `points` are byte-identical).
+
 ## `/trends` Phase A — LANDED on `feat/data-refresh-and-archive` 2026-08-06
 
 Real-wage trends for the 21 registry roles, built from the committed OEWS national archive
@@ -37,8 +77,7 @@ Known limits, deliberate:
 - **`/trends/` with a trailing slash 404s**, same as `/about/`. Fix with the custom-domain move.
 - **`11-3021`'s p90 is censored 2019–2024**, so any future p90 view must read `cappedP90`. Phase A
   plots medians only, which are uncensored for every role in every vintage.
-- **Phase B (metro-level) not started.** Needs a CBSA-delineation crosswalk over time and a
-  suppression policy, and p90 becomes load-bearing there.
+- ~~**Phase B (metro-level) not started.**~~ LANDED 2026-08-07 — see the entry above.
 
 ## Data refresh + vintage archive — LANDED on `feat/data-refresh-and-archive` 2026-08-06
 
@@ -189,11 +228,19 @@ That does not change the "do it with the custom-domain move" call, but it is now
 - ~~**Open Graph / social metadata.**~~ DONE (2026-08-05): `openGraph` + `twitter` tags in
   `site/app/layout.tsx` (base-path-aware image `site/public/og.png`, from the map screenshot).
   When the custom domain lands, update `metadataBase` + the `basePath` image/URL prefixes here too.
-- **CI lint step — BLOCKED for now.** `PROJECT-STANDARDS.md` wants CI to gate lint; but the repo
-  pins **TypeScript 7.0.2** (the native compiler), which is outside `typescript-eslint`'s peer range
-  (`>=4.8.4 <6.1.0`), so eslint's TS parser won't install cleanly. Options when revisited: wait for
-  `typescript-eslint` TS-7 support, pin the JS `typescript@5` for linting only, or a `@babel/eslint-parser`
-  setup for hook-rules only. `tsc --noEmit` (strict) is the interim gate.
+- ~~**CI lint step — BLOCKED for now.**~~ DONE: added to `site/` only (root pipeline is plain TS,
+  no JSX/hooks, already fully covered by `tsc --noEmit`). Confirmed `typescript-eslint` cannot run
+  against TS 7 at all — not just an unmet peer range, `@typescript-eslint/parser` throws
+  `"typescript-eslint does not support TS 7.0"` at parse time (tracking:
+  typescript-eslint/typescript-eslint#10940) — and two TypeScript majors can't cleanly coexist in one
+  npm tree when the root project directly depends on `typescript` itself (tested `overrides` incl.
+  the `$name` peer-reference trick: npm either hard ERESOLVEs, or silently reuses the root's TS 7 for
+  the peer instead of nesting a compatible copy — worse than no linting). Went with the
+  `@babel/eslint-parser` + `@babel/preset-typescript` option instead: strips TS syntax to an ESTree
+  AST without ever importing `typescript`, so no version conflict and no type-aware linting (`tsc
+  --noEmit` stays the type-correctness gate). Config: `site/eslint.config.mjs`
+  (`eslint-plugin-react-hooks` + `@next/eslint-plugin-next`); CI step in `.github/workflows/ci.yml`
+  `site` job.
 
 ## Title lens follow-ups (from final-review, 2026-08-04)
 

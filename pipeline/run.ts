@@ -1,5 +1,5 @@
 // pipeline/run.ts
-import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { EMPLOYER_ALIASES, OUT_DIR, RAW_DIR, REPORT_DIR, THRESHOLDS } from './config'
 import { readDelimitedRows, readLcaRows, readSheetRows } from './loaders'
@@ -7,6 +7,7 @@ import { parseOews } from './lib/parse-oews'
 import { rppRowsToMap } from './lib/parse-rpp'
 import { gazetteerRowsToMap } from './lib/parse-gazetteer'
 import { hudRowsToZipCbsa } from './lib/crosswalk'
+import { HISTORY_DIR } from './lib/history'
 import { lcaRowsToRecords, type DropReason, type LcaRecord } from './lib/parse-lca'
 import { aggregateEmployers, attachCbsa } from './lib/aggregate'
 import { aggregateEmployerProfiles } from './lib/aggregate-employer-profiles'
@@ -187,6 +188,26 @@ const rppCoverage = meta.metros.filter(m => m.rpp !== null).length / (meta.metro
 if (rppCoverage < THRESHOLDS.minRppCoverage) fail(`RPP coverage ${(rppCoverage * 100).toFixed(1)}% (< ${THRESHOLDS.minRppCoverage * 100}%)`)
 meta.generated = new Date().toISOString()
 meta.lcaPeriod = lcaPeriod
+
+// trendYears counts the archived MSA vintages a metro appears in, so the site can skip the
+// per-metro trend fetch entirely — the same gate lcaFilings === 0 provides for employers.
+//
+// The distinction between UNDEFINED and 0 is load-bearing and must survive: undefined means no
+// MSA archive exists at all, so the trend feature is not live and the panel renders nothing;
+// 0 means the archive exists and this metro genuinely has no published history. Collapsing them
+// would claim "no published history" on every metro whenever the archive is missing.
+const msaArchives = existsSync(HISTORY_DIR)
+  ? readdirSync(HISTORY_DIR).filter(f => /^oews-msa-\d{4}\.json$/.test(f))
+  : []
+if (msaArchives.length > 0) {
+  const trendYearsByCbsa = new Map<string, number>()
+  for (const f of msaArchives) {
+    const a = JSON.parse(readFileSync(path.join(HISTORY_DIR, f), 'utf8')) as { metros: Record<string, unknown> }
+    for (const cbsa of Object.keys(a.metros)) trendYearsByCbsa.set(cbsa, (trendYearsByCbsa.get(cbsa) ?? 0) + 1)
+  }
+  for (const m of meta.metros) m.trendYears = trendYearsByCbsa.get(m.cbsa) ?? 0
+  console.log(`  trendYears stamped from ${msaArchives.length} MSA vintage(s)`)
+}
 meta.sources = {
   oews: path.basename(oewsFile), lca: lcaFiles.map(f => path.basename(f)), hud: path.basename(hudFile),
   zipMatchRate: matchRate,

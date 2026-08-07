@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { cleanup, render, screen, fireEvent } from '@testing-library/react'
 import { RoleHeatmap } from '../components/RoleHeatmap'
+import { columnDomain, formatColumnRange } from '../lib/heatmap'
 import type { Meta, Salaries, SalaryRow } from '../lib/types'
 
 const metro = (cbsa: string, name: string, rpp: number | null = 100) =>
@@ -78,5 +79,42 @@ describe('RoleHeatmap', () => {
     expect(screen.getByLabelText('Cee, CC, Role One: no cost-of-living index').textContent).toBe('—')
     renderHeatmap({ metric: 'emp', adjusted: true })
     expect(screen.getByRole('button', { name: 'Cee, CC, Role One: 300' })).toBeInTheDocument()
+  })
+
+  describe('column range labels', () => {
+    it('prints each column range from columnDomain — the same source the cell colors use', () => {
+      renderHeatmap()
+      const expectedS1 = formatColumnRange(columnDomain(meta.metros, salaries, 'S1', 'pay', false), 'pay')
+      const expectedS2 = formatColumnRange(columnDomain(meta.metros, salaries, 'S2', 'pay', false), 'pay')
+      expect(expectedS1).toBe('$100k–$200k') // sanity against the fixture values below
+      expect(expectedS2).toBe('$80k–$500k')
+      expect(screen.getByRole('columnheader', { name: /R1/ }).textContent).toContain(expectedS1)
+      expect(screen.getByRole('columnheader', { name: /R2/ }).textContent).toContain(expectedS2)
+    })
+
+    it('renders different labels for two columns with different domains', () => {
+      renderHeatmap()
+      const s1 = screen.getByRole('columnheader', { name: /R1/ }).textContent
+      const s2 = screen.getByRole('columnheader', { name: /R2/ }).textContent
+      expect(s1).not.toBe(s2)
+    })
+
+    it('a column with no data anywhere gets an explicit no-data label, not blank or NaN', () => {
+      const metaWithEmptyCol: Meta = { ...meta, roles: [...meta.roles, { soc: 'S4', label: 'Role Four', short: 'R4' }] }
+      renderHeatmap({ meta: metaWithEmptyCol })
+      const s4 = screen.getByRole('columnheader', { name: /R4/ })
+      expect(s4.textContent?.toLowerCase()).toContain('no data')
+      expect(s4.textContent).not.toContain('NaN')
+    })
+
+    it('switching the active metric changes the rendered ranges', () => {
+      renderHeatmap({ metric: 'pay' })
+      const payS1 = screen.getByRole('columnheader', { name: /R1/ }).textContent
+      cleanup()
+      renderHeatmap({ metric: 'emp' })
+      const empS1 = screen.getByRole('columnheader', { name: /R1/ }).textContent
+      expect(payS1).not.toBe(empS1)
+      expect(empS1).toContain('100–300')
+    })
   })
 })
