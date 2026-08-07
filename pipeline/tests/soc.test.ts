@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ROLES, SOC_SET, targetSoc } from '../lib/soc'
+import { ROLES, targetSoc } from '../lib/soc'
 import { cell, num, TOP_CODE } from '../lib/num'
 
 describe('roles', () => {
