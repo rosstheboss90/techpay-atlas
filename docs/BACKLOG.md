@@ -74,7 +74,12 @@ Three things found by building it, each recorded because they will recur:
 Known limits, deliberate:
 - **2021 is a hot baseline.** It is the earliest comparable year but also an unusually strong one
   for pay, so the headline measures change from a high start. Stated on the page, not footnoted.
-- **`/trends/` with a trailing slash 404s**, same as `/about/`. Fix with the custom-domain move.
+- ~~**`/trends/` with a trailing slash 404s**, same as `/about/`.~~ FIXED 2026-08-07 —
+  `trailingSlash: true` in `site/next.config.ts`, landed on its own rather than waiting for the
+  custom-domain move. The deferral was right at two routes; the employer lens adds ~500 URLs
+  whose entire purpose is being linkable and indexable, which made the dead trailing-slash form
+  the dominant cost. The export now emits `about/index.html` instead of `about.html`, so both
+  forms resolve. The custom-domain entry below still owns dropping the base path.
 - **`11-3021`'s p90 is censored 2019–2024**, so any future p90 view must read `cappedP90`. Phase A
   plots medians only, which are uncensored for every role in every vintage.
 - ~~**Phase B (metro-level) not started.**~~ LANDED 2026-08-07 — see the entry above.
