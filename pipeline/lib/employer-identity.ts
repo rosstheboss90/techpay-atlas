@@ -26,3 +26,45 @@ export function slugify(key: string): string {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
 }
+
+export interface AliasEntity {
+  canonical: string
+  display: string
+  category: 'staffing' | 'direct'
+  match: string[]
+}
+export interface AliasFile { version: number; entities: AliasEntity[] }
+
+export interface CanonicalEmployer {
+  /** Grouping key: the alias canonical id when aliased, else the deterministic base key. */
+  key: string
+  display: string
+  slug: string
+  category: 'staffing' | 'direct'
+  /** False when the deterministic fallback produced this. The site must not render an
+   *  unaliased `direct` as a badge — it is a default, not a reviewed claim. */
+  aliased: boolean
+}
+
+/** Build a base-key -> entity lookup once, rather than scanning `entities` per record. */
+export function indexAliases(file: AliasFile): Map<string, AliasEntity> {
+  const out = new Map<string, AliasEntity>()
+  for (const e of file.entities) for (const m of e.match) out.set(m, e)
+  return out
+}
+
+export function canonicalEmployer(
+  name: string,
+  aliases: AliasFile | Map<string, AliasEntity>,
+): CanonicalEmployer {
+  const index = aliases instanceof Map ? aliases : indexAliases(aliases)
+  const base = baseKey(name)
+  const hit = index.get(base)
+  if (hit) {
+    return {
+      key: hit.canonical, display: hit.display, slug: slugify(hit.canonical),
+      category: hit.category, aliased: true,
+    }
+  }
+  return { key: base, display: name.trim(), slug: slugify(base), category: 'direct', aliased: false }
+}

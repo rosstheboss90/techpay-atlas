@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { baseKey, slugify } from '../lib/employer-identity'
+import { baseKey, canonicalEmployer, slugify, type AliasFile } from '../lib/employer-identity'
 
 describe('baseKey', () => {
   it('uppercases, strips punctuation, collapses whitespace', () => {
@@ -34,5 +34,47 @@ describe('slugify', () => {
   })
   it('collapses and trims separators', () => {
     expect(slugify('  A -- B  ')).toBe('a-b')
+  })
+})
+
+const aliases: AliasFile = {
+  version: 1,
+  entities: [
+    {
+      canonical: 'amazon', display: 'Amazon', category: 'direct',
+      match: ['AMAZONCOM SERVICES', 'AMAZON WEB SERVICES', 'AMAZON DATA SERVICES'],
+    },
+    {
+      canonical: 'cognizant', display: 'Cognizant', category: 'staffing',
+      match: ['COGNIZANT TECHNOLOGY SOLUTIONS'],
+    },
+  ],
+}
+
+describe('canonicalEmployer', () => {
+  it('merges aliased variants into one canonical entity', () => {
+    const a = canonicalEmployer('Amazon.com Services LLC', aliases)
+    const b = canonicalEmployer('Amazon Web Services, Inc.', aliases)
+    expect(a.key).toBe('amazon')
+    expect(b.key).toBe('amazon')
+    expect(a.display).toBe('Amazon')
+    expect(a.slug).toBe('amazon')
+  })
+
+  it('carries the curated category', () => {
+    expect(canonicalEmployer('Cognizant Technology Solutions US Corp', aliases).category)
+      .toBe('staffing')
+  })
+
+  it('falls back to the deterministic rule for unaliased filers', () => {
+    const r = canonicalEmployer('Sheetz, Inc.', aliases)
+    expect(r.key).toBe('SHEETZ')
+    expect(r.slug).toBe('sheetz')
+    expect(r.display).toBe('Sheetz, Inc.')
+  })
+
+  it('defaults unaliased filers to direct, which the site must not render as a claim', () => {
+    expect(canonicalEmployer('Sheetz, Inc.', aliases).category).toBe('direct')
+    expect(canonicalEmployer('Sheetz, Inc.', aliases).aliased).toBe(false)
   })
 })
