@@ -433,10 +433,15 @@ export interface EmployerProfile {
   roles: Record<string, EmployerRoleStat>
 }
 
-/** Nearest-rank quantile on an ascending-sorted array. Matches p99Of in aggregate.ts. */
+/** Nearest-rank quantile on an ascending-sorted array, via the continuous 1-indexed rank
+ *  h = q*(n-1)+1 rounded to the closest integer rank (ties round up). Plain ceil(q*n) (as used
+ *  by p99Of in aggregate.ts for a p99 clamp) skews low at small n / low q — e.g. n=4, q=0.25
+ *  gives rank 1 (the minimum) instead of the 2nd of 4 values — which is wrong for a quartile
+ *  meant to sit strictly inside the distribution. */
 function quantile(sortedAsc: number[], q: number): number {
-  if (sortedAsc.length === 0) throw new Error('quantile of empty input')
-  const rank = Math.max(1, Math.ceil(q * sortedAsc.length))
+  const n = sortedAsc.length
+  if (n === 0) throw new Error('quantile of empty input')
+  const rank = Math.min(n, Math.max(1, Math.round(q * (n - 1) + 1)))
   return sortedAsc[rank - 1]
 }
 
