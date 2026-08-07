@@ -144,12 +144,17 @@ serves only the current reference period, so it cannot replace the OEWS file dow
   `main` triggers the Pages deploy (`.github/workflows/deploy.yml`, which runs `npm ci` +
   `npm run build` in `site/`). Keep commits scoped with conventional-commit prefixes
   (`feat`/`fix`/`data`/`docs`/`test`/`chore`), matching the existing history.
-- ⚠️ **The deploy workflow runs NO tests — `ci.yml` is the gate, and it only gates PRs.** So a
-  direct push to `main` ships whatever it contains, unverified, and even a docs-only push
-  triggers a Pages rebuild. The branch → PR shape above is a safety requirement, not a
-  preference: push the branch (no deploy), open the PR, wait for **all three** checks, then
-  merge. `ci.yml` gates eslint as well as tests, and tsc runs with `noUnusedLocals` /
-  `noUnusedParameters`.
+- ⚠️ **The deploy workflow runs NO tests, and nothing gates it.** `deploy.yml` and `ci.yml` both
+  trigger on push to `main` and run **concurrently** — CI cannot block the deploy, it only tells
+  you afterwards. So a direct push ships whatever it contains and *then* reports whether it was
+  broken, and even a docs-only push triggers a Pages rebuild. The branch → PR shape above is a
+  safety requirement, not a preference: push the branch (no deploy), open the PR, wait for **all
+  three** checks, then merge. `ci.yml` gates eslint as well as tests, and tsc runs with
+  `noUnusedLocals` / `noUnusedParameters`.
+  - Verified 2026-08-07 against the workflow files and a live run. ⚠️ Do **not** restate this as
+    *"`ci.yml` only gates PRs"* — that wording is wrong (it also runs on push, re-verifying main
+    after merge) and it appears in `watch-sources.yml`'s header comment, which is where it keeps
+    getting copied from. The correct distinction is **gating vs reporting**, not PR vs push.
 - ⚠️ **Unpushed commits on `main` accumulate here on purpose.** Because pushing deploys, local
   work sits until it is deliberately shipped. Never push to "clean up" an ahead count, and
   never assume unpushed means forgotten.
