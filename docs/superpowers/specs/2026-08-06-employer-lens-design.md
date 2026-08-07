@@ -51,27 +51,33 @@ change, not a UI layer over existing output.
    the employer layer. The lens inherits that, matching today's employer files. Off-registry SOCs
    are out of scope, not silently partial.
 
-5. **Prerender the head, search the tail.** (Option A of three considered.) Static pages for
-   filers clearing a floor; everyone else reachable via client-side search rendering inline.
-   Measured distribution, again from truncated data so every count is a floor:
+5. **Prerender the head, search the tail — cut by count, not by threshold.**
+   `employerPrerenderCount = 500`: sort canonical filers by total filings, prerender the top 500,
+   and make everyone else reachable through client-side search that renders inline.
 
-   | Floor | Employers |
+   The mechanism matters as much as the number. A filings **threshold** ("≥25") has no knowable
+   page count attached, because the observed distribution is drawn from top-15-truncated emitted
+   data and is therefore a floor, not a measurement:
+
+   | Filings | Employers observed (floor) |
    |---|---|
-   | ≥ 500 filings | 45 |
+   | ≥ 500 | 45 |
    | ≥ 100 | 156 |
    | ≥ 50 | 259 |
-   | ≥ 25 | **434** ← chosen floor |
+   | ≥ 25 | 434 |
    | ≥ 10 | 962 |
    | ≥ 5 | 1,715 |
    | ≥ 1 | 7,826+ (true tail is several times larger) |
 
-   Prerendering everything is 8,000+ pages minimum, most of them single-filing pages whose own
-   caption would say they mean nothing.
+   Under a threshold, the true count could land anywhere from ~400 to well over 1,500 pages, and it
+   would move again on every vintage. A fixed count makes the build cost deterministic today and
+   stable across refreshes. The equivalent filings floor becomes an **output**: the run report
+   prints it alongside the prerendered and tail counts, so the cutoff is visible rather than
+   implied. Prerendering everything is 8,000+ pages minimum, most of them single-filing pages whose
+   own caption would say they mean nothing.
 
-   ⚠️ **These counts are floors, not measurements.** They come from the top-15-truncated emitted
-   data, so the true filer count is several times larger and the per-band counts will rise. The
-   floor of 25 is a starting hypothesis; re-derive it from a real pipeline run before fixing
-   `employerPrerenderFloor` in code. See "Lessons the landed work hands this spec".
+   This choice is a direct application of the "measure, don't guess" lesson below — it avoids
+   needing the measurement at all, rather than guessing at it.
 
 6. **Staffing firms are labelled and filterable, never removed or left unmarked.** Ranked by
    filing volume the head is dominated by staffing and outsourcing firms — Cognizant #2, TCS #5,
@@ -101,7 +107,7 @@ change, not a UI layer over existing output.
 | `data/employer-aliases.json` | **New, committed.** Variant key → `{ canonical, display, category }`. |
 | `pipeline/lib/aggregate-employer-profiles.ts` | **New.** `employerRecords → Map<key, EmployerProfile>`. Pure. |
 | `pipeline/lib/emit.ts` | Add `buildEmployerHead`, `buildEmployerIndex`, `buildEmployerProfiles`. |
-| `pipeline/config.ts` | Add `minEmployerProfiles`, `maxAliasCollapse`, `employerPrerenderFloor`. |
+| `pipeline/config.ts` | Add `minEmployerProfiles`, `maxAliasCollapse`, `minAliasCoverage`, `employerPrerenderCount`. |
 | `pipeline/run.ts` | Aggregate profiles in the existing employer phase; emit the three new artifacts. |
 | `site/app/employers/page.tsx` | **New.** Index + search. |
 | `site/app/employers/[slug]/page.tsx` | **New.** `generateStaticParams()` over the profile directory. |
@@ -109,14 +115,14 @@ change, not a UI layer over existing output.
 | `site/components/EmployerSearch.tsx` | **New.** Prefix search over head + lazily-fetched shards. |
 | `site/components/EmployerProfile.tsx` | **New.** Header, entity disclosure, disclaimers. |
 | `site/components/EmployerRoleTable.tsx` | **New.** Role × metro table. |
-| `site/components/SectionNav.tsx` | Nav link to `/employers`. |
+| `site/app/page.tsx` | Masthead link to `/employers`, following the `/trends` pattern at line 91. **Not** `SectionNav.tsx` — see D3. |
 
 `aggregate-employer-profiles.ts` is pure and takes the record array, mirroring `build-trends.ts` in
 the `/trends` spec — testable without I/O, and reusable if LCA multi-year ever lands.
 
 ## Data contracts
 
-**`site/public/data/employer-head.json`** — the ~434 prerendered filers, loaded eagerly by
+**`site/public/data/employer-head.json`** — the 500 prerendered filers, loaded eagerly by
 `/employers`. Carries `lcaPeriod` provenance, matching `titles.json` and `conflation.json`
 (`buildTitles(titleAgg, lcaPeriod)`, `buildConflation(conflationAgg, lcaPeriod)`).
 
@@ -138,7 +144,7 @@ non-alphanumeric. Each entry carries enough to render a tail result inline witho
   "v": [["acme-dental", "Acme Dental Partners", 1, "direct", "15-1252", "46140", 92000]] }
 ```
 
-**`site/public/data/employers-by-name/{slug}.json`** — prerendered filers only, ~434 files:
+**`site/public/data/employers-by-name/{slug}.json`** — prerendered filers only, exactly 500 files:
 
 ```json
 {
@@ -158,7 +164,7 @@ non-alphanumeric. Each entry carries enough to render a tail result inline witho
 ```
 
 *(Zeros are shape, not data.)* Tail employers get no profile file and no page — their search hit
-renders from the index shard. This is what holds the file count at ~470 rather than tens of
+renders from the index shard. This is what holds the file count at ~540 rather than tens of
 thousands.
 
 ## Site
@@ -187,7 +193,7 @@ In the existing `fail()` idiom — a bad run stops rather than emitting quietly-
 
 | Tripwire | Fires when | Why |
 |---|---|---|
-| `minEmployerProfiles: 200` | fewer filers clear the floor | normalization or the SOC filter broke |
+| `minEmployerProfiles` | fewer than `employerPrerenderCount` canonical filers exist at all | normalization or the SOC filter broke — a top-500 cut is meaningless if only 40 employers survive |
 | `maxAliasCollapse: 0.25` | alias merging absorbs >25% of all filings | an over-broad alias rule |
 | `minAliasCoverage` | alias resolution covers **less** than a floor share of the top-N filers' filings | the opposite bound to `maxAliasCollapse` — catches a rotted or half-applied alias file, which otherwise fails silently by fragmenting the head back into variants |
 | stale-alias check | any alias entry matches zero filed names | prevents the alias file rotting silently as vintages change |
@@ -247,7 +253,7 @@ Two predictions were aimed at the wrong file, and both corrections change the pl
 
 | # | Interaction | Resolution |
 |---|---|---|
-| D1 | **`trailingSlash` is unset.** Confirmed live post-deploy: `/trends/` and `/about/` both return **HTTP 404**. This is no longer a prediction. | **Prerequisite for this work.** The backlog defers it to the custom-domain move because it changes every URL — a reasonable call at two routes, now demonstrably broken at three. This spec adds ~435 URLs whose entire point is being linkable and indexable. Land `trailingSlash: true` **before** the employer lens ships. |
+| D1 | **`trailingSlash` is unset.** Confirmed live post-deploy: `/trends/` and `/about/` both return **HTTP 404**. This is no longer a prediction. | **Prerequisite for this work.** The backlog defers it to the custom-domain move because it changes every URL — a reasonable call at two routes, now demonstrably broken at three. This spec adds 501 URLs whose entire point is being linkable and indexable. Land `trailingSlash: true` **before** the employer lens ships. |
 | D2 | **`run.ts` emit phase.** `/trends` avoided it entirely via `emit-trends.ts`, setting a house precedent: a new artifact gets its own emit entry point. | **The precedent does not rescue this work.** `emit-trends.ts` is separable because it reads the *committed* archive. Employer profiles need the in-memory `employerRecords` that exist only during an LCA run, and rebuilding them from the emitted per-CBSA files is precisely the `topN = 15` truncation trap in Decision 3. Profiles must live inside `run.ts`, which makes D5 the live constraint rather than a hypothetical. |
 | D3 | **Masthead, not `SectionNav.tsx`.** `/trends` added `<Link href="/trends" className="masthead-link">` at `site/app/page.tsx:91`. `SectionNav.tsx` is untouched and is a within-page section nav, not a site nav. | Follow the established pattern: add a masthead link in `page.tsx`. The "four routes need a real nav" question stands, but it is now a deliberate design item rather than an accidental merge conflict, and it is out of scope here. |
 | D4 | **`pipeline/config.ts` `THRESHOLDS`** — this adds keys; `/trends` added none. | No conflict. Purely additive. |
@@ -272,9 +278,10 @@ Two things that work discovered by running it apply directly here, and both are 
   2023 top-code boundary that was actually 2022 — the wrong guess archived a value 15% low and
   produced a fake step in the charts. **The distribution table under Decision 5 has the same
   weakness**: it is derived from the already-truncated top-15 emitted data, so every count in it is
-  a *floor*, not a measurement. The true filer count is several times larger. Re-derive the
-  prerender floor from a real pipeline run before fixing `employerPrerenderFloor` in code; 25 is a
-  starting hypothesis, not a decision.
+  a *floor*, not a measurement. Decision 5 resolves this by **not needing the measurement** — a
+  fixed top-500 count replaces the filings threshold, so the page count is deterministic whatever
+  the true distribution turns out to be, and the equivalent filings floor is reported as an output
+  rather than guessed as an input.
 - **Tripwires need both directions.** `findTopCodeAnomaly` fires only when the recorded top code is
   too *high* relative to observed values, so the real error — a code that was too *low*, yielding a
   negative gap — passed silently, as did the 15% step (under the 40% jump threshold). It was caught
