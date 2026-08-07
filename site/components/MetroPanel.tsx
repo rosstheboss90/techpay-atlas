@@ -96,14 +96,24 @@ export function MetroPanel({ meta, salaries, cbsa, soc, adjusted, national, onCl
         </tbody>
       </table>
 
-      <h3 className="panel-sub">Pay over time — {role?.label}</h3>
-      {trendError
-        ? <p className="panel-note">Couldn't load trend data — try re-selecting the metro.</p>
-        : trend
-          ? <MetroTrend metro={trend} national={national} soc={soc} roleLabel={role?.label ?? soc} />
-          : (metro.trendYears ?? 0) === 0
-            ? <p className="panel-note">No published history for this metro.</p>
-            : <p className="panel-note">Loading trend…</p>}
+      {/* `undefined` and `0` are different facts and must not collapse into one message.
+          undefined -> the pipeline never stamped trendYears, so the metro-trend dataset has not
+          been emitted at all and the feature is not live. Render nothing: a section claiming "no
+          published history" on every one of 393 metros would be false, since the history exists
+          and simply has not been built yet.
+          0 -> the pipeline DID stamp it and this metro genuinely has no published history. */}
+      {metro.trendYears === undefined ? null : (
+        <>
+          <h3 className="panel-sub">Pay over time — {role?.label}</h3>
+          {trendError
+            ? <p className="panel-note">Couldn't load trend data — try re-selecting the metro.</p>
+            : trend
+              ? <MetroTrend metro={trend} national={national} soc={soc} roleLabel={role?.label ?? soc} />
+              : metro.trendYears === 0
+                ? <p className="panel-note">No published history for this metro.</p>
+                : <p className="panel-note">Loading trend…</p>}
+        </>
+      )}
 
       <h3 className="panel-sub">Who actually pays what — H-1B filings, {meta.lcaPeriod}{adj ? ' · COL-adjusted' : ''}</h3>
       {metro.lcaFilings === 0 ? (

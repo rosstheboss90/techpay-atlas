@@ -99,6 +99,23 @@ describe('MetroPanel', () => {
     expect(loadMetroTrend).not.toHaveBeenCalled()
   })
 
+  it('trendYears undefined -> renders no trend section at all', async () => {
+    // undefined means the pipeline has not emitted the metro-trend dataset yet, so the feature is
+    // not live. Claiming "no published history" on every metro would be false — the history exists
+    // and simply has not been built. This is distinct from trendYears === 0, which is a real fact
+    // about one metro.
+    const { loadMetroTrend } = await import('../lib/data')
+    vi.mocked(loadMetroTrend).mockClear()
+    const noTrendMeta = {
+      ...meta,
+      metros: meta.metros.map(({ trendYears: _drop, ...rest }) => rest),
+    }
+    render(<MetroPanel meta={noTrendMeta} salaries={salaries} cbsa="12420" soc="15-1252" adjusted={false} national={national} onClose={() => {}} />)
+    expect(screen.queryByText(/pay over time/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/no published history/i)).not.toBeInTheDocument()
+    expect(loadMetroTrend).not.toHaveBeenCalled()
+  })
+
   it('toggling cost-of-living leaves the trend values untouched', async () => {
     // The RPP guard at the integration level: `adjusted` must not reach the trend. RPP is
     // renormalised to US=100 every year, so letting it deflate a time series would produce an
