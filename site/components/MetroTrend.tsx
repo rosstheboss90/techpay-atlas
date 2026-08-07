@@ -12,17 +12,19 @@ const W = 440, H = 200, PAD_L = 52, PAD_R = 12, PAD_T = 10, PAD_B = 24
  *  BEA index, renormalised to US = 100 every year; the trend below reads CPI-U instead, a temporal
  *  index. The two must never share a code path. The guard is structural, not a runtime check: a
  *  prop that does not exist in this signature cannot be wired in by a future refactor, and a test
- *  scans this component's own source text to confirm neither the panel's prop name nor the
- *  spatial index's abbreviation appears here at all. See "The trap this design exists to avoid" in
- *  the Phase B design spec.
+ *  scans this component's own source CODE (comments and string/JSX text excluded — see that
+ *  test's comment) to confirm neither the panel's prop name nor the spatial index's abbreviation
+ *  is ever reached for. See "The trap this design exists to avoid" in the Phase B design spec.
  *
  *  Idiom mirrors TrendsPath.tsx: viewBox scales to the container (no fixed pixel canvas, house
  *  rule), one polyline per segment, the non-highlighted series drawn ghosted.
  *
- *  Sizing note for whoever does Task 9 (styles): this viewBox is a first guess sized for a narrow
- *  side panel (440x200, versus TrendsPath's full-width 1000x420). It has not been checked against
- *  the actual rendered panel — confirm it doesn't read as cramped or, if scaled up by CSS,
- *  uncomfortably tall, and adjust the ratio (not just the CSS) if so. */
+ *  ⚠️ UNVERIFIED SIZING — read before touching styles (Task 9). This viewBox (440x200, versus
+ *  TrendsPath's full-width 1000x420) is a first guess sized for a narrow side panel and has never
+ *  been looked at rendered. It is not a measured value — do not assume it was checked. Before
+ *  styling, render an actual metro panel with a multi-segment trend and confirm: the chart doesn't
+ *  read as cramped at side-panel width, and it doesn't make the panel absurdly tall once CSS gives
+ *  it real dimensions. If either is true, change this ratio, not just the CSS scaling it. */
 export function MetroTrend({ metro, national, soc, roleLabel }: {
   metro: MetroTrendData
   national: TrendsJson
@@ -89,8 +91,8 @@ export function MetroTrend({ metro, national, soc, roleLabel }: {
         <span className="mt-legend-metro">{metro.name}</span> vs <span className="mt-legend-national">National</span>
       </p>
       <p className="panel-note">
-        Figures use CPI-U inflation only, expressed in {metro.deflator.base} dollars — this is not
-        cost-of-living: the toggle above does not change these numbers.
+        Inflation-adjusted (CPI-U), in {metro.deflator.base} dollars — not cost-of-living adjusted.
+        The cost-of-living toggle above does not change these figures.
       </p>
       {metro.breaks.length > 0 && (
         <p className="panel-note">

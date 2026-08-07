@@ -63,11 +63,32 @@ describe('MetroTrend', () => {
     expect(screen.getByText(/not published/i)).toBeInTheDocument()
   })
 
-  it('takes no cost-of-living prop — the RPP guard is structural', () => {
-    // RPP is renormalised to US=100 annually, so it must never touch a time series. The component
-    // cannot receive it, so no future edit can wire it in by accident.
-    const src = MetroTrend.toString()
-    expect(src).not.toMatch(/\badjusted\b/)
-    expect(src).not.toMatch(/\brpp\b/i)
+  it('never references cost-of-living in code — the RPP guard is structural', () => {
+    // RPP is renormalised to US=100 annually, so it must never touch a time series.
+    //
+    // Three guards, weakest last:
+    //  1. the props type has no `adjusted` — tsc rejects passing it at every call site;
+    //  2. the integration test in metro-panel.test.tsx asserts toggling cost-of-living leaves
+    //     plotted points byte-identical;
+    //  3. this scan, which additionally catches the component reaching for RPP from somewhere
+    //     other than a prop.
+    //
+    // Comments and string/template literals are stripped first so the visible copy — and the
+    // JSDoc above the component — can say "cost-of-living" plainly.
+    //
+    // Comments are stripped as a whole unit, ahead of string literals, deliberately: after
+    // Vite/Babel's JSX transform, JSX text is already ordinary double-quoted string content by
+    // the time `.toString()` sees it, so a naive quote-only strip is enough for that — but this
+    // file's comments are full of contractions ("component's", "doesn't", "it's"). A quote
+    // stripper with no notion of comments treats those apostrophes as string delimiters and
+    // swallows everything between one contraction and the next, real code included — proven by
+    // hand: stripping only quotes ate 249 and 1027-character stretches of live code such as
+    // `role.real[i] !== null` here. Stripping full comments first sidesteps that rather than
+    // trying to make quote-matching escape-aware around prose it was never meant to parse.
+    const code = MetroTrend.toString()
+      .replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, '')
+      .replace(/'(?:\\.|[^'\\])*'|"(?:\\.|[^"\\])*"|`(?:\\.|[^`\\])*`/g, '')
+    expect(code).not.toMatch(/\badjusted\b/)
+    expect(code).not.toMatch(/\brpp\b/i)
   })
 })
