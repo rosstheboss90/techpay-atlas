@@ -97,4 +97,80 @@ describe('MetroTrend', () => {
     expect(code).not.toMatch(/\badjusted\b/)
     expect(code).not.toMatch(/\brpp\b/i)
   })
+
+  // 7-vintage fixture for the censorship notes, mirroring the real San Jose 11-3021 shape (Task 2
+  // review note): the BLS ceiling itself moved from $208,000 to $239,200 partway through the
+  // series (the May 2022 OEWS top-code boundary), and the metro's oldest years sit entirely below
+  // it. topCodes is index-aligned with years, same as role.capped/nominal/real.
+  const censoredBase: MetroTrendData = {
+    cbsa: '41940', name: 'San Jose-Sunnyvale-Santa Clara, CA',
+    years: [2019, 2020, 2021, 2022, 2023, 2024, 2025],
+    breaks: [],
+    deflator: { series: 'CUUR0000SA0', period: 'May', base: 2025 },
+    topCodes: [208000, 208000, 208000, 239200, 239200, 239200, 239200],
+    roles: {},
+  }
+
+  it('censored vintages render a note naming the ceiling and years, and the line gaps', () => {
+    const fixture: MetroTrendData = {
+      ...censoredBase,
+      roles: { '15-1252': {
+        nominal: [100, null, null, 130, null, null, 160],
+        real: [100, null, null, 130, null, null, 160],
+        capped: [false, true, true, false, true, true, false],
+      } },
+    }
+    const { container } = render(<MetroTrend metro={fixture} national={national} soc="15-1252" roleLabel="Software Developers" />)
+    const note = screen.getByText(/censored above/i)
+    expect(note.textContent).toContain('$208,000')
+    expect(note.textContent).toContain('$239,200')
+    expect(note.textContent).toContain('2020')
+    expect(note.textContent).toContain('2021')
+    expect(note.textContent).toContain('2023')
+    expect(note.textContent).toContain('2024')
+    // 2019, 2022, 2025 each survive as lone real points, split apart by the capped-null runs
+    // between them — three disconnected segments, not one line drawn across the gaps.
+    expect(container.querySelectorAll('[data-metro-series]').length).toBeGreaterThan(1)
+  })
+
+  it('a single ceiling renders once, not as a list', () => {
+    const fixture: MetroTrendData = {
+      ...censoredBase,
+      roles: { '15-1252': {
+        nominal: [100, null, null, 130, 140, 150, 160],
+        real: [100, null, null, 130, 140, 150, 160],
+        // Both capped years (2020, 2021) fall before the May 2022 boundary, so they share the
+        // one $208,000 ceiling — the note must not join a one-item list with " / ".
+        capped: [false, true, true, false, false, false, false],
+      } },
+    }
+    render(<MetroTrend metro={fixture} national={national} soc="15-1252" roleLabel="Software Developers" />)
+    const note = screen.getByText(/censored above/i)
+    expect(note.textContent).toContain('$208,000')
+    expect(note.textContent).not.toContain('/')
+    expect(note.textContent).not.toContain('239,200')
+  })
+
+  it('no censored vintages → no censor note', () => {
+    render(<MetroTrend metro={metro} national={national} soc="15-1252" roleLabel="Software Developers" />)
+    expect(screen.queryByText(/censored/i)).not.toBeInTheDocument()
+  })
+
+  it('a censored FINAL year does not claim "no data published after"', () => {
+    // 2025 is capped (top-coded), not absent: the figure was published and then censored, so the
+    // "no data published after 2024" wording would be false. endsEarly must be suppressed here —
+    // see MetroTrend.tsx's trailingAllCapped — and the censor note covers 2025 with the true story.
+    const fixture: MetroTrendData = {
+      ...censoredBase,
+      roles: { '15-1252': {
+        nominal: [100, 105, 110, 120, 130, 140, null],
+        real: [100, 105, 110, 120, 130, 140, null],
+        capped: [false, false, false, false, false, false, true],
+      } },
+    }
+    render(<MetroTrend metro={fixture} national={national} soc="15-1252" roleLabel="Software Developers" />)
+    expect(screen.queryByText(/no data published/i)).not.toBeInTheDocument()
+    const note = screen.getByText(/censored above/i)
+    expect(note.textContent).toContain('2025')
+  })
 })

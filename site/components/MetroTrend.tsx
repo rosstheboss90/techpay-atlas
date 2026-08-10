@@ -1,6 +1,6 @@
 'use client'
 import Link from 'next/link'
-import { fmtUsdCompact } from '../lib/format'
+import { fmtUsd, fmtUsdCompact } from '../lib/format'
 import { pathPoints } from '../lib/trends'
 import { segments } from '../lib/metro-trend'
 import type { MetroTrendData } from '../lib/metro-trend-types'
@@ -44,6 +44,23 @@ export function MetroTrend({ metro, national, soc, roleLabel }: {
   const lastDataYear = nonNullYears[nonNullYears.length - 1] ?? null
   const newestYear = metro.years[metro.years.length - 1]
   const endsEarly = lastDataYear != null && lastDataYear < newestYear
+
+  // A censored median is a null point (Task 2), same as a suppressed one — segments() already
+  // draws a gap for it. What it must NOT do is read as an absence: the figure was published and
+  // then BLS top-coded it, so "no data published" (below) would be false for a trailing censored
+  // run. cappedIndices/censoredYears/censoredCeilings are index-aligned with metro.years via
+  // topCodes (Task 2's per-vintage ceiling), never a single fixed number.
+  const cappedIndices = metro.years.map((_, i) => i).filter(i => role.capped[i])
+  const hasCensored = cappedIndices.length > 0
+  const censoredYears = cappedIndices.map(i => metro.years[i])
+  const censoredCeilings = [...new Set(cappedIndices.map(i => metro.topCodes[i]))]
+
+  // If every year after the last real point is censored (not just missing), the "ends early" note
+  // below would misreport a published-then-top-coded figure as never published. Suppress it in
+  // that case — the censor note names those years with the true reason instead.
+  const trailingAllCapped =
+    endsEarly && lastDataYear != null &&
+    metro.years.every((year, i) => (lastDataYear as number) >= year || role.capped[i])
 
   const nationalPoints = pathPoints(national, soc)
 
@@ -115,7 +132,14 @@ export function MetroTrend({ metro, national, soc, roleLabel }: {
           in the metro's published name (it was redefined), not a direct read of the boundary itself.
         </p>
       )}
-      {endsEarly && (
+      {hasCensored && (
+        <p className="panel-note">
+          Median censored above {censoredCeilings.map(fmtUsd).join(' / ')} in {censoredYears.join(', ')} —
+          BLS top-codes the highest wages, so those points are omitted rather than plotted as real
+          medians.
+        </p>
+      )}
+      {endsEarly && !trailingAllCapped && (
         <p className="panel-note">No data published for this metro after {lastDataYear}.</p>
       )}
       {yearCount < 3 && (
