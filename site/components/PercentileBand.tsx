@@ -5,7 +5,8 @@ import { fmtUsd } from '../lib/format'
 interface Props {
   row: SalaryRow; rpp: number | null; adjusted: boolean; domain: [number, number]
   width?: number
-  /** Optional reference value (e.g. a target salary), drawn as a vertical marker when in-domain. */
+  /** Optional reference value (e.g. a target salary) in the same nominal dollars as `row` —
+   *  COL-adjusted along with the band, drawn as a vertical marker when in-domain. */
   marker?: number | null
 }
 
@@ -41,7 +42,8 @@ export function PercentileBand({ row, rpp, adjusted, domain, width = 160, marker
   const label = baseLabel != null
     ? (captions.length ? `${baseLabel}, ${captions.join(', ')}` : baseLabel)
     : (captions.length ? captions.join(', ') : 'pay range not available')
-  const showMarker = marker != null && marker >= domain[0] && marker <= domain[1]
+  const adjMarker = adjust(marker, rpp, adjusted)
+  const showMarker = adjMarker != null && adjMarker >= domain[0] && adjMarker <= domain[1]
   // p10 shares the outer rect with p90 (one rect spans both), so band-capped applies if
   // EITHER end is capped -- same for p25/p75 sharing the inner rect. The visual class
   // over-claims the whole span; the aria label above names the exact capped edge instead.
@@ -52,7 +54,7 @@ export function PercentileBand({ row, rpp, adjusted, domain, width = 160, marker
       {p10 != null && p90 != null && <rect x={x(p10)} y={5} width={x(p90) - x(p10)} height={4} rx={2} className={outerCapped ? 'band-outer band-capped' : 'band-outer'} />}
       {p25 != null && p75 != null && <rect x={x(p25)} y={3} width={x(p75) - x(p25)} height={8} rx={3} className={innerCapped ? 'band-inner band-capped' : 'band-inner'} />}
       {p50 != null && !isCapped('p50') && <line x1={x(p50)} x2={x(p50)} y1={0} y2={h} className="band-median" />}
-      {showMarker && <line x1={x(marker!)} x2={x(marker!)} y1={0} y2={h} className="pct-marker" />}
+      {showMarker && <line x1={x(adjMarker!)} x2={x(adjMarker!)} y1={0} y2={h} className="pct-marker" />}
     </svg>
   )
 }

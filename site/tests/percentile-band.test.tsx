@@ -113,6 +113,31 @@ describe('PercentileBand', () => {
     expect(aria).not.toContain('239,200')
   })
 
+  it('adjusted mode: the marker rescales with the band — a marker at raw p50 sits on the median tick', () => {
+    const row: SalaryRow = {
+      emp: 100, lq: 1,
+      p10: 81660, p25: 100940, p50: 135670, p75: 166070, p90: 239200,
+    }
+    const { container } = render(
+      <PercentileBand row={row} rpp={120} adjusted domain={domain} marker={135670} />,
+    )
+    const median = container.querySelector('.band-median')!
+    const marker = container.querySelector('.pct-marker')!
+    expect(marker).not.toBeNull()
+    expect(marker.getAttribute('x1')).toBe(median.getAttribute('x1'))
+  })
+
+  it('adjusted mode with unknown rpp: no marker (an unadjustable marker must not render raw)', () => {
+    const row: SalaryRow = {
+      emp: 100, lq: 1,
+      p10: 81660, p25: 100940, p50: 135670, p75: 166070, p90: 239200,
+    }
+    const { container } = render(
+      <PercentileBand row={row} rpp={null} adjusted domain={domain} marker={135670} />,
+    )
+    expect(container.querySelector('.pct-marker')).toBeNull()
+  })
+
   it('degenerate copy: null p10/p90 + capped p50 states just the censor caption, no "not available" prefix', () => {
     const row: SalaryRow = {
       emp: 100, lq: 1,
