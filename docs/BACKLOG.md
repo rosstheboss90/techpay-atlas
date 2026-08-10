@@ -2,6 +2,75 @@
 
 Newest decisions first. v1 (map + panel) shipped 2026-08-03.
 
+## Adversarial correctness review — 2026-08-09 (week-of-08-02 work, unreviewed on public deploy)
+
+Read-only review of the `/trends` Phase B + employer-lens + pipeline work that shipped and
+**auto-deployed** this week (push = deploy, CI reports but does not gate). Every claim was verified
+against source and the committed emitted JSON; CPI/entity-share/break-count numbers were
+independently recomputed. Large "verified sound" column at the end — the pipeline math is mostly
+right. Findings, worst first:
+
+~~**🔴 Censored metro medians are plotted as real medians — a live artifact on the public site.**~~
+`pipeline/lib/build-metro-trends.ts:61-65` · `site/components/MetroTrend.tsx`. The "Known limits,
+deliberate" note below (Phase B) scoped the trend to "medians only" **on the assumption that metro
+medians are uncensored** — that assumption is false. The MSA archive carries top-code-censored p50
+(the BLS floor) in real cells: **San Jose (41940) 11-3021 IT Managers is p50-censored in 2020,
+2021, 2023, 2024**; Phoenix (38060) 15-1221 in 2021; Santa Maria (42200) 15-1221 in 2022. Worse,
+`buildMetroTrend:63` builds its `capped` flag from `.includes('p90')` — the wrong percentile for a
+median chart — and `MetroTrend.tsx` never reads the flag at all, so no "≥ $X" marking appears.
+Visitor impact: San Jose → IT Managers plots four of seven points as floors drawn as real medians;
+the inflation-adjusted line *declines* 2020→2021 and *jumps 22%* in 2025 purely as a censoring
+artifact — exactly the pattern `docs/REFRESH.md` warns about for p90, now published as a median
+trend. **Fix:** flag p50-capped in the emitter (the current p90-based flag also false-positives on
+p90-only-capped cells) and mark/break those points in the component. The Phase A "medians are
+uncensored for every role in every vintage" claim is true **nationally only** — nobody re-checked
+it at metro level. FIXED 2026-08-10 — build-metro-trends flags from p50 and nulls censored medians
+(gap + grouped ceiling note); ends-early keys off last PUBLISHED year; PercentileBand declares
+"above $X" bounds with per-edge aria; archive lock test pins the San Jose/Phoenix/Santa Maria
+cells. Spec docs/superpowers/specs/2026-08-10-censored-medians-fix-design.md.
+
+**🟡 Head-to-head target-salary percentile is wrong in cost-of-living mode.**
+`site/components/HeadToHead.tsx:135,139` · `site/lib/compare.ts:13-29`. In adjusted mode the
+percentile knots are divided by RPP/100 but the visitor's target salary is compared raw (pinned by
+`compare.test.ts:22-25`, so deliberate — but incoherent: a salary's percentile within one metro's
+distribution is invariant under rescaling). San Jose (RPP≈113), Software Developers, target $150k,
+COL on: bands shrink ~13% while the marker stays put, reporting the offer several percentile bands
+higher than its true standing. The nominal-mode answer is the only correct one; both are presented
+as fact.
+
+**🟡 "No data published for this metro after {year}" is false for 776 metro×role pairs.**
+`site/components/MetroTrend.tsx:118-120`. `endsEarly` is computed from the *selected role's* series
+but the sentence claims the *metro* stopped publishing. E.g. Elmira NY (21300) Software Developers
+ends 2024 while the "Pay by role" table directly above shows 2025 figures for other roles. Should
+read "for this role in this metro".
+
+**🟡 The over-breadth tripwire only fires at ≥2.6× the largest real entity.**
+`pipeline/config.ts:34` (`maxEntityShare: 0.15`), `pipeline/run.ts:278-280`. The per-match integrity
+checks are sound, but over-breadth is enforced only as "largest entity > 15% of all filings" — and
+Amazon, the largest, holds 5.69%. An over-broad alias wrongly merging a 1–2% company into
+`cognizant` (3.1%) or `ibm` ships wrong per-employer counts/medians to a public `/employers/<slug>`
+page and nothing fires until an entity nearly triples past Amazon. The 11-entity alias file is
+conservative today (no active over-merge), so this is a guard gap, not a live wrong figure. A
+per-entity vintage-over-vintage share-growth check would detect the failure the commit `8e3c5e2`
+message actually names.
+
+**⚪ Minor:** national vs metro deflator base is unasserted across two independently-run emitters
+(`emit-trends.ts:29` / `emit-metro-trends.ts:28`, both 2025 today — one forgotten re-run compares
+2025-dollars to 2026-dollars); a missing `trends.json` fails the whole home page, not just the
+trend section (`site/app/page.tsx:30`); `/about` hardcodes "~542k H-1B filings" (run report says
+540,871 → "~541k"), swallows fetch errors leaving a permanent "computing…" placeholder, and
+`ConflationFig` hardcodes bucket keys that silently revert FIG 2 to placeholder on a rename.
+
+**Verified sound (independently recomputed, do not re-spend):** OEWS MSA casing fix (`c647f1a`) —
+`buildFieldMap` safe because `sheet_to_json({defval:null})` gives every row every key; CPI deflation
+math — recomputed against `cpi-u.json` to the cent, national real 2021 reproduces the −5.7%
+Software Developers claim; all 429 trend files structurally validated (aligned arrays, null-parity,
+base 2025, no all-null roles); delineation — 66/429 breaks all in 2024, segment split on the correct
+side; RPP applied exactly once everywhere (`adjust()` the single home); "adjusted" reserved for COL
+(case-insensitive grep clean); no links to pageless employers (`73f1a20` verified); trailing-slash
+(`f2c2a26`) emits directory form so both URL shapes resolve; alias per-match integrity real and
+run-failing. Full evidence in the 2026-08-09 review transcript.
+
 ## Narrative reconciliation — audience settled, restructure deferred (2026-08-07)
 
 After both trends phases landed, the site was reviewed as a whole rather than feature by feature.

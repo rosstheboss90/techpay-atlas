@@ -216,6 +216,8 @@ button, select, input { font-family: inherit; }
 .band-outer { fill: color-mix(in srgb, var(--accent) 30%, transparent); }
 .band-inner { fill: var(--accent); opacity: 0.75; }
 .band-median { stroke: var(--ink); stroke-width: 2; }
+/* must stay after .band-inner: equal specificity, the opacity override is order-dependent */
+.band-capped { stroke: var(--ink-muted); stroke-width: 1; stroke-dasharray: 3 2; opacity: 0.7; }
 .employer-list {
   margin: 0; padding-left: 18px; font-size: var(--fs-sm);
   display: flex; flex-direction: column; gap: var(--s2);

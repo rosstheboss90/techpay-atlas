@@ -5,9 +5,12 @@ import type { DelineationBreak, MetroDelineation } from './delineation'
 export interface MetroTrendRole {
   nominal: (number | null)[]
   real: (number | null)[]
+  /** true = median censored that vintage; the point is null */
   capped: boolean[]
 }
 
+// Mirrored in site/lib/metro-trend-types.ts as MetroTrendData; changes here must land there in
+// the same commit.
 export interface MetroTrend {
   cbsa: string
   name: string
@@ -17,6 +20,9 @@ export interface MetroTrend {
    *  only *when*, which is materially more honest for a few dozen bytes per metro. */
   breaks: DelineationBreak[]
   deflator: { series: string; period: string; base: number }
+  /** Each vintage's own BLS top code (`MsaArchive.topCode`), same order as `years`. Trend-level,
+   *  not per-role: the ceiling is a property of the vintage's file, not of any one occupation. */
+  topCodes: number[]
   roles: Record<string, MetroTrendRole>
 }
 
@@ -50,6 +56,13 @@ export function buildMetroTrend(
   const baseCpi = requireCpi(base)
   for (const y of years) requireCpi(y)
 
+  // Same shape as requireCpi: a bogus topCode (0, negative, NaN/Infinity) must fail loudly rather
+  // than emit a ceiling the panel would silently trust.
+  const requireTopCode = (a: MsaArchive): number => {
+    if (!Number.isFinite(a.topCode) || a.topCode <= 0) throw new Error(`invalid topCode for vintage ${a.year}`)
+    return a.topCode
+  }
+
   if (!sorted.some(a => a.metros[cbsa])) return null
 
   // Newest vintage that carries a title wins: the current name is what a reader recognises.
@@ -58,9 +71,22 @@ export function buildMetroTrend(
 
   const roles: Record<string, MetroTrendRole> = {}
   for (const role of ROLES) {
-    const nominal = sorted.map(a => a.metros[cbsa]?.[role.soc]?.p50 ?? null)
-    if (nominal.every(v => v === null)) continue // role never published here — omit rather than emit an empty line
-    const capped = sorted.map(a => (a.metros[cbsa]?.[role.soc]?.capped ?? []).includes('p90'))
+    // The skip-empty guard tests the raw archive cells directly (pre-nulling): a role absent from
+    // every vintage stays omitted, but a role that is p50-censored in every vintage still has a
+    // published cell each year and must be emitted (all-null values, all-true capped) so the
+    // panel can render the flags rather than silently dropping the role.
+    // NB: a censored p50 is non-null here because makeCell writes the top-code value into '#'
+    // cells — if the archive encoding ever changes to {p50:null, capped:['p50']}, this guard must
+    // become presence-based or case (d) silently regresses.
+    if (sorted.every(a => a.metros[cbsa]?.[role.soc]?.p50 == null)) continue // role never published here — omit rather than emit an empty line
+    const rawP50 = sorted.map(a => a.metros[cbsa]?.[role.soc]?.p50 ?? null)
+    // p50, not p90: this is a MEDIAN chart, and BLS censors each percentile independently — a
+    // p90-only-capped cell must never be flagged (or nulled), and a p50-capped cell always must.
+    const capped = sorted.map(a => (a.metros[cbsa]?.[role.soc]?.capped ?? []).includes('p50'))
+    // A p50-censored cell is the BLS top-code FLOOR (e.g. 208000 in 2020), not a measured median.
+    // Null it so the site's segments() machinery renders a line gap instead of plotting the floor
+    // as if it were real data.
+    const nominal = rawP50.map((v, i) => (capped[i] ? null : v))
     const real = nominal.map((v, i) => (v === null ? null : v * (baseCpi / cpiMayByYear[years[i]])))
     roles[role.soc] = { nominal, real, capped }
   }
@@ -69,6 +95,7 @@ export function buildMetroTrend(
     cbsa, name, years,
     breaks: delineation[cbsa]?.breaks ?? [],
     deflator: { series: 'CUUR0000SA0', period: 'May', base },
+    topCodes: sorted.map(requireTopCode),
     roles,
   }
 }

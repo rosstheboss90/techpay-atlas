@@ -1,11 +1,14 @@
-// Mirrors pipeline/lib/build-metro-trends.ts's MetroTrend contract verbatim (per-metro file under
-// site/public/data/trends/<cbsa>.json). The site cannot import from pipeline/ (static export, no
-// backend, separate npm tree), so this is a deliberate duplicate type, same reason
-// title-types.ts and trends-types.ts exist.
+// Mirrors pipeline/lib/build-metro-trends.ts's MetroTrend contract field-for-field (root type
+// renamed) (per-metro file under site/public/data/trends/<cbsa>.json). The site cannot import
+// from pipeline/ (static export, no backend, separate npm tree), so this is a deliberate
+// duplicate type, same reason title-types.ts and trends-types.ts exist.
 
 export interface MetroTrendRole {
   nominal: (number | null)[]
   real: (number | null)[]
+  /** true = median (p50) censored that vintage; the point is null. Distinct from
+   *  trends-types.ts's `cappedP90`, which flags p90 on the NATIONAL series — different
+   *  percentile by design, do not conflate the two. */
   capped: boolean[]
 }
 
@@ -27,5 +30,7 @@ export interface MetroTrendData {
   years: number[]
   breaks: DelineationBreak[]
   deflator: { series: string; period: string; base: number }
+  /** Each vintage's own BLS top code, same order as `years`. Trend-level, not per-role. */
+  topCodes: number[]
   roles: Record<string, MetroTrendRole>
 }
