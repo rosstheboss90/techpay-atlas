@@ -1,6 +1,6 @@
 # Censored metro medians — flag, never plot the floor
 
-**Status:** Approved design 2026-08-10 — not started
+**Status:** SHIPPED 2026-08-10 (plan docs/superpowers/plans/2026-08-10-censored-medians-fix.md; deviations 1-3 in the plan header + reviewed amendments: grouped ceiling note copy, lastPublishedYear ends-early, per-edge aria)
 **Fixes:** the 🔴 ledger entry filed 2026-08-09 (`e4bffd6`): "Censored metro medians are plotted as real medians — a live artifact on the public site."
 **Blocks:** the next push to `main` (auto-deploys), and the home-dashboard comp-intelligence loop (`C:\projects\home-dashboard\docs\superpowers\specs\2026-08-10-atlas-comp-loop-design.md`), which consumes these medians.
 

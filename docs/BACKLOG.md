@@ -10,7 +10,7 @@ against source and the committed emitted JSON; CPI/entity-share/break-count numb
 independently recomputed. Large "verified sound" column at the end — the pipeline math is mostly
 right. Findings, worst first:
 
-**🔴 Censored metro medians are plotted as real medians — a live artifact on the public site.**
+~~**🔴 Censored metro medians are plotted as real medians — a live artifact on the public site.**~~
 `pipeline/lib/build-metro-trends.ts:61-65` · `site/components/MetroTrend.tsx`. The "Known limits,
 deliberate" note below (Phase B) scoped the trend to "medians only" **on the assumption that metro
 medians are uncensored** — that assumption is false. The MSA archive carries top-code-censored p50
@@ -24,7 +24,10 @@ artifact — exactly the pattern `docs/REFRESH.md` warns about for p90, now publ
 trend. **Fix:** flag p50-capped in the emitter (the current p90-based flag also false-positives on
 p90-only-capped cells) and mark/break those points in the component. The Phase A "medians are
 uncensored for every role in every vintage" claim is true **nationally only** — nobody re-checked
-it at metro level.
+it at metro level. FIXED 2026-08-10 — build-metro-trends flags from p50 and nulls censored medians
+(gap + grouped ceiling note); ends-early keys off last PUBLISHED year; PercentileBand declares
+"above $X" bounds with per-edge aria; archive lock test pins the San Jose/Phoenix/Santa Maria
+cells. Spec docs/superpowers/specs/2026-08-10-censored-medians-fix-design.md.
 
 **🟡 Head-to-head target-salary percentile is wrong in cost-of-living mode.**
 `site/components/HeadToHead.tsx:135,139` · `site/lib/compare.ts:13-29`. In adjusted mode the
