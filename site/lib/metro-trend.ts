@@ -28,3 +28,15 @@ export function segments(trend: MetroTrendData, soc: string, mode: 'real' | 'nom
   if (run.length) out.push(run)
   return out
 }
+
+/** Last year the role had a PUBLISHED figure — a censored (capped) year counts as
+ *  published-then-top-coded, so it does not end the series. Null when nothing was ever published. */
+export function lastPublishedYear(trend: MetroTrendData, soc: string): number | null {
+  const role = trend.roles[soc]
+  if (!role) return null
+  let last: number | null = null
+  trend.years.forEach((year, i) => {
+    if (role.nominal[i] != null || role.capped[i]) last = year
+  })
+  return last
+}

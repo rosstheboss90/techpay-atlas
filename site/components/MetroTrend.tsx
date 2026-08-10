@@ -2,7 +2,7 @@
 import Link from 'next/link'
 import { fmtUsd, fmtUsdCompact } from '../lib/format'
 import { pathPoints } from '../lib/trends'
-import { segments } from '../lib/metro-trend'
+import { lastPublishedYear, segments } from '../lib/metro-trend'
 import type { MetroTrendData } from '../lib/metro-trend-types'
 import type { TrendsJson } from '../lib/trends-types'
 
@@ -41,26 +41,31 @@ export function MetroTrend({ metro, national, soc, roleLabel }: {
   const metroSegments = segments(metro, soc)
   const nonNullYears = metro.years.filter((_, i) => role.real[i] !== null)
   const yearCount = nonNullYears.length
-  const lastDataYear = nonNullYears[nonNullYears.length - 1] ?? null
   const newestYear = metro.years[metro.years.length - 1]
-  const endsEarly = lastDataYear != null && lastDataYear < newestYear
 
   // A censored median is a null point (Task 2), same as a suppressed one — segments() already
   // draws a gap for it. What it must NOT do is read as an absence: the figure was published and
-  // then BLS top-coded it, so "no data published" (below) would be false for a trailing censored
-  // run. cappedIndices/censoredYears/censoredCeilings are index-aligned with metro.years via
-  // topCodes (Task 2's per-vintage ceiling), never a single fixed number.
+  // then BLS top-coded it, so "ends early" (below) keys off lastPublishedYear — which counts a
+  // capped year as published — rather than off the last REAL value. See that function's doc in
+  // metro-trend.ts for why a trailing censored run must not read as "no data published".
+  const lastPublished = lastPublishedYear(metro, soc)
+  const endsEarly = lastPublished != null && lastPublished < newestYear
+
+  // 'capped' mirrors the data contract; 'censored' mirrors the rendered copy.
+  // cappedIndices/censorGroups are index-aligned with metro.years via topCodes (Task 2's
+  // per-vintage ceiling), never a single fixed number. Consecutive capped years sharing a
+  // ceiling are grouped together — the OEWS top code only ever moves forward, so a ceiling
+  // can appear in one group.
   const cappedIndices = metro.years.map((_, i) => i).filter(i => role.capped[i])
   const hasCensored = cappedIndices.length > 0
-  const censoredYears = cappedIndices.map(i => metro.years[i])
-  const censoredCeilings = [...new Set(cappedIndices.map(i => metro.topCodes[i]))]
-
-  // If every year after the last real point is censored (not just missing), the "ends early" note
-  // below would misreport a published-then-top-coded figure as never published. Suppress it in
-  // that case — the censor note names those years with the true reason instead.
-  const trailingAllCapped =
-    endsEarly && lastDataYear != null &&
-    metro.years.every((year, i) => (lastDataYear as number) >= year || role.capped[i])
+  const censorGroups = cappedIndices.reduce<{ ceiling: number; years: number[] }[]>((groups, i) => {
+    const ceiling = metro.topCodes[i]
+    const year = metro.years[i]
+    const last = groups[groups.length - 1]
+    if (last && last.ceiling === ceiling) last.years.push(year)
+    else groups.push({ ceiling, years: [year] })
+    return groups
+  }, [])
 
   const nationalPoints = pathPoints(national, soc)
 
@@ -134,13 +139,13 @@ export function MetroTrend({ metro, national, soc, roleLabel }: {
       )}
       {hasCensored && (
         <p className="panel-note">
-          Median censored above {censoredCeilings.map(fmtUsd).join(' / ')} in {censoredYears.join(', ')} —
+          Median censored {censorGroups.map(g => `above ${fmtUsd(g.ceiling)} in ${g.years.join(', ')}`).join(' and ')} —
           BLS top-codes the highest wages, so those points are omitted rather than plotted as real
           medians.
         </p>
       )}
-      {endsEarly && !trailingAllCapped && (
-        <p className="panel-note">No data published for this metro after {lastDataYear}.</p>
+      {endsEarly && (
+        <p className="panel-note">No data published for this metro after {lastPublished}.</p>
       )}
       {yearCount < 3 && (
         <p className="panel-note">Only {yearCount} year{yearCount === 1 ? '' : 's'} of published data — not a trend.</p>
