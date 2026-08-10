@@ -5,6 +5,7 @@ import type { DelineationBreak, MetroDelineation } from './delineation'
 export interface MetroTrendRole {
   nominal: (number | null)[]
   real: (number | null)[]
+  /** true = median censored that vintage; the point is null */
   capped: boolean[]
 }
 
@@ -17,6 +18,9 @@ export interface MetroTrend {
    *  only *when*, which is materially more honest for a few dozen bytes per metro. */
   breaks: DelineationBreak[]
   deflator: { series: string; period: string; base: number }
+  /** Each vintage's own BLS top code (`MsaArchive.topCode`), same order as `years`. Trend-level,
+   *  not per-role: the ceiling is a property of the vintage's file, not of any one occupation. */
+  topCodes: number[]
   roles: Record<string, MetroTrendRole>
 }
 
@@ -58,9 +62,19 @@ export function buildMetroTrend(
 
   const roles: Record<string, MetroTrendRole> = {}
   for (const role of ROLES) {
-    const nominal = sorted.map(a => a.metros[cbsa]?.[role.soc]?.p50 ?? null)
-    if (nominal.every(v => v === null)) continue // role never published here — omit rather than emit an empty line
-    const capped = sorted.map(a => (a.metros[cbsa]?.[role.soc]?.capped ?? []).includes('p90'))
+    // Raw p50 first, and the skip-empty guard below tests THIS (pre-nulling): a role absent from
+    // every vintage stays omitted, but a role that is p50-censored in every vintage still has a
+    // published cell each year and must be emitted (all-null values, all-true capped) so the
+    // panel can render the flags rather than silently dropping the role.
+    const rawP50 = sorted.map(a => a.metros[cbsa]?.[role.soc]?.p50 ?? null)
+    if (rawP50.every(v => v === null)) continue // role never published here — omit rather than emit an empty line
+    // p50, not p90: this is a MEDIAN chart, and BLS censors each percentile independently — a
+    // p90-only-capped cell must never be flagged (or nulled), and a p50-capped cell always must.
+    const capped = sorted.map(a => (a.metros[cbsa]?.[role.soc]?.capped ?? []).includes('p50'))
+    // A p50-censored cell is the BLS top-code FLOOR (e.g. 208000 in 2020), not a measured median.
+    // Null it so the site's segments() machinery renders a line gap instead of plotting the floor
+    // as if it were real data.
+    const nominal = rawP50.map((v, i) => (capped[i] ? null : v))
     const real = nominal.map((v, i) => (v === null ? null : v * (baseCpi / cpiMayByYear[years[i]])))
     roles[role.soc] = { nominal, real, capped }
   }
@@ -69,6 +83,7 @@ export function buildMetroTrend(
     cbsa, name, years,
     breaks: delineation[cbsa]?.breaks ?? [],
     deflator: { series: 'CUUR0000SA0', period: 'May', base },
+    topCodes: sorted.map(a => a.topCode),
     roles,
   }
 }

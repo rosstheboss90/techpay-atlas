@@ -6,6 +6,7 @@
 export interface MetroTrendRole {
   nominal: (number | null)[]
   real: (number | null)[]
+  /** true = median censored that vintage; the point is null */
   capped: boolean[]
 }
 
@@ -27,5 +28,7 @@ export interface MetroTrendData {
   years: number[]
   breaks: DelineationBreak[]
   deflator: { series: string; period: string; base: number }
+  /** Each vintage's own BLS top code, same order as `years`. Trend-level, not per-role. */
+  topCodes: number[]
   roles: Record<string, MetroTrendRole>
 }
