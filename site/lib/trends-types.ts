@@ -9,6 +9,8 @@ export interface TrendsRole {
   nominal: (number | null)[]       // index-aligned to TrendsJson.years
   real: (number | null)[]          // base-year dollars, index-aligned to TrendsJson.years; already deflated
   emp: (number | null)[]
+  // National-series p90 flag. metro-trend-types.ts's `capped` is p50, not p90 — a deliberately
+  // different percentile (that file is a median chart), not a naming inconsistency.
   cappedP90: boolean[]
   changeReal: number
 }

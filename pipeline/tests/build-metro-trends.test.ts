@@ -83,6 +83,22 @@ describe('buildMetroTrend', () => {
       .toThrow(/no CPI value for 2021/)
   })
 
+  it('throws when a data year has a non-positive CPI value', () => {
+    expect(() => buildMetroTrend('12420', [v(2021, 1)], { ...cpi, 2021: 0 }, 2025, del))
+      .toThrow(/invalid CPI value for 2021: 0/)
+  })
+
+  it('throws when the base year itself has no CPI value', () => {
+    const { 2025: _drop, ...cpiNoBase } = cpi
+    expect(() => buildMetroTrend('12420', [v(2021, 1)], cpiNoBase, 2025, del))
+      .toThrow(/no CPI value for 2025/)
+  })
+
+  it('throws when a vintage has an invalid topCode rather than silently emitting a bogus ceiling', () => {
+    const bad: MsaArchive = { ...v(2021, 1), topCode: 0 }
+    expect(() => buildMetroTrend('12420', [bad], cpi, 2025, del)).toThrow(/invalid topCode for vintage 2021/)
+  })
+
   it('returns null for a metro absent from every vintage', () => {
     expect(buildMetroTrend('99999', [v(2021, 1)], cpi, 2025, del)).toBeNull()
   })
@@ -130,6 +146,21 @@ describe('censored medians derive capped/null from p50, not p90', () => {
     },
   }
   const archives = [archive2020, archive2021, archive2022]
+
+  // `del` (defined in the describe block above) is reused here for its shared '12420' key; only
+  // its `.breaks` field is read by buildMetroTrend, so its firstYear/lastYear span (2021-2025)
+  // does not need to match this fixture's actual years (2020-2022) — not consulted.
+
+  it('sorts vintages by year regardless of input order', () => {
+    // Passed pre-shuffled: deleting the `[...archives].sort(...)` at the top of buildMetroTrend
+    // would fail every assertion here, not just years/topCodes.
+    const t = buildMetroTrend('12420', [archive2022, archive2020, archive2021], cpi3, 2022, del)
+    expect(t).not.toBeNull()
+    expect(t!.years).toEqual([2020, 2021, 2022])
+    expect(t!.topCodes).toEqual([208_000, 208_000, 239_200])
+    // Same expected array as case (a) below, in ascending-year order.
+    expect(t!.roles['11-3021'].nominal).toEqual([null, 180_000, 195_000])
+  })
 
   it('(a) nulls the value and flags only the vintage that was actually p50-capped', () => {
     const t = buildMetroTrend('12420', archives, cpi3, 2022, del)
