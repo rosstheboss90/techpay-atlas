@@ -9,6 +9,9 @@ const t = (nominal: (number | null)[], breaks: { year: number; from: string; to:
   years: [2019, 2020, 2021, 2022, 2023],
   breaks,
   deflator: { series: 'CUUR0000SA0', period: 'May', base: 2023 },
+  // Real per-vintage OEWS top code (pipeline/vintages.ts): $208,000 through 2021, $239,200 from
+  // the May 2022 boundary onward.
+  topCodes: [208000, 208000, 208000, 239200, 239200],
   roles: { '15-1252': { nominal, real: nominal, capped: nominal.map(() => false) } },
 })
 

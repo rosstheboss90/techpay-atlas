@@ -9,6 +9,9 @@ const metro: MetroTrendData = {
   years: [2021, 2022, 2023, 2024, 2025],
   breaks: [{ year: 2024, from: 'Austin-Round Rock, TX', to: 'Austin-Round Rock-San Marcos, TX' }],
   deflator: { series: 'CUUR0000SA0', period: 'May', base: 2025 },
+  // Real per-vintage OEWS top code (pipeline/vintages.ts): $208,000 through 2021, $239,200 from
+  // the May 2022 boundary onward.
+  topCodes: [208000, 239200, 239200, 239200, 239200],
   roles: { '15-1252': { nominal: [100, 110, null, 130, 140], real: [120, 118, null, 132, 140], capped: [false, false, false, false, false] } },
 }
 
