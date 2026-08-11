@@ -532,7 +532,7 @@ button, select, input { font-family: inherit; }
   .qcard-body { overflow-x: auto; max-width: 100%; padding: 0 14px 12px; }
   .qcard-btn {
     display: flex; flex-direction: row; align-items: center; width: 100%;
-    text-align: left; font: inherit; background: none; border: none;
+    text-align: left; font: inherit; color: var(--ink); background: none; border: none;
     padding: 16px; cursor: pointer; gap: 12px;
   }
   .qcard-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
