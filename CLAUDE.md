@@ -174,6 +174,10 @@ serves only the current reference period, so it cannot replace the OEWS file dow
   clone's copy rather than re-downloading (see the Akamai warning above). Run a real `npm ci`
   in both the root and `site/`: junctioned `node_modules` is the documented cause of Next build
   failures on this box. With real installs, `next build` works fine in a worktree.
+  - **Worktree teardown order** (bit twice on 2026-08-11): kill any `next dev` running in the
+    worktree AND `cd` every shell out of it BEFORE `git worktree remove`/`rm` — a live dev
+    server or a shell's cwd pins the directory ("Device or resource busy"), and Windows can
+    lag a few seconds releasing handles after the kill.
 
 ### Design-doc house style
 
