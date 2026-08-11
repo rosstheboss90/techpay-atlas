@@ -79,6 +79,15 @@ describe('MetroPanel', () => {
     expect(screen.getByText(/583 filings/)).toBeInTheDocument()
   })
 
+  it('role table sits inside its own scroll container (structure pin — jsdom cannot prove the overflow-x layout, only that .role-scroll wraps .role-table)', () => {
+    vi.stubGlobal('fetch', vi.fn())
+    const { container } = render(
+      <MetroPanel meta={meta} salaries={salaries} cbsa="12420" soc="15-1252" adjusted={false} national={national} onClose={() => {}} />)
+    const scroll = container.querySelector('.role-scroll')
+    expect(scroll).not.toBeNull()
+    expect(scroll!.querySelector('table.role-table')).not.toBeNull()
+  })
+
   it('lcaFilings 0 -> renders no-filings note and never fetches', () => {
     const spy = vi.fn()
     vi.stubGlobal('fetch', spy)
