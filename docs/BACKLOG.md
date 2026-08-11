@@ -29,6 +29,12 @@ Decisions that will recur:
 - The tl-h card deliberately keeps a static fact (TitleStrip directly above already states the
   bucket alias — duplicating titles.json wiring for a duplicate claim fails YAGNI).
 
+🔶 Follow-up (pre-existing, surfaced by the final branch review): `payTeaser` ignores the
+cost-of-living toggle — with COL on, the sec-map card's fact and top-3 chips can name a
+different "top" metro than the recolored map shows. Pre-dates this branch, but the chip UI
+makes it more salient. Fix shape: pass `adjusted` + rpp through `payTeaser` (fact would then
+need the "adjusted" labeling rules).
+
 ## Home restructure — question spine + mobile question index — LANDED 2026-08-10
 
 The deferred restructure from "Narrative reconciliation" (below), built to its own spec:
