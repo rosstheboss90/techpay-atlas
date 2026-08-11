@@ -49,13 +49,11 @@ describe('titleTeaser', () => {
 describe('payTeaser', () => {
   const metros = [metro('1', 'Cheapville, TX', 90), metro('2', 'San Jose-Sunnyvale-Santa Clara, CA', 113)]
   const salaries: Salaries = { '1': { '15-1252': row(100_000) }, '2': { '15-1252': row(210_000) } }
-  it('states the latest national median and the top metro', () => {
-    expect(payTeaser(trends, salaries, metros, '15-1252'))
-      .toBe('$135,980 national median · San Jose tops the map')
+  it('quotes the top metro and ITS median — a number the map actually shows (honesty rule)', () => {
+    expect(payTeaser(salaries, metros, '15-1252')).toBe('San Jose tops the map at $210,000')
   })
-  it('degrades to top metro only, then to a generic line', () => {
-    expect(payTeaser(null, salaries, metros, '15-1252')).toBe('San Jose tops the map')
-    expect(payTeaser(null, {}, metros, '15-1252')).toBe('Percentiles for every metro on the map')
+  it('degrades to the generic line when no metro has a median', () => {
+    expect(payTeaser({}, metros, '15-1252')).toBe('Percentiles for every metro on the map')
   })
 })
 

@@ -24,17 +24,18 @@ export function titleTeaser(titles: TitlesJson | null, soc: string, roleLabel: s
     : 'See what these jobs are really called'
 }
 
-export function payTeaser(trends: TrendsJson | null, salaries: Salaries, metros: MetroMeta[], soc: string): string {
-  const series = trends?.roles[soc]?.nominal
-  const latest = series ? [...series].reverse().find((v): v is number => v != null) ?? null : null
+export function payTeaser(salaries: Salaries, metros: MetroMeta[], soc: string): string {
+  // The quoted number must be one the expanded section shows: the map/panel display each metro's
+  // own p50, never a national median (that series only ever appears, in real dollars, on the
+  // trend chart after selecting a metro) — so the teaser quotes the top metro's own median.
   let top: { name: string; v: number } | null = null
   for (const m of metros) {
     const v = salaries[m.cbsa]?.[soc]?.p50
     if (v != null && (top == null || v > top.v)) top = { name: m.name, v }
   }
-  if (latest != null && top) return `${fmtUsd(latest)} national median · ${shortMetro(top.name)} tops the map`
-  if (top) return `${shortMetro(top.name)} tops the map`
-  return 'Percentiles for every metro on the map'
+  return top
+    ? `${shortMetro(top.name)} tops the map at ${fmtUsd(top.v)}`
+    : 'Percentiles for every metro on the map'
 }
 
 export function colTeaser(metros: MetroMeta[], salaries: Salaries, soc: string, metric: Metric): string {

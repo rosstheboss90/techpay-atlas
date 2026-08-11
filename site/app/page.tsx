@@ -106,7 +106,7 @@ export default function Page() {
   const openId = cardIds.includes(hash) ? hash : null
 
   const teasers = {
-    pay: payTeaser(trends, salaries, meta.metros, state.role),
+    pay: payTeaser(salaries, meta.metros, state.role),
     col: colTeaser(meta.metros, salaries, state.role, state.metric),
     trend: trendTeaser(trends, state.role),
     similar: similarTeaser(meta, salaries, state.role),
