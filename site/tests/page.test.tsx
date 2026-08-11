@@ -76,6 +76,10 @@ describe('Page', () => {
     await waitFor(() => expect(screen.getByText(/Software Developers pay across/)).toBeInTheDocument())
   })
 
+  // Scope note: scrollIntoView is stubbed on the prototype here to assert TARGETING (the effect
+  // finds #h2h-h and calls it). The stub means this test cannot protect the `?.scrollIntoView?.()`
+  // guard at page.tsx's hash effect — jsdom has no native method to fall through to. That guard
+  // was verified separately: an unstubbed render throws pre-fix, clean post-fix.
   it('desktop hash deep-link scrolls to the target section after load', async () => {
     window.history.replaceState(null, '', '/#h2h-h')
     vi.stubGlobal('matchMedia', vi.fn((query: string) => ({
