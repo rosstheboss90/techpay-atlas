@@ -1,0 +1,17 @@
+import { describe, expect, it } from 'vitest'
+import { render } from '@testing-library/react'
+import { MiniSpark } from '../components/MiniSpark'
+
+describe('MiniSpark', () => {
+  it('draws segments split on nulls and an endpoint dot at the last real value', () => {
+    const { container } = render(<MiniSpark series={[10, 12, null, 14, 16]} />)
+    // null splits the line into two polylines; endpoint dot sits at the final point
+    expect(container.querySelectorAll('polyline')).toHaveLength(2)
+    expect(container.querySelector('circle')).not.toBeNull()
+    expect(container.querySelector('svg')).toHaveAttribute('aria-hidden', 'true')
+  })
+  it('renders nothing with fewer than two real points', () => {
+    const { container } = render(<MiniSpark series={[null, 12, null]} />)
+    expect(container.querySelector('svg')).toBeNull()
+  })
+})
