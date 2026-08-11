@@ -146,4 +146,40 @@ describe('Page', () => {
       vi.unstubAllGlobals()
     }
   })
+
+  // Regression pin: MiniSpark itself renders null under 2 real points, but the OLD sparkViz
+  // guard (`sparkSeries != null && <MiniSpark .../>`) still handed QuestionSection a truthy
+  // element — so .qcard-viz mounted around an empty svg-less wrapper. Per the spec's error
+  // table, a sparse series should omit the viz wrapper entirely, matching the other cards'
+  // `|| undefined` pattern.
+  it('narrow: a trend series with fewer than 2 real points omits the trend card\'s viz wrapper', async () => {
+    window.history.replaceState(null, '', '/')
+    vi.stubGlobal('matchMedia', vi.fn((query: string) => ({
+      matches: true, media: query, onchange: null,
+      addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {},
+      dispatchEvent: () => false,
+    })))
+    __clearDataCache()
+    const sparseTrends = {
+      ...trends,
+      roles: { '15-1252': { ...trends.roles['15-1252'], real: [null, 134120] } },
+    }
+    vi.stubGlobal('fetch', vi.fn((path: string) => Promise.resolve({
+      ok: true,
+      json: async () => (path.includes('salaries') ? salaries : path.includes('titles') ? titles
+        : path.includes('trends') ? sparseTrends : meta),
+    })))
+
+    try {
+      render(<Page />)
+      await screen.findByText(/TechPay Atlas/)
+      await waitFor(() => expect(document.querySelectorAll('.qcard-q').length).toBe(7))
+      expect(document.querySelector('#trend-h .qcard-viz')).toBeNull()
+      // Sanity: at least one other card's viz DOES mount, so this isn't a global viz suppression.
+      expect(document.querySelector('#sec-map .qcard-viz')).not.toBeNull()
+    } finally {
+      window.history.replaceState(null, '', '/')
+      vi.unstubAllGlobals()
+    }
+  })
 })

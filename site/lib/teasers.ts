@@ -75,17 +75,20 @@ export function trendTeaser(trends: TrendsJson | null, soc: string): Teaser {
 
 export function similarTeaser(
   meta: Meta, salaries: Salaries, soc: string,
-): Teaser & { topLabel: string | null } {
+): Teaser & { topLabel: string | null; count: number } {
   // similarByPay only omits a role when it shares zero metros with the anchor — thin (< MIN_SHARED)
   // pairs are still returned, just labeled `thin: true`. The site's honesty rule is "label, never
   // hide" (see THIN_SAMPLE_FILINGS in title-types.ts): the similar-roles section lists thin rows
   // with a chip rather than dropping them, so the teaser counts everything the section will show.
+  // `count` mirrors that same n back out (0 in the fallback) so the page's "+N more" viz chip can
+  // derive its number from the data, never by parsing `fact`.
   const rows = similarByPay(meta, salaries, soc)
   const n = rows.length
-  if (n === 0) return { fact: 'Not enough overlap', context: 'to compare this role', topLabel: null }
+  if (n === 0) return { fact: 'Not enough overlap', context: 'to compare this role', topLabel: null, count: 0 }
   return {
     fact: `${n} role${n === 1 ? '' : 's'}`,
     context: `pay${n === 1 ? 's' : ''} like this one`,
     topLabel: rows[0].label,
+    count: n,
   }
 }

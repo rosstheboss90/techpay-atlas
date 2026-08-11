@@ -165,13 +165,13 @@ describe('similarTeaser', () => {
     // One shared metro: similarByPay returns the pair flagged thin; the section lists it
     // with a chip, so the teaser counts it.
     expect(similarTeaser(meta, { '1': { '15-1252': row(100_000), '15-1253': row(95_000) } }, '15-1252'))
-      .toEqual({ fact: '1 role', context: 'pays like this one', topLabel: 'QA' })
+      .toEqual({ fact: '1 role', context: 'pays like this one', topLabel: 'QA', count: 1 })
   })
 
   it('falls back only when the section itself would be empty (zero overlap)', () => {
     // QA has no salary row anywhere → zero shared metros → similarByPay returns []
     expect(similarTeaser(meta, { '1': { '15-1252': row(100_000) } }, '15-1252'))
-      .toEqual({ fact: 'Not enough overlap', context: 'to compare this role', topLabel: null })
+      .toEqual({ fact: 'Not enough overlap', context: 'to compare this role', topLabel: null, count: 0 })
   })
 
   it('pluralizes "roles"/"pay" when more than one role overlaps, topLabel is the best match', () => {
@@ -181,9 +181,10 @@ describe('similarTeaser', () => {
       { soc: '15-1254', label: 'DevOps' },
     ], topCodeValue: 0, rppYear: 2024, lcaPeriod: '' } as unknown as Meta
     // overlap(QA) = min(100k,95k)/max = 0.95; overlap(DevOps) = min(100k,80k)/max = 0.8
-    // → sorted overlap desc: QA then DevOps; topLabel is QA's.
+    // → sorted overlap desc: QA then DevOps; topLabel is QA's; count is both (the "+N more" chip
+    // math on the page is count - 1).
     expect(similarTeaser(meta3, {
       '1': { '15-1252': row(100_000), '15-1253': row(95_000), '15-1254': row(80_000) },
-    }, '15-1252')).toEqual({ fact: '2 roles', context: 'pay like this one', topLabel: 'QA' })
+    }, '15-1252')).toEqual({ fact: '2 roles', context: 'pay like this one', topLabel: 'QA', count: 2 })
   })
 })

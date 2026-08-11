@@ -131,9 +131,12 @@ export default function Page() {
                     domain={sharedBandDomain(rowA, undefined, rppA, null, state.adjusted)} width={220} />
   )
   const sparkSeries = trends?.roles[state.role]?.real
-  const sparkViz = sparkSeries != null && <MiniSpark series={sparkSeries} />
+  const sparkViz = sparkSeries != null && sparkSeries.filter(v => v != null).length >= 2 && <MiniSpark series={sparkSeries} />
   const similarViz = teasers.similar.topLabel != null && (
-    <span className="qcard-chips"><span className="qcard-chip">{teasers.similar.topLabel}</span></span>
+    <span className="qcard-chips">
+      <span className="qcard-chip">{teasers.similar.topLabel}</span>
+      {teasers.similar.count > 1 && <span className="qcard-chip">+{teasers.similar.count - 1} more</span>}
+    </span>
   )
 
   return (
