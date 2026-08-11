@@ -6,18 +6,25 @@ interface Props {
    *  carries it (the heading isn't mounted), so nav anchors and hash links keep resolving;
    *  while open the child's own heading has it — never both at once. */
   anchorId: string
+  /** Eyebrow text (the small question label). */
   question: string
-  teaser: string
+  /** Large visual lead (the primary answer fact). */
+  fact: string
+  /** Supporting context beneath the fact. */
+  context: string
+  /** Optional decorative viz node (aria-hidden). */
+  viz?: ReactNode
   narrow: boolean
   /** Expand on first render (hash deep-link) and scroll to the card. */
   initialOpen?: boolean
   children: ReactNode
 }
 
-/** Narrow viewports collapse a section to its question + one-line answer; desktop renders
+/** Narrow viewports collapse a section to its question + answer-first card; desktop renders
  *  children untouched. Children mount only while expanded — the heavy D3 sections never
- *  render offscreen. `open` survives viewport crossings (component stays mounted). */
-export function QuestionSection({ anchorId, question, teaser, narrow, initialOpen = false, children }: Props) {
+ *  render offscreen. `open` survives viewport crossings (component stays mounted).
+ *  Button accessible name = question + fact + context. */
+export function QuestionSection({ anchorId, question, fact, context, viz, narrow, initialOpen = false, children }: Props) {
   const [open, setOpen] = useState(initialOpen)
   const ref = useRef<HTMLElement>(null)
   const didScroll = useRef(false)
@@ -37,7 +44,9 @@ export function QuestionSection({ anchorId, question, teaser, narrow, initialOpe
       <button type="button" className="qcard-btn" aria-expanded={open}
               aria-controls={`${anchorId}-body`} onClick={() => setOpen(o => !o)}>
         <span className="qcard-q">{question}</span>
-        <span className="qcard-a">{teaser}</span>
+        <span className="qcard-fact">{fact}</span>
+        {context && <span className="qcard-ctx">{context}</span>}
+        {viz != null && <span className="qcard-viz" aria-hidden="true">{viz}</span>}
         <span className="qcard-tap" aria-hidden="true">{open ? 'close ▴' : 'open ▾'}</span>
       </button>
       <div id={`${anchorId}-body`} hidden={!open}>{open && children}</div>
