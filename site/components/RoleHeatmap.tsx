@@ -71,7 +71,7 @@ export function RoleHeatmap({ meta, salaries, metric, adjusted, dark, selectedMe
   return (
     <section className="heatmap" aria-labelledby="hm-heading">
       <header className="hm-head">
-        <h2 id="hm-heading">City × role</h2>
+        <h2 id="hm-heading">Every metro × every role</h2>
         <p className="hm-note">
           {metricNoun(metric, adjusted)} · color scaled within each role column, its range printed under the header
           · click a cell to open that metro

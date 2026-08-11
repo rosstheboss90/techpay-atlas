@@ -159,6 +159,15 @@ describe('MetroTrend', () => {
     expect(screen.queryByText(/censored/i)).not.toBeInTheDocument()
   })
 
+  it('renders the metro series without a national ghost when trends.json failed to load', () => {
+    const { container } = render(<MetroTrend metro={metro} national={null} soc="15-1252" roleLabel="Software Developers" />)
+    expect(container.querySelector('[data-metro-series]')).not.toBeNull()
+    expect(container.querySelector('[data-national-series]')).toBeNull()
+    expect(screen.queryByText(/vs/)).not.toBeInTheDocument()
+    expect(container.querySelector('svg.mt-svg')).toHaveAttribute(
+      'aria-label', 'Software Developers pay over time for Austin-Round Rock-San Marcos, TX')
+  })
+
   it('a mixed trailing run (censored year, then a genuinely absent year) is not a contradiction', () => {
     // 2024 is capped (top-coded — published, then censored); 2025 was never published at all.
     // lastPublishedYear counts the capped 2024 as published, so "no data published after 2024" is

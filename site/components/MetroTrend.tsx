@@ -29,7 +29,7 @@ const W = 440, H = 200, PAD_L = 52, PAD_R = 12, PAD_T = 10, PAD_B = 24
  *  it real dimensions. If either is true, change this ratio, not just the CSS scaling it. */
 export function MetroTrend({ metro, national, soc, roleLabel }: {
   metro: MetroTrendData
-  national: TrendsJson
+  national: TrendsJson | null
   soc: string
   roleLabel: string
 }) {
@@ -67,7 +67,9 @@ export function MetroTrend({ metro, national, soc, roleLabel }: {
     return groups
   }, [])
 
-  const nationalPoints = pathPoints(national, soc)
+  // national is best-effort: trends.json can fail to load without taking down the metro panel
+  // (Task 7). No national series just means no ghost line and no "vs National" legend below.
+  const nationalPoints = national ? pathPoints(national, soc) : []
 
   // Shared y-domain across both series, so the metro line and the ghosted national line are
   // visually comparable rather than each auto-scaling to its own range.
@@ -80,7 +82,7 @@ export function MetroTrend({ metro, national, soc, roleLabel }: {
 
   // Shared x-domain: the union of both series' year ranges, not just the metro's — the national
   // series can run longer than any one metro's published history.
-  const allYears = [...metro.years, ...national.years]
+  const allYears = [...metro.years, ...(national?.years ?? [])]
   const yearLo = Math.min(...allYears)
   const yearHi = Math.max(...allYears)
   const span = Math.max(1, yearHi - yearLo)
@@ -91,7 +93,10 @@ export function MetroTrend({ metro, national, soc, roleLabel }: {
 
   return (
     <div className="mt-trend">
-      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`${roleLabel} pay over time for ${metro.name}, versus the national figure`}
+      <svg viewBox={`0 0 ${W} ${H}`} role="img"
+           aria-label={nationalPoints.length > 0
+             ? `${roleLabel} pay over time for ${metro.name}, versus the national figure`
+             : `${roleLabel} pay over time for ${metro.name}`}
            className="mt-svg">
         {metro.breaks.map(b => (
           <line key={b.year} data-break x1={x(b.year)} x2={x(b.year)} y1={PAD_T} y2={H - PAD_B} className="mt-break" />
@@ -123,9 +128,11 @@ export function MetroTrend({ metro, national, soc, roleLabel }: {
         <text x={PAD_L - 6} y={PAD_T + 8} textAnchor="end" className="mt-tick">{fmtUsdCompact(hi)}</text>
         <text x={PAD_L - 6} y={H - PAD_B} textAnchor="end" className="mt-tick">{fmtUsdCompact(lo)}</text>
       </svg>
-      <p className="mt-legend">
-        <span className="mt-legend-metro">{metro.name}</span> vs <span className="mt-legend-national">National</span>
-      </p>
+      {nationalPoints.length > 0 && (
+        <p className="mt-legend">
+          <span className="mt-legend-metro">{metro.name}</span> vs <span className="mt-legend-national">National</span>
+        </p>
+      )}
       <p className="panel-note">
         In {metro.deflator.base} dollars (CPI-U) — this is inflation, not cost of living. The
         cost-of-living toggle above does not change these figures.

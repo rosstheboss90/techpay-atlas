@@ -5,12 +5,13 @@ import { useEffect, useState } from 'react'
  *  aria-labelledby), plus the map row. Keep in sync with the ids in page.tsx and
  *  the section components. */
 const LINKS = [
-  { id: 'sec-map', label: 'Map' },
-  { id: 'slope-h', label: 'Cost of living' },
-  { id: 'h2h-h', label: 'Head to head' },
-  { id: 'tl-h', label: 'Job titles' },
-  { id: 'rsim-h', label: 'Similar roles' },
-  { id: 'hm-heading', label: 'City × role' },
+  { id: 'sec-map', label: 'Pay, where?' },
+  { id: 'h2h-h', label: 'Underpaid?' },
+  { id: 'slope-h', label: 'Real money?' },
+  { id: 'trend-h', label: 'Holding up?' },
+  { id: 'tl-h', label: 'Called what?' },
+  { id: 'rsim-h', label: 'What else?' },
+  { id: 'hm-heading', label: 'The grid' },
 ]
 
 export function SectionNav() {

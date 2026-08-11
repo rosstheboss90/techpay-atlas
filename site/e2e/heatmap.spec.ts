@@ -6,7 +6,7 @@ test('city × role heatmap: sort, expand, cell click opens metro panel', async (
 
   const heatmap = page.locator('.heatmap')
   await heatmap.scrollIntoViewIfNeeded()
-  await expect(page.getByRole('heading', { name: 'City × role' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Every metro × every role' })).toBeVisible()
 
   // Table rendered with the default top-50 rows.
   const rows = page.locator('.hm-table tbody tr')

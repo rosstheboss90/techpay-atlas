@@ -34,7 +34,7 @@ test('title lens: expand seniority, click a registry SOC segment, role + map upd
   await registrySegment.click()
 
   // Role select's value changed, and the URL gained the role param. Exact match: the heatmap
-  // section's accessible name ("City × role") also substring-matches getByLabel('Role').
+  // section's accessible name ("Every metro × every role") also substring-matches getByLabel('Role').
   await expect(page.getByLabel('Role', { exact: true })).toHaveValue('11-3021')
   await expect(page).toHaveURL(/[?&]role=11-3021/)
 

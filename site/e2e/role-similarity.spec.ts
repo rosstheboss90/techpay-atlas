@@ -6,7 +6,7 @@ test('role similarity: lists pay-equivalent roles and clicking one re-anchors th
 
   const rsim = page.locator('.rsim')
   await rsim.scrollIntoViewIfNeeded()
-  await expect(page.getByRole('heading', { name: /Which roles pay like this one/i })).toBeVisible()
+  await expect(page.getByRole('heading', { name: /What else could you be/i })).toBeVisible()
 
   const rows = page.locator('.rsim-row')
   expect(await rows.count()).toBeGreaterThan(1)

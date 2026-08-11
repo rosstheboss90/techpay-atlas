@@ -12,6 +12,9 @@ export interface SlopeRow {
   capped: boolean       // p50 is top-coded
 }
 
+/** Top-N metros the slopegraph section shows — teasers must describe the same subset. */
+export const SLOPE_N = 18
+
 /**
  * Top-N metros by nominal median pay for a role, each carrying its nominal and COL-adjusted rank
  * **within this subset** (both columns therefore span 1..length). Rank basis is the shown set, not

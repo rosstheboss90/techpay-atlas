@@ -11,7 +11,7 @@ import { PercentileBand } from './PercentileBand'
 
 interface Props {
   meta: Meta; salaries: Salaries; cbsa: string; soc: string; adjusted: boolean
-  national: TrendsJson
+  national: TrendsJson | null
   onClose: () => void
 }
 

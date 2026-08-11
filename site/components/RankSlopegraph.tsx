@@ -2,7 +2,7 @@
 import { useMemo } from 'react'
 import type { Meta, Metric, Salaries } from '../lib/types'
 import { fmtUsdCompact } from '../lib/format'
-import { slopeRows } from '../lib/slopegraph'
+import { slopeRows, SLOPE_N } from '../lib/slopegraph'
 
 interface Props {
   meta: Meta
@@ -12,7 +12,6 @@ interface Props {
   onSelect: (cbsa: string) => void
 }
 
-const N = 18
 const PAD_TOP = 36, ROW_GAP = 28, PAD_BOTTOM = 16
 
 /* Label gutters are derived from the widest label rather than fixed, because the
@@ -41,15 +40,15 @@ function moveText(delta: number): string {
 export function RankSlopegraph({ meta, salaries, soc, metric, onSelect }: Props) {
   const roleLabel = meta.roles.find(r => r.soc === soc)?.label ?? soc
   const rows = useMemo(
-    () => (metric === 'pay' ? slopeRows(meta.metros, salaries, soc, N) : []),
+    () => (metric === 'pay' ? slopeRows(meta.metros, salaries, soc, SLOPE_N) : []),
     [meta.metros, salaries, soc, metric],
   )
 
   const header = (
     <header className="slope-head">
-      <h2 id="slope-h">Cost of living flips the ranking</h2>
+      <h2 id="slope-h">Is it real money there?</h2>
       <p className="slope-note">
-        {roleLabel} · top {rows.length || N} metros by pay · order shown is among these metros
+        {roleLabel} · top {rows.length || SLOPE_N} metros by pay · order shown is among these metros
       </p>
     </header>
   )
