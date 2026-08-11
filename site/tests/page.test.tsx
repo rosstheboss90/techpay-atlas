@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import Page from '../app/page'
+import { __clearDataCache } from '../lib/data'
 
 const meta = {
   year: 2025, generated: '2026-08-03T00:00:00Z', topCodeValue: 239200, rppYear: 2024,
@@ -35,5 +36,29 @@ describe('Page', () => {
 
     await waitFor(() => expect(screen.getByText(/Software Developers pay across/)).toBeInTheDocument())
     expect(document.querySelector('.metro-panel')).toBeNull()
+  })
+
+  it('renders the masthead when trends.json fails to load, even though meta and salaries succeed', async () => {
+    // Task 7: trends is additive context (MetroTrend ghost line + /trends teaser) fetched
+    // best-effort in Promise.all — a rejected trends.json must not blank the whole page.
+    window.history.replaceState(null, '', '/')
+    window.matchMedia = window.matchMedia ?? ((query: string) => ({
+      matches: false, media: query, onchange: null,
+      addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {},
+      dispatchEvent: () => false,
+    }) as unknown as MediaQueryList)
+    // The data.ts loaders memoize per URL across the module's lifetime, so a prior test's
+    // successful trends.json fetch would otherwise mask this one's rejection.
+    __clearDataCache()
+    vi.stubGlobal('fetch', vi.fn((path: string) => path.includes('trends')
+      ? Promise.reject(new Error('trends.json unavailable'))
+      : Promise.resolve({
+          ok: true,
+          json: async () => (path.includes('salaries') ? salaries : path.includes('titles') ? titles : meta),
+        })))
+
+    render(<Page />)
+
+    await waitFor(() => expect(screen.getByText(/Software Developers pay across/)).toBeInTheDocument())
   })
 })

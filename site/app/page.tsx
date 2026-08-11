@@ -27,7 +27,10 @@ export default function Page() {
   const [dark, setDark] = useState(false)
 
   useEffect(() => {
-    Promise.all([loadMeta(), loadSalaries(), loadTrends()])
+    // trends is additive context (the MetroTrend ghost line + the /trends teaser), not core to
+    // the page — a failed trends.json fetch must not take the whole page down with it, so it is
+    // best-effort here and stays null on failure rather than rejecting the Promise.all.
+    Promise.all([loadMeta(), loadSalaries(), loadTrends().catch(() => null)])
       .then(([m, s, t]) => {
         setMeta(m); setSalaries(s); setTrends(t)
         const parsed = parseState(new URLSearchParams(window.location.search))
@@ -77,7 +80,7 @@ export default function Page() {
   }, [meta, salaries, state.role])
 
   if (error) return <main className="page"><p className="load-error">Failed to load data: {error}</p></main>
-  if (!meta || !salaries || !role || !trends) return <main className="page"><p className="loading">Loading…</p></main>
+  if (!meta || !salaries || !role) return <main className="page"><p className="loading">Loading…</p></main>
 
   const metroA = state.metro ?? comparePair[0]
   const metroB = state.vs ?? (comparePair[0] && comparePair[0] !== metroA ? comparePair[0] : comparePair[1])
