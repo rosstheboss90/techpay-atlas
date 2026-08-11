@@ -1,6 +1,6 @@
 # Mobile question index — answer-first cards with data-ink
 
-**Date:** 2026-08-11 · **Status:** Draft for review
+**Date:** 2026-08-11 · **Status:** Approved
 
 ## Purpose
 
