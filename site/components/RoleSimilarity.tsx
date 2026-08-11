@@ -26,7 +26,7 @@ export function RoleSimilarity({ meta, salaries, soc, onSelectRole }: Props) {
   return (
     <section className="rsim" aria-labelledby="rsim-h">
       <header className="rsim-head">
-        <h2 id="rsim-h">Which roles pay like this one?</h2>
+        <h2 id="rsim-h">What else could you be?</h2>
         <p className="rsim-note">
           Roles ranked by how interchangeably they’re paid with <strong>{anchorLabel}</strong> across
           metros — a within-metro pay ratio, so it’s the same with or without the cost-of-living toggle.

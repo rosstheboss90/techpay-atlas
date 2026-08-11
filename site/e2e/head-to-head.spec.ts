@@ -6,7 +6,7 @@ test('head-to-head: renders, choosing a vs metro updates the URL, target shows a
 
   const h2h = page.locator('.h2h')
   await h2h.scrollIntoViewIfNeeded()
-  await expect(page.getByRole('heading', { name: 'Head to head' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Are you underpaid?' })).toBeVisible()
 
   // Two metro selects + two percentile bands on a shared scale.
   await expect(page.getByLabel('Metro A')).toBeVisible()

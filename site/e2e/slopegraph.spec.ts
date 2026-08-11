@@ -6,7 +6,7 @@ test('rank-flip slopegraph: renders and a metro click opens the panel', async ({
 
   const slope = page.locator('.slope')
   await slope.scrollIntoViewIfNeeded()
-  await expect(page.getByRole('heading', { name: /Cost of living flips the ranking/i })).toBeVisible()
+  await expect(page.getByRole('heading', { name: /Is it real money there/i })).toBeVisible()
 
   // Nodes rendered (two per metro).
   await expect(page.locator('.slope-node').first()).toBeVisible()

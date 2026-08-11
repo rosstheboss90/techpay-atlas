@@ -100,7 +100,7 @@ export function HeadToHead({ meta, salaries, soc, adjusted, metroA, metroB, onSe
   return (
     <section className="h2h" aria-labelledby="h2h-h">
       <header className="h2h-head">
-        <h2 id="h2h-h">Head to head</h2>
+        <h2 id="h2h-h">Are you underpaid?</h2>
         <p className="h2h-note-sub">{roleLabel}{adjusted ? ' · cost-of-living adjusted' : ''} · pick two metros</p>
       </header>
 

@@ -46,7 +46,7 @@ export function RankSlopegraph({ meta, salaries, soc, metric, onSelect }: Props)
 
   const header = (
     <header className="slope-head">
-      <h2 id="slope-h">Cost of living flips the ranking</h2>
+      <h2 id="slope-h">Is it real money there?</h2>
       <p className="slope-note">
         {roleLabel} · top {rows.length || SLOPE_N} metros by pay · order shown is among these metros
       </p>
