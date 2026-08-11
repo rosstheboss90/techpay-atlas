@@ -15,8 +15,11 @@ const trends: TrendsJson = {
 describe('TrendsTeaser', () => {
   it('states the real change and links to /trends carrying the role', () => {
     render(<TrendsTeaser trends={trends} soc="15-1252" roleLabel="Software Developers" />)
-    expect(screen.getByRole('heading', { name: 'Is it holding up?' })).toHaveAttribute('id', 'trend-h')
-    expect(screen.getByText(/−5\.7% real since 2021/)).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Are wages beating inflation?' })).toHaveAttribute('id', 'trend-h')
+    // The fact sentence begins with the role label — asserting the full sentence (not just the
+    // percentage) pins that the component no longer prepends its own "{roleLabel}: " prefix,
+    // which would otherwise duplicate the subject.
+    expect(screen.getByText(/^Software Developers are down 5\.7% in real terms since 2021\./)).toBeInTheDocument()
     expect(screen.getByRole('link')).toHaveAttribute('href', '/trends?role=15-1252')
   })
 

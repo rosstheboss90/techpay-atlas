@@ -38,17 +38,17 @@ describe('shortMetro', () => {
 describe('titleTeaser', () => {
   it('names the highest-filing bucket whose dominant SOC is the role', () => {
     expect(titleTeaser(titles, '15-1252', 'Software Developers')).toEqual({
-      fact: '“Software Engineer”',
-      context: 'is what BLS counts as Software Developers',
+      fact: 'Job ads say “Software Engineer” — the statistics say Software Developers.',
+      context: '',
     })
   })
   it('falls back generically when titles are missing or the role has no bucket', () => {
     expect(titleTeaser(null, '15-1252', 'Software Developers')).toEqual({
-      fact: 'See what these jobs are really called',
+      fact: 'Real titles, mapped to the official codes.',
       context: '',
     })
     expect(titleTeaser(titles, '11-3021', 'IT Managers')).toEqual({
-      fact: 'See what these jobs are really called',
+      fact: 'Real titles, mapped to the official codes.',
       context: '',
     })
   })
@@ -59,8 +59,8 @@ describe('payTeaser', () => {
   const salaries: Salaries = { '1': { '15-1252': row(100_000) }, '2': { '15-1252': row(210_000) } }
   it('quotes the top metro and ITS median — a number the map actually shows (honesty rule)', () => {
     expect(payTeaser(salaries, metros, '15-1252')).toEqual({
-      fact: '$210,000 · San Jose',
-      context: 'tops 2 metros',
+      fact: 'San Jose tops the map at $210,000.',
+      context: '',
       top3: [
         { city: 'San Jose', p50: 210_000 },
         { city: 'Cheapville', p50: 100_000 },
@@ -69,8 +69,8 @@ describe('payTeaser', () => {
   })
   it('degrades to the generic line when no metro has a median', () => {
     expect(payTeaser({}, metros, '15-1252')).toEqual({
-      fact: 'Percentiles for every metro',
-      context: 'on the map',
+      fact: 'Percentiles for every metro on the map.',
+      context: '',
       top3: [],
     })
   })
@@ -88,8 +88,8 @@ describe('payTeaser', () => {
       '4': { '15-1252': row(100_000) },
     }
     expect(payTeaser(salaries4, metros4, '15-1252')).toEqual({
-      fact: '$250,000 · Seattle',
-      context: 'tops 4 metros',
+      fact: 'Seattle tops the map at $250,000.',
+      context: '',
       top3: [
         { city: 'Seattle', p50: 250_000 },
         { city: 'San Jose', p50: 210_000 },
@@ -105,17 +105,17 @@ describe('colTeaser', () => {
   it('names the metro that falls furthest once adjusted', () => {
     // San Jose: nominal rank 1, adjusted 160k/1.5 ≈ 106.7k < Cheapville 150k/0.9 ≈ 166.7k → rank 2
     expect(colTeaser(metros, salaries, '15-1252', 'pay')).toEqual({
-      fact: 'San Jose falls 1 place',
-      context: 'once cost of living counts',
+      fact: 'San Jose falls 1 place once cost of living counts.',
+      context: '',
     })
   })
   it('falls back when nothing falls', () => {
     expect(colTeaser([metro('1', 'Cheapville, TX', 100)], { '1': { '15-1252': row(100_000) } }, '15-1252', 'pay'))
-      .toEqual({ fact: 'Rankings flip', context: 'see who leapfrogs whom once cost of living counts' })
+      .toEqual({ fact: 'See who leapfrogs whom once cost of living counts.', context: '' })
   })
   it('makes no ranking claim when the section is not showing the pay metric', () => {
     expect(colTeaser(metros, salaries, '15-1252', 'emp'))
-      .toEqual({ fact: 'Rankings flip', context: 'see who leapfrogs whom once cost of living counts' })
+      .toEqual({ fact: 'See who leapfrogs whom once cost of living counts.', context: '' })
   })
   it('pluralizes "places" when the faller drops more than one place', () => {
     const metros3 = [
@@ -133,26 +133,32 @@ describe('colTeaser', () => {
     // → adjusted desc: Bigcity #1, Smalltown #2, Metroville #3.
     // Metroville: nominalRank 1, adjustedRank 3, delta = 1 − 3 = −2 → falls 2 places.
     expect(colTeaser(metros3, salaries3, '15-1252', 'pay')).toEqual({
-      fact: 'Metroville falls 2 places',
-      context: 'once cost of living counts',
+      fact: 'Metroville falls 2 places once cost of living counts.',
+      context: '',
     })
   })
 })
 
 describe('trendTeaser', () => {
-  it('formats the fractional changeReal as signed percent since headlineFrom', () => {
-    expect(trendTeaser(trends, '15-1252')).toEqual({ fact: '−5.7% real', context: 'since 2021' })
+  it('formats the fractional changeReal as a "down" sentence since headlineFrom', () => {
+    expect(trendTeaser(trends, '15-1252', 'Software Developers')).toEqual({
+      fact: 'Software Developers are down 5.7% in real terms since 2021.',
+      context: '',
+    })
   })
   it('is honest about a missing series', () => {
-    expect(trendTeaser(null, '15-1252')).toEqual({ fact: 'Trend data unavailable', context: '' })
-    expect(trendTeaser(trends, '11-3021')).toEqual({ fact: 'Trend data unavailable', context: '' })
+    expect(trendTeaser(null, '15-1252', 'Software Developers')).toEqual({ fact: 'Trend data unavailable.', context: '' })
+    expect(trendTeaser(trends, '11-3021', 'IT Managers')).toEqual({ fact: 'Trend data unavailable.', context: '' })
   })
-  it('signs a positive real change with a plain "+"', () => {
+  it('signs a positive real change as an "up" sentence', () => {
     const trendsUp: TrendsJson = {
       ...trends,
       roles: { '15-1252': { ...trends.roles['15-1252'], changeReal: 0.031 } },
     }
-    expect(trendTeaser(trendsUp, '15-1252')).toEqual({ fact: '+3.1% real', context: 'since 2021' })
+    expect(trendTeaser(trendsUp, '15-1252', 'Software Developers')).toEqual({
+      fact: 'Software Developers are up 3.1% in real terms since 2021.',
+      context: '',
+    })
   })
 })
 
@@ -165,13 +171,13 @@ describe('similarTeaser', () => {
     // One shared metro: similarByPay returns the pair flagged thin; the section lists it
     // with a chip, so the teaser counts it.
     expect(similarTeaser(meta, { '1': { '15-1252': row(100_000), '15-1253': row(95_000) } }, '15-1252'))
-      .toEqual({ fact: '1 role', context: 'pays like this one', topLabel: 'QA', count: 1 })
+      .toEqual({ fact: '1 role pays like this one.', context: '', topLabel: 'QA', count: 1 })
   })
 
   it('falls back only when the section itself would be empty (zero overlap)', () => {
     // QA has no salary row anywhere → zero shared metros → similarByPay returns []
     expect(similarTeaser(meta, { '1': { '15-1252': row(100_000) } }, '15-1252'))
-      .toEqual({ fact: 'Not enough overlap', context: 'to compare this role', topLabel: null, count: 0 })
+      .toEqual({ fact: 'Not enough overlap to compare this role.', context: '', topLabel: null, count: 0 })
   })
 
   it('pluralizes "roles"/"pay" when more than one role overlaps, topLabel is the best match', () => {
@@ -185,6 +191,6 @@ describe('similarTeaser', () => {
     // math on the page is count - 1).
     expect(similarTeaser(meta3, {
       '1': { '15-1252': row(100_000), '15-1253': row(95_000), '15-1254': row(80_000) },
-    }, '15-1252')).toEqual({ fact: '2 roles', context: 'pay like this one', topLabel: 'QA', count: 2 })
+    }, '15-1252')).toEqual({ fact: '2 roles pay like this one.', context: '', topLabel: 'QA', count: 2 })
   })
 })

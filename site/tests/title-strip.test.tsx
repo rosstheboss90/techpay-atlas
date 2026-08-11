@@ -21,7 +21,7 @@ describe('TitleStrip', () => {
     loadTitles.mockResolvedValue(titles)
     render(<TitleStrip soc="15-1252" roleLabel="Software Developers" />)
     await waitFor(() =>
-      expect(screen.getByRole('button', { name: /“Software Engineer” is what BLS counts as Software Developers/ })).toBeInTheDocument())
+      expect(screen.getByRole('button', { name: /Job ads say “Software Engineer” — the statistics say Software Developers/ })).toBeInTheDocument())
     await userEvent.click(screen.getByRole('button'))
     expect(screen.getByRole('link', { name: /full ladder/i })).toHaveAttribute('href', '#tl-h')
   })
@@ -29,6 +29,6 @@ describe('TitleStrip', () => {
   it('failed titles fetch leaves the generic line, no crash', async () => {
     loadTitles.mockRejectedValue(new Error('404'))
     render(<TitleStrip soc="15-1252" roleLabel="Software Developers" />)
-    expect(await screen.findByRole('button', { name: /really called/i })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: /Real titles, mapped to the official codes/i })).toBeInTheDocument()
   })
 })
