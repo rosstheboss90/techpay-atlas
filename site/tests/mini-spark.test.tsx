@@ -14,4 +14,10 @@ describe('MiniSpark', () => {
     const { container } = render(<MiniSpark series={[null, 12, null]} />)
     expect(container.querySelector('svg')).toBeNull()
   })
+  it('an isolated point between nulls renders as a dot, not nothing (metro-trend convention)', () => {
+    const { container } = render(<MiniSpark series={[10, null, 12, null, 20]} />)
+    // no run has 2+ points except none — zero polylines; three circles: two isolated + endpoint
+    expect(container.querySelectorAll('polyline')).toHaveLength(0)
+    expect(container.querySelectorAll('circle')).toHaveLength(3)
+  })
 })

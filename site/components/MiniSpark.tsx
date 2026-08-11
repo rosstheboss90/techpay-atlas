@@ -3,8 +3,9 @@
 const W = 120, H = 22, PAD = 2
 
 /** Decorative sparkline for a question card: the shape of a series, nothing more. The card's
- *  TEXT carries the claim (honesty rule), so this is aria-hidden; nulls draw as gaps, matching
- *  the full trend charts. Stroke reuses the trends line token (--accent) — no new colors. */
+ *  TEXT carries the claim (honesty rule), so this is aria-hidden; nulls draw as gaps and
+ *  isolated points as dots, matching the full trend charts. Stroke reuses the trends line token
+ *  (--accent) — no new colors. */
 export function MiniSpark({ series }: { series: (number | null)[] }) {
   const real = series.filter((v): v is number => v != null)
   if (real.length < 2) return null
@@ -23,6 +24,9 @@ export function MiniSpark({ series }: { series: (number | null)[] }) {
     <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} aria-hidden="true" className="mini-spark">
       {runs.filter(r => r.length > 1).map(r => (
         <polyline key={r[0].i} points={r.map(p => `${x(p.i)},${y(p.v)}`).join(' ')} fill="none" />
+      ))}
+      {runs.filter(r => r.length === 1 && !(r[0].i === lastIdx)).map(r => (
+        <circle key={`pt-${r[0].i}`} cx={x(r[0].i)} cy={y(r[0].v)} r={2} className="mini-spark-pt" />
       ))}
       <circle cx={x(lastIdx)} cy={y(last)} r={2.5} />
     </svg>
