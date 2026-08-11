@@ -84,12 +84,20 @@ describe('trendTeaser', () => {
 })
 
 describe('similarTeaser', () => {
-  it('falls back below the overlap floor', () => {
-    // Two metros shared is far below MIN_SHARED (40) — similarByPay returns []
-    const meta = { year: 2025, generated: '', metros: [metro('1', 'A, TX', 100)], roles: [
-      { soc: '15-1252', label: 'Software Developers' }, { soc: '15-1253', label: 'QA' },
-    ], topCodeValue: 0, rppYear: 2024, lcaPeriod: '' } as unknown as Meta
+  const meta = { year: 2025, generated: '', metros: [metro('1', 'A, TX', 100)], roles: [
+    { soc: '15-1252', label: 'Software Developers' }, { soc: '15-1253', label: 'QA' },
+  ], topCodeValue: 0, rppYear: 2024, lcaPeriod: '' } as unknown as Meta
+
+  it('counts every row the section will list — thin pairs included (label, never hide)', () => {
+    // One shared metro: similarByPay returns the pair flagged thin; the section lists it
+    // with a chip, so the teaser counts it.
     expect(similarTeaser(meta, { '1': { '15-1252': row(100_000), '15-1253': row(95_000) } }, '15-1252'))
+      .toBe('1 role pays like this one')
+  })
+
+  it('falls back only when the section itself would be empty (zero overlap)', () => {
+    // QA has no salary row anywhere → zero shared metros → similarByPay returns []
+    expect(similarTeaser(meta, { '1': { '15-1252': row(100_000) } }, '15-1252'))
       .toBe('Not enough overlap to compare this role')
   })
 })
