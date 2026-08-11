@@ -164,6 +164,8 @@ describe('MetroTrend', () => {
     expect(container.querySelector('[data-metro-series]')).not.toBeNull()
     expect(container.querySelector('[data-national-series]')).toBeNull()
     expect(screen.queryByText(/vs/)).not.toBeInTheDocument()
+    expect(container.querySelector('svg.mt-svg')).toHaveAttribute(
+      'aria-label', 'Software Developers pay over time for Austin-Round Rock-San Marcos, TX')
   })
 
   it('a mixed trailing run (censored year, then a genuinely absent year) is not a contradiction', () => {

@@ -93,7 +93,10 @@ export function MetroTrend({ metro, national, soc, roleLabel }: {
 
   return (
     <div className="mt-trend">
-      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`${roleLabel} pay over time for ${metro.name}, versus the national figure`}
+      <svg viewBox={`0 0 ${W} ${H}`} role="img"
+           aria-label={nationalPoints.length > 0
+             ? `${roleLabel} pay over time for ${metro.name}, versus the national figure`
+             : `${roleLabel} pay over time for ${metro.name}`}
            className="mt-svg">
         {metro.breaks.map(b => (
           <line key={b.year} data-break x1={x(b.year)} x2={x(b.year)} y1={PAD_T} y2={H - PAD_B} className="mt-break" />
