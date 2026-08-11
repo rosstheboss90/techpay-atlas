@@ -2,6 +2,30 @@
 
 Newest decisions first. v1 (map + panel) shipped 2026-08-03.
 
+## Cards v2.1 — sentence facts, new questions, M1 masthead — LANDED 2026-08-11
+
+Second user pass on the answer-first cards (all eight presentation/verbiage flags picked in
+review → one-system redo; mockups: v2 → v2.1 full sentences → masthead M1). Amendment v2.1
+appended to `docs/superpowers/specs/2026-08-11-mobile-index-visual-design.md`; plan
+`docs/superpowers/plans/2026-08-11-cards-v21.md`.
+
+- Facts are complete sentences with trailing periods ("San Jose tops the map at $213,110.");
+  `context` is now always `''` (field kept for shape stability). `trendTeaser` takes roleLabel
+  and uses up/down VERBS, not sign glyphs.
+- Questions re-toned sitewide (h2s + nav + e2e + order-pin): *Where does it pay the most? /
+  Are you underpaid? / Does your salary go far there? / Are wages beating inflation? / What's
+  this job really called? / What else could you be? / How does it all compare?*
+- tl-h card fact is DYNAMIC ("Job ads say “Data Engineer” — …"): titles.json now loads
+  best-effort at page level (memoized get() dedupes with TitleStrip); **TitleStrip renders
+  desktop-only** — the card states the identical claim on narrow.
+- Masthead M1 (all viewports): h1 → value line ("Check what your job really pays — …") →
+  thesis → provenance demoted to small type.
+- Presentation: accent eyebrows, 1.12rem balanced sentence facts, 16px card padding, circled
+  chevron replaces "open ▾", minis full-width. ⚠️ Two traps fixed en route worth remembering:
+  **buttons need `color: var(--ink)`** (UA ButtonText stays dark in dark mode — the fact text
+  was near-invisible); **`preserveAspectRatio="none"` + circles = ellipses** — dots are now
+  round-capped degenerate polylines with `vector-effect: non-scaling-stroke`.
+
 ## Mobile index visual iteration — answer-first cards with data-ink — LANDED 2026-08-11
 
 User verdict on the shipped index: structurally right, visually flat. Redesigned via mockup
