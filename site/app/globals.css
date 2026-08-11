@@ -105,6 +105,10 @@ button, select, input { font-family: inherit; }
   color: var(--ink-muted); font-size: var(--fs-sm);
   margin-top: var(--s2); padding: 0 var(--s4);
 }
+/* No page-wide `a` reset exists (browser default underline stands, see .t-method a) — these two
+   inline links only need a color rule, same idiom, not the masthead-link none→underline-on-hover
+   pattern (that one is deliberately underline-free until interaction). */
+.trend-teaser a, .ts-more a { color: var(--accent); }
 
 /* ── Section nav ─────────────────────────────────────────────────────── */
 .secnav {
