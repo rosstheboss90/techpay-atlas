@@ -16,10 +16,11 @@ export function TitleStrip({ soc, roleLabel }: { soc: string; roleLabel: string 
     loadTitles().then(t => { if (on) setTitles(t) }).catch(() => { /* generic line stands */ })
     return () => { on = false }
   }, [])
+  const teaser = titleTeaser(titles, soc, roleLabel)
   return (
     <div className="title-strip">
       <button type="button" aria-expanded={open} onClick={() => setOpen(o => !o)}>
-        {titleTeaser(titles, soc, roleLabel)} <span aria-hidden="true">{open ? '▴' : '▾'}</span>
+        {teaser.fact}{teaser.context ? ` ${teaser.context}` : ''} <span aria-hidden="true">{open ? '▴' : '▾'}</span>
       </button>
       {open && (
         <p className="ts-more">
