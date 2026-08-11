@@ -86,6 +86,15 @@ describe('QuestionSection', () => {
     expect(viz.querySelector('[data-testid="spark"]')).not.toBeNull()
   })
 
+  it('body container carries qcard-body so wide expanded content (charts) can be contained/scrolled', () => {
+    const { container } = render(
+      <QuestionSection anchorId="trend-h" question="Is it holding up?" fact="f" context="c" narrow initialOpen>
+        {child}
+      </QuestionSection>,
+    )
+    expect(container.querySelector('#trend-h-body')!.classList.contains('qcard-body')).toBe(true)
+  })
+
   it('empty context and absent viz render no empty containers', () => {
     const { container } = render(
       <QuestionSection anchorId="tl-h" question="q" fact="f" context="" narrow>{child}</QuestionSection>,

@@ -49,7 +49,7 @@ export function QuestionSection({ anchorId, question, fact, context, viz, narrow
         {viz != null && <span className="qcard-viz" aria-hidden="true">{viz}</span>}
         <span className="qcard-tap" aria-hidden="true">{open ? 'close ▴' : 'open ▾'}</span>
       </button>
-      <div id={`${anchorId}-body`} hidden={!open}>{open && children}</div>
+      <div id={`${anchorId}-body`} className="qcard-body" hidden={!open}>{open && children}</div>
     </section>
   )
 }
