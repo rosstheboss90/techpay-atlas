@@ -4,6 +4,8 @@ import Link from 'next/link'
 import { FilterBar } from '../components/FilterBar'
 import { HeadToHead } from '../components/HeadToHead'
 import { MetroPanel } from '../components/MetroPanel'
+import { MiniSpark } from '../components/MiniSpark'
+import { PercentileBand } from '../components/PercentileBand'
 import { QuestionSection } from '../components/QuestionSection'
 import { RankSlopegraph } from '../components/RankSlopegraph'
 import { RoleHeatmap } from '../components/RoleHeatmap'
@@ -13,7 +15,9 @@ import { SectionNav } from '../components/SectionNav'
 import { TitleLens } from '../components/TitleLens'
 import { TitleStrip } from '../components/TitleStrip'
 import { TrendsTeaser } from '../components/TrendsTeaser'
+import { sharedBandDomain } from '../lib/compare'
 import { loadMeta, loadSalaries, loadTrends } from '../lib/data'
+import { fmtUsdCompact } from '../lib/format'
 import { colTeaser, payTeaser, similarTeaser, trendTeaser } from '../lib/teasers'
 import type { Meta, Salaries } from '../lib/types'
 import type { TrendsJson } from '../lib/trends-types'
@@ -111,6 +115,26 @@ export default function Page() {
     trend: trendTeaser(trends, state.role),
     similar: similarTeaser(meta, salaries, state.role),
   }
+  // Mini-viz nodes for cards with real data-ink (spec: per-card mapping). Decorative — the card
+  // text carries the claim — and built only from existing primitives/tokens.
+  const rowA = salaries[metroA]?.[state.role]
+  const rppA = meta.metros.find(m => m.cbsa === metroA)?.rpp ?? null
+  const payViz = teasers.pay.top3.length > 0 && (
+    <span className="qcard-chips">
+      {teasers.pay.top3.map(t => (
+        <span key={t.city} className="qcard-chip"><b>{fmtUsdCompact(t.p50)}</b> {t.city}</span>
+      ))}
+    </span>
+  )
+  const bandViz = rowA != null && (
+    <PercentileBand row={rowA} rpp={rppA} adjusted={state.adjusted}
+                    domain={sharedBandDomain(rowA, undefined, rppA, null, state.adjusted)} width={220} />
+  )
+  const sparkSeries = trends?.roles[state.role]?.real
+  const sparkViz = sparkSeries != null && <MiniSpark series={sparkSeries} />
+  const similarViz = teasers.similar.topLabel != null && (
+    <span className="qcard-chips"><span className="qcard-chip">{teasers.similar.topLabel}</span></span>
+  )
 
   return (
     <main className="page">
@@ -130,7 +154,8 @@ export default function Page() {
       {!narrow && <SectionNav />}
       <FilterBar roles={meta.roles} state={state} onChange={update} />
       <TitleStrip soc={state.role} roleLabel={role.label} />
-      <QuestionSection anchorId="sec-map" question="What does it pay — and where?" teaser={teasers.pay}
+      <QuestionSection anchorId="sec-map" question="What does it pay — and where?"
+                       fact={teasers.pay.fact} context={teasers.pay.context} viz={payViz || undefined}
                        narrow={narrow} initialOpen={openId === 'sec-map'}>
         <h2 className="sec-q">What does it pay — and where?</h2>
         <div id="sec-map" className={state.metro ? 'hero-row has-panel' : 'hero-row'}>
@@ -143,33 +168,37 @@ export default function Page() {
           )}
         </div>
       </QuestionSection>
-      <QuestionSection anchorId="h2h-h" question="Are you underpaid?"
-                       teaser="Type your offer, see where it lands in any two metros"
+      <QuestionSection anchorId="h2h-h" question="Where does your offer land?"
+                       fact="type it, compare any two metros" context="" viz={bandViz || undefined}
                        narrow={narrow} initialOpen={openId === 'h2h-h'}>
         <HeadToHead meta={meta} salaries={salaries} soc={state.role} adjusted={state.adjusted}
                     metroA={metroA} metroB={metroB} onSelect={p => update(p)} />
       </QuestionSection>
-      <QuestionSection anchorId="slope-h" question="Is it real money there?" teaser={teasers.col}
+      <QuestionSection anchorId="slope-h" question="Is it real money there?"
+                       fact={teasers.col.fact} context={teasers.col.context}
                        narrow={narrow} initialOpen={openId === 'slope-h'}>
         <RankSlopegraph meta={meta} salaries={salaries} soc={state.role} metric={state.metric}
                         onSelect={cbsa => update({ metro: cbsa })} />
       </QuestionSection>
-      <QuestionSection anchorId="trend-h" question="Is it holding up?" teaser={teasers.trend}
+      <QuestionSection anchorId="trend-h" question="Is it holding up?"
+                       fact={teasers.trend.fact} context={teasers.trend.context} viz={sparkViz || undefined}
                        narrow={narrow} initialOpen={openId === 'trend-h'}>
         <TrendsTeaser trends={trends} soc={state.role} roleLabel={role.label} />
       </QuestionSection>
       <QuestionSection anchorId="tl-h" question="What do these jobs actually get called?"
-                       teaser="Real filed titles, seniority ladders, and who counts as what"
+                       fact="Real filed titles" context="seniority ladders, and who counts as what"
                        narrow={narrow} initialOpen={openId === 'tl-h'}>
         <TitleLens meta={meta} cbsa={state.metro} adjusted={state.adjusted}
                    onSelectRole={soc => update({ role: soc })} />
       </QuestionSection>
-      <QuestionSection anchorId="rsim-h" question="What else could you be?" teaser={teasers.similar}
+      <QuestionSection anchorId="rsim-h" question="What else could you be?"
+                       fact={teasers.similar.fact} context={teasers.similar.context} viz={similarViz || undefined}
                        narrow={narrow} initialOpen={openId === 'rsim-h'}>
         <RoleSimilarity meta={meta} salaries={salaries} soc={state.role}
                         onSelectRole={soc => update({ role: soc })} />
       </QuestionSection>
-      <QuestionSection anchorId="hm-heading" question="Every metro × every role" teaser="The whole grid, one screen"
+      <QuestionSection anchorId="hm-heading" question="Every metro × every role"
+                       fact={`${meta.metros.length} × ${meta.roles.length}`} context="the whole grid, one screen"
                        narrow={narrow} initialOpen={openId === 'hm-heading'}>
         <RoleHeatmap meta={meta} salaries={salaries} metric={state.metric} adjusted={state.adjusted}
                      dark={dark} selectedMetro={state.metro} selectedRole={state.role}

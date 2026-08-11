@@ -528,8 +528,16 @@ button, select, input { font-family: inherit; }
     text-align: left; font: inherit; background: none; border: none;
     padding: 12px 14px; cursor: pointer; gap: var(--s1);
   }
-  .qcard-q { font-weight: 650; }
-  .qcard-a { color: var(--ink-muted); font-size: 0.9rem; }
+  .qcard-q { font-size: .68rem; letter-spacing: .09em; text-transform: uppercase; color: var(--ink-muted); }
+  .qcard-fact { font-size: 1.25rem; font-weight: 700; letter-spacing: -.01em; line-height: 1.25; font-variant-numeric: tabular-nums; }
+  .qcard-ctx { color: var(--ink-muted); font-size: .9rem; }
+  .qcard-viz { display: block; margin-top: 6px; }
+  .qcard-chips { display: flex; gap: 4px; flex-wrap: wrap; }
+  .qcard-chip { border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; font-size: .72rem; color: var(--ink-muted); }
+  .qcard-chip b { color: var(--ink); font-weight: 650; font-variant-numeric: tabular-nums; }
+  .mini-spark polyline { stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+  .mini-spark circle { fill: var(--ink); }
+  .mini-spark .mini-spark-pt { fill: var(--accent); }
   .qcard-tap { color: var(--accent); font-size: 0.85rem; }
 }
 
