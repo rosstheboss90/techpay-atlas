@@ -7,7 +7,7 @@ import { titleTeaser } from '../lib/teasers'
 /** §2 of the question spine: "What's your job actually called?" as one line above the map,
  *  collapsible on every viewport (deliberately NOT a QuestionSection — desktop collapses it
  *  too, see the D1 decision in the spec). Loads titles.json itself; TitleLens keeps its own
- *  load (HTTP cache dedupes) so its internals stay untouched. */
+ *  load (get() memoizes per URL) so its internals stay untouched. */
 export function TitleStrip({ soc, roleLabel }: { soc: string; roleLabel: string }) {
   const [titles, setTitles] = useState<TitlesJson | null>(null)
   const [open, setOpen] = useState(false)

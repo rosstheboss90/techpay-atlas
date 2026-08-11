@@ -8,10 +8,27 @@ import type { MetroTrendData } from './metro-trend-types'
 // Must match next.config.ts basePath — Next does not rewrite fetch() URLs.
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? ''
 
+/** The emitted JSON is immutable per deploy, so every load is memoized per URL — components
+ *  can each ask for what they need (TitleStrip + TitleLens both load titles.json) without
+ *  double-fetching. A rejected load is evicted so the next call retries. */
+const inflight = new Map<string, Promise<unknown>>()
+
 async function get<T>(path: string): Promise<T> {
-  const res = await fetch(path)
-  if (!res.ok) throw new Error(`${res.status} loading ${path}`)
-  return res.json() as Promise<T>
+  const hit = inflight.get(path)
+  if (hit) return hit as Promise<T>
+  const p = (async () => {
+    const res = await fetch(path)
+    if (!res.ok) throw new Error(`${res.status} loading ${path}`)
+    return res.json() as Promise<T>
+  })()
+  inflight.set(path, p)
+  p.catch(() => inflight.delete(path))
+  return p as Promise<T>
+}
+
+/** Clear the memoization cache (tests only). */
+export function __clearDataCache() {
+  inflight.clear()
 }
 
 export const loadMeta = () => get<Meta>(`${BASE}/data/meta.json`)
