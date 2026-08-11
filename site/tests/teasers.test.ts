@@ -74,6 +74,29 @@ describe('payTeaser', () => {
       top3: [],
     })
   })
+  it('truncates top3 to 3 entries, p50 desc, while context counts every metro', () => {
+    const metros4 = [
+      metro('1', 'Cheapville, TX', 90),
+      metro('2', 'San Jose-Sunnyvale-Santa Clara, CA', 113),
+      metro('3', 'Seattle-Tacoma-Bellevue, WA', 120),
+      metro('4', 'Austin-Round Rock, TX', 100),
+    ]
+    const salaries4: Salaries = {
+      '1': { '15-1252': row(90_000) },
+      '2': { '15-1252': row(210_000) },
+      '3': { '15-1252': row(250_000) },
+      '4': { '15-1252': row(100_000) },
+    }
+    expect(payTeaser(salaries4, metros4, '15-1252')).toEqual({
+      fact: '$250,000 · Seattle',
+      context: 'tops 4 metros',
+      top3: [
+        { city: 'Seattle', p50: 250_000 },
+        { city: 'San Jose', p50: 210_000 },
+        { city: 'Austin', p50: 100_000 },
+      ],
+    })
+  })
 })
 
 describe('colTeaser', () => {
@@ -94,6 +117,26 @@ describe('colTeaser', () => {
     expect(colTeaser(metros, salaries, '15-1252', 'emp'))
       .toEqual({ fact: 'Rankings flip', context: 'see who leapfrogs whom once cost of living counts' })
   })
+  it('pluralizes "places" when the faller drops more than one place', () => {
+    const metros3 = [
+      metro('1', 'Metroville, AA', 300),
+      metro('2', 'Bigcity, BB', 100),
+      metro('3', 'Smalltown, CC', 100),
+    ]
+    const salaries3: Salaries = {
+      '1': { '15-1252': row(300_000) },
+      '2': { '15-1252': row(200_000) },
+      '3': { '15-1252': row(150_000) },
+    }
+    // Nominal (p50 desc): Metroville 300k #1, Bigcity 200k #2, Smalltown 150k #3.
+    // Adjusted (p50 / (rpp/100)): Metroville 300k/3 = 100k, Bigcity 200k/1 = 200k, Smalltown 150k/1 = 150k
+    // → adjusted desc: Bigcity #1, Smalltown #2, Metroville #3.
+    // Metroville: nominalRank 1, adjustedRank 3, delta = 1 − 3 = −2 → falls 2 places.
+    expect(colTeaser(metros3, salaries3, '15-1252', 'pay')).toEqual({
+      fact: 'Metroville falls 2 places',
+      context: 'once cost of living counts',
+    })
+  })
 })
 
 describe('trendTeaser', () => {
@@ -103,6 +146,13 @@ describe('trendTeaser', () => {
   it('is honest about a missing series', () => {
     expect(trendTeaser(null, '15-1252')).toEqual({ fact: 'Trend data unavailable', context: '' })
     expect(trendTeaser(trends, '11-3021')).toEqual({ fact: 'Trend data unavailable', context: '' })
+  })
+  it('signs a positive real change with a plain "+"', () => {
+    const trendsUp: TrendsJson = {
+      ...trends,
+      roles: { '15-1252': { ...trends.roles['15-1252'], changeReal: 0.031 } },
+    }
+    expect(trendTeaser(trendsUp, '15-1252')).toEqual({ fact: '+3.1% real', context: 'since 2021' })
   })
 })
 
@@ -122,5 +172,18 @@ describe('similarTeaser', () => {
     // QA has no salary row anywhere → zero shared metros → similarByPay returns []
     expect(similarTeaser(meta, { '1': { '15-1252': row(100_000) } }, '15-1252'))
       .toEqual({ fact: 'Not enough overlap', context: 'to compare this role', topLabel: null })
+  })
+
+  it('pluralizes "roles"/"pay" when more than one role overlaps, topLabel is the best match', () => {
+    const meta3 = { year: 2025, generated: '', metros: [metro('1', 'A, TX', 100)], roles: [
+      { soc: '15-1252', label: 'Software Developers' },
+      { soc: '15-1253', label: 'QA' },
+      { soc: '15-1254', label: 'DevOps' },
+    ], topCodeValue: 0, rppYear: 2024, lcaPeriod: '' } as unknown as Meta
+    // overlap(QA) = min(100k,95k)/max = 0.95; overlap(DevOps) = min(100k,80k)/max = 0.8
+    // → sorted overlap desc: QA then DevOps; topLabel is QA's.
+    expect(similarTeaser(meta3, {
+      '1': { '15-1252': row(100_000), '15-1253': row(95_000), '15-1254': row(80_000) },
+    }, '15-1252')).toEqual({ fact: '2 roles', context: 'pay like this one', topLabel: 'QA' })
   })
 })
