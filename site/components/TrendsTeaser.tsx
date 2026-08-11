@@ -9,11 +9,12 @@ import { trendTeaser } from '../lib/teasers'
 export function TrendsTeaser({ trends, soc, roleLabel }: {
   trends: TrendsJson | null; soc: string; roleLabel: string
 }) {
+  const teaser = trendTeaser(trends, soc)
   return (
     <section className="trend-teaser" aria-labelledby="trend-h">
       <h2 id="trend-h">Is it holding up?</h2>
       <p>
-        {roleLabel}: {trendTeaser(trends, soc)}.{' '}
+        {roleLabel}: {teaser.fact}{teaser.context ? ` ${teaser.context}` : ''}.{' '}
         {trends != null && <Link href={`/trends?role=${soc}`}>Every role, {trends.years[0]}–{trends.years[trends.years.length - 1]} →</Link>}
       </p>
     </section>

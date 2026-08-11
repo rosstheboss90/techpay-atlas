@@ -21,7 +21,7 @@ describe('TitleStrip', () => {
     loadTitles.mockResolvedValue(titles)
     render(<TitleStrip soc="15-1252" roleLabel="Software Developers" />)
     await waitFor(() =>
-      expect(screen.getByRole('button', { name: /Called “Software Engineer”\?/ })).toBeInTheDocument())
+      expect(screen.getByRole('button', { name: /“Software Engineer” is what BLS counts as Software Developers/ })).toBeInTheDocument())
     await userEvent.click(screen.getByRole('button'))
     expect(screen.getByRole('link', { name: /full ladder/i })).toHaveAttribute('href', '#tl-h')
   })

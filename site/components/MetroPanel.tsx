@@ -79,22 +79,24 @@ export function MetroPanel({ meta, salaries, cbsa, soc, adjusted, national, onCl
       </dl>
 
       <h3 className="panel-sub">Pay by role</h3>
-      <table className="role-table">
-        <thead><tr><th scope="col">Role</th><th scope="col">10th–90th percentile{adj ? ' (adj.)' : ''}</th><th scope="col">Median{adj ? ' (adj.)' : ''}</th></tr></thead>
-        <tbody>
-          {meta.roles.map(r => {
-            const rr = salaries[cbsa]?.[r.soc]
-            if (!rr) return null
-            return (
-              <tr key={r.soc} className={r.soc === soc ? 'is-current' : ''}>
-                <th scope="row">{r.short}</th>
-                <td><PercentileBand row={rr} rpp={metro.rpp} adjusted={adj} domain={domain} /></td>
-                <td className="cell-num">{displayPct(rr, 'p50', metro.rpp, adj)}</td>
-              </tr>
-            )
-          })}
-        </tbody>
-      </table>
+      <div className="role-scroll">
+        <table className="role-table">
+          <thead><tr><th scope="col">Role</th><th scope="col">10th–90th percentile{adj ? ' (adj.)' : ''}</th><th scope="col">Median{adj ? ' (adj.)' : ''}</th></tr></thead>
+          <tbody>
+            {meta.roles.map(r => {
+              const rr = salaries[cbsa]?.[r.soc]
+              if (!rr) return null
+              return (
+                <tr key={r.soc} className={r.soc === soc ? 'is-current' : ''}>
+                  <th scope="row">{r.short}</th>
+                  <td><PercentileBand row={rr} rpp={metro.rpp} adjusted={adj} domain={domain} /></td>
+                  <td className="cell-num">{displayPct(rr, 'p50', metro.rpp, adj)}</td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
 
       {/* `undefined` and `0` are different facts and must not collapse into one message.
           undefined -> the pipeline never stamped trendYears, so the metro-trend dataset has not

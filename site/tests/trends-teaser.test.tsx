@@ -16,7 +16,7 @@ describe('TrendsTeaser', () => {
   it('states the real change and links to /trends carrying the role', () => {
     render(<TrendsTeaser trends={trends} soc="15-1252" roleLabel="Software Developers" />)
     expect(screen.getByRole('heading', { name: 'Is it holding up?' })).toHaveAttribute('id', 'trend-h')
-    expect(screen.getByText(/−5\.7% in real terms since 2021/)).toBeInTheDocument()
+    expect(screen.getByText(/−5\.7% real since 2021/)).toBeInTheDocument()
     expect(screen.getByRole('link')).toHaveAttribute('href', '/trends?role=15-1252')
   })
 

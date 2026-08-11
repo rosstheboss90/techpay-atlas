@@ -2,6 +2,39 @@
 
 Newest decisions first. v1 (map + panel) shipped 2026-08-03.
 
+## Mobile index visual iteration — answer-first cards with data-ink — LANDED 2026-08-11
+
+User verdict on the shipped index: structurally right, visually flat. Redesigned via mockup
+round (A mini-previews / B answer-first / C polish → **A+B composed**). Spec
+`docs/superpowers/specs/2026-08-11-mobile-index-visual-design.md` · plan
+`docs/superpowers/plans/2026-08-11-mobile-index-visual.md`. Cards now render eyebrow question →
+large fact (`tabular-nums`) → context → data-ink mini (top-3 metro chips / `PercentileBand` /
+new `MiniSpark`); `lib/teasers.ts` returns structured `{ fact, context }` (+viz data).
+
+Decisions that will recur:
+- **MiniSpark keeps isolated points as dots** — same invariant as `metro-trend.ts`'s
+  `segments()` ("a year of real data should not vanish"); censored series really produce
+  lone points between nulls.
+- **Mini-vizes are `aria-hidden` decoration** — the card TEXT carries every claim; no new
+  colors (sparkline rides `--accent`, the trends line token), so the validated palette
+  stands untouched.
+- **Wide content scrolls in its own container, at the source**: the user-reported chart
+  overflow inside expanded cards traced to `MetroPanel`'s role table (fixed-width band +
+  nowrap cells) propagating min-content through `.hero-row`'s naked `1fr`. Fix: `.role-scroll`
+  wrapper + `minmax(0, 1fr)` + a `.qcard-body` overflow backstop — scoped scroll like
+  `.slope-scroll`, not whole-card scroll.
+- **Card questions are order-pinned by a page test** — a prop-slot shift silently dropped
+  "Are you underpaid?" from its card and survived both reviews + unit gates; only a live-render
+  check caught it. The seven `.qcard-q` texts are now asserted in order.
+- The tl-h card deliberately keeps a static fact (TitleStrip directly above already states the
+  bucket alias — duplicating titles.json wiring for a duplicate claim fails YAGNI).
+
+🔶 Follow-up (pre-existing, surfaced by the final branch review): `payTeaser` ignores the
+cost-of-living toggle — with COL on, the sec-map card's fact and top-3 chips can name a
+different "top" metro than the recolored map shows. Pre-dates this branch, but the chip UI
+makes it more salient. Fix shape: pass `adjusted` + rpp through `payTeaser` (fact would then
+need the "adjusted" labeling rules).
+
 ## Home restructure — question spine + mobile question index — LANDED 2026-08-10
 
 The deferred restructure from "Narrative reconciliation" (below), built to its own spec:

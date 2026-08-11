@@ -178,7 +178,7 @@ button, select, input { font-family: inherit; }
 /* ── Map + panel ─────────────────────────────────────────────────────── */
 /* align-items:start is the fix for the dead zone: without it the map figure
    stretches to the (much taller) panel and leaves ~40% of the card empty. */
-.hero-row { display: grid; grid-template-columns: 1fr; gap: var(--s4); align-items: start; }
+.hero-row { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s4); align-items: start; }
 @media (min-width: 980px) {
   .hero-row.has-panel { grid-template-columns: minmax(0, 1.85fr) minmax(320px, 1fr); }
 }
@@ -227,6 +227,10 @@ button, select, input { font-family: inherit; }
 }
 .headline-stats dd { font-size: 1.125rem; font-weight: 650; font-variant-numeric: tabular-nums; margin-top: 2px; }
 .panel-sub { font-size: var(--fs-sm); font-weight: 650; margin: var(--s4) 0 var(--s2); }
+/* Scopes the wide-table scroll to the table itself (matches .slope-scroll/.h2h-block's
+   convention) rather than letting it bubble up to whatever wraps the panel — all viewports,
+   since the desktop side panel can be squeezed too. */
+.role-scroll { overflow-x: auto; max-width: 100%; }
 .role-table { width: 100%; border-collapse: collapse; font-size: var(--fs-meta); }
 .role-table th[scope="col"] {
   text-align: left; color: var(--ink-muted); font-weight: 600; padding-bottom: var(--s1);
@@ -523,13 +527,22 @@ button, select, input { font-family: inherit; }
 
   .secnav { display: none; }
   .qcard { border: var(--rule); border-radius: 10px; margin: var(--s3) 0; }
+  .qcard-body { overflow-x: auto; max-width: 100%; padding: 0 14px 12px; }
   .qcard-btn {
     display: flex; flex-direction: column; align-items: flex-start; width: 100%;
     text-align: left; font: inherit; background: none; border: none;
     padding: 12px 14px; cursor: pointer; gap: var(--s1);
   }
-  .qcard-q { font-weight: 650; }
-  .qcard-a { color: var(--ink-muted); font-size: 0.9rem; }
+  .qcard-q { font-size: .68rem; letter-spacing: .09em; text-transform: uppercase; color: var(--ink-muted); }
+  .qcard-fact { font-size: 1.25rem; font-weight: 700; letter-spacing: -.01em; line-height: 1.25; font-variant-numeric: tabular-nums; }
+  .qcard-ctx { color: var(--ink-muted); font-size: .9rem; }
+  .qcard-viz { display: block; margin-top: 6px; }
+  .qcard-chips { display: flex; gap: 4px; flex-wrap: wrap; }
+  .qcard-chip { border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; font-size: .72rem; color: var(--ink-muted); }
+  .qcard-chip b { color: var(--ink); font-weight: 650; font-variant-numeric: tabular-nums; }
+  .mini-spark polyline { stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+  .mini-spark circle { fill: var(--ink); }
+  .mini-spark .mini-spark-pt { fill: var(--accent); }
   .qcard-tap { color: var(--accent); font-size: 0.85rem; }
 }
 
