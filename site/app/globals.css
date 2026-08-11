@@ -87,6 +87,24 @@ button, select, input { font-family: inherit; }
   text-decoration: none; white-space: nowrap;
 }
 .masthead-link:hover, .masthead-link:focus-visible { text-decoration: underline; }
+.thesis {
+  color: var(--ink-muted); margin-top: var(--s1);
+  font-style: italic; font-size: 0.92rem; max-width: var(--measure);
+}
+
+.sec-q { font-size: 1.15rem; margin: 28px 0 10px; }
+
+.title-strip { margin: var(--s4) 0; }
+.title-strip button {
+  display: block; width: 100%; text-align: left; font: inherit;
+  background: var(--surface); color: var(--ink); border: var(--rule);
+  border-radius: 8px; padding: var(--s3) var(--s4); cursor: pointer;
+}
+.title-strip button:hover, .title-strip button:focus-visible { border-color: var(--accent); }
+.ts-more {
+  color: var(--ink-muted); font-size: var(--fs-sm);
+  margin-top: var(--s2); padding: 0 var(--s4);
+}
 
 /* ── Section nav ─────────────────────────────────────────────────────── */
 .secnav {
@@ -498,6 +516,17 @@ button, select, input { font-family: inherit; }
   .tl-row-body { gap: var(--s3); }
   .tl-median { font-size: var(--fs-body); }
   .hm-rowh { max-width: 18ch; }
+
+  .secnav { display: none; }
+  .qcard { border: var(--rule); border-radius: 10px; margin: var(--s3) 0; }
+  .qcard-btn {
+    display: flex; flex-direction: column; align-items: flex-start; width: 100%;
+    text-align: left; font: inherit; background: none; border: none;
+    padding: 12px 14px; cursor: pointer; gap: var(--s1);
+  }
+  .qcard-q { font-weight: 650; }
+  .qcard-a { color: var(--ink-muted); font-size: 0.9rem; }
+  .qcard-tap { color: var(--accent); font-size: 0.85rem; }
 }
 
 /* ── Pay trends (/trends) ────────────────────────────────────────────── */

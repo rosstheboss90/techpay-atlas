@@ -18,6 +18,19 @@ const salaries = {
 
 const titles = { lcaPeriod: 'FY2025 Q1–Q4', families: [] }
 
+const trends = {
+  years: [2021, 2025], headlineFrom: 2021, headlineTo: 2025,
+  deflator: { series: 'CPI-U', period: 'annual', base: 2025 },
+  roles: {
+    '15-1252': {
+      label: 'Software Developers', short: 'SWE', firstYear: 2021,
+      nominal: [120000, 134120], real: [125000, 134120], emp: [30000, 31960],
+      cappedP90: [false, false], changeReal: 0.073,
+    },
+  },
+  skippedRoles: [], breaks: [],
+}
+
 describe('Page', () => {
   it('unknown role/metro in the URL fall back to defaults instead of a dead panel', async () => {
     window.history.replaceState(null, '', '/?role=15-9999&metro=99999')
@@ -29,7 +42,8 @@ describe('Page', () => {
     }) as unknown as MediaQueryList)
     vi.stubGlobal('fetch', vi.fn((path: string) => Promise.resolve({
       ok: true,
-      json: async () => (path.includes('salaries') ? salaries : path.includes('titles') ? titles : meta),
+      json: async () => (path.includes('salaries') ? salaries : path.includes('titles') ? titles
+        : path.includes('trends') ? trends : meta),
     })))
 
     render(<Page />)

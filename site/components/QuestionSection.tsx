@@ -20,12 +20,17 @@ interface Props {
 export function QuestionSection({ anchorId, question, teaser, narrow, initialOpen = false, children }: Props) {
   const [open, setOpen] = useState(initialOpen)
   const ref = useRef<HTMLElement>(null)
-  // Scroll once on mount when opened by a hash deep-link. Deliberately NOT keyed on
-  // initialOpen: like the open state above, later prop changes must not re-trigger it.
+  const didScroll = useRef(false)
+  // Scroll once, the first time this card actually renders as an open narrow card (on phones
+  // the component mounts desktop-first while the narrow state settles — a mount-only effect
+  // would fire against a null ref and never retry). Still deliberately ignores later
+  // initialOpen changes once it has fired.
   useEffect(() => {
-    if (initialOpen) ref.current?.scrollIntoView?.()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+    if (narrow && initialOpen && !didScroll.current) {
+      didScroll.current = true
+      ref.current?.scrollIntoView?.()
+    }
+  }, [narrow, initialOpen])
   if (!narrow) return <>{children}</>
   return (
     <section ref={ref} className="qcard" id={open ? undefined : anchorId}>

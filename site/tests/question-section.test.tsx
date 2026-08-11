@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QuestionSection } from '../components/QuestionSection'
@@ -6,6 +6,28 @@ import { QuestionSection } from '../components/QuestionSection'
 const child = <div data-testid="heavy">chart</div>
 
 describe('QuestionSection', () => {
+  describe('narrow deep-link scroll', () => {
+    const original = Element.prototype.scrollIntoView
+
+    afterEach(() => {
+      Element.prototype.scrollIntoView = original
+    })
+
+    it('scrolls once when the card first renders narrow+open, not on the desktop-first mount', () => {
+      const spy = vi.fn()
+      Element.prototype.scrollIntoView = spy
+      const { rerender } = render(
+        <QuestionSection anchorId="rsim-h" question="What else?" teaser="t" narrow={false} initialOpen>{child}</QuestionSection>,
+      )
+      expect(spy).not.toHaveBeenCalled()
+      rerender(
+        <QuestionSection anchorId="rsim-h" question="What else?" teaser="t" narrow initialOpen>{child}</QuestionSection>,
+      )
+      expect(spy).toHaveBeenCalledTimes(1)
+    })
+  })
+
+
   it('desktop: renders children untouched, no card chrome', () => {
     render(<QuestionSection anchorId="h2h-h" question="Are you underpaid?" teaser="t" narrow={false}>{child}</QuestionSection>)
     expect(screen.getByTestId('heavy')).toBeInTheDocument()
