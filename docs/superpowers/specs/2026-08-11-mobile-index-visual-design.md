@@ -66,3 +66,78 @@ rows: the computed fact set large, the question as an eyebrow) with treatment **
 
 - Desktop rendering (all viewports ≥720px unchanged), section internals, TitleStrip styling,
   any new data file or fetch, tooltips/interaction inside minis.
+
+---
+
+# Amendment v2.1 — full sentences, louder questions, masthead value line
+
+**Date:** 2026-08-11 (after the base version shipped in PR #20 and was reviewed live by the
+user) · **Status:** Approved (mockup rounds: v2 → v2.1 full-sentences → masthead M1)
+
+User verdict on the shipped cards: right direction; presentation (cramped, quiet questions,
+underdesigned minis, weak affordance) and verbiage (shorthand facts, mixed-register questions)
+both need a pass. All addressed as one system:
+
+## Copy — questions (ripple to desktop h2s, SectionNav labels, e2e assertions)
+
+| id | Question (new) | Nav label |
+|---|---|---|
+| sec-map | Where does it pay the most? | Pays most? |
+| h2h-h | Are you underpaid? *(unchanged)* | Underpaid? |
+| slope-h | Does your salary go far there? | Goes far? |
+| trend-h | Are wages beating inflation? | Inflation? |
+| tl-h | What's this job really called? | Really called? |
+| rsim-h | What else could you be? *(unchanged)* | What else? |
+| hm-heading | How does it all compare? | The grid |
+
+## Copy — facts become complete sentences (context lines absorbed → `context: ''` everywhere)
+
+| Card | Fact sentence (happy) | Fallback sentence |
+|---|---|---|
+| sec-map | `{City} tops the map at {fmtUsd(p50)}.` | `Percentiles for every metro on the map.` |
+| h2h-h | `Type your offer to see where it lands, in any two of {N} metros.` (N = meta.metros.length) | — (static) |
+| slope-h | `{City} falls {n} place(s) once cost of living counts.` | `See who leapfrogs whom once cost of living counts.` |
+| trend-h | `{roleLabel} are {down\|up} {x.x}% in real terms since {year}.` | `Trend data unavailable.` |
+| tl-h | `Job ads say “{top alias}” — the statistics say {roleLabel}.` | `Real titles, mapped to the official codes.` |
+| rsim-h | `{n} role(s) pay(s) like this one.` | `Not enough overlap to compare this role.` |
+| hm-heading | `Every metro and every role, in one grid.` | — (static) |
+
+The tl-h fact is now **dynamic**, which supersedes the earlier YAGNI deviation: `titles.json`
+loads best-effort at page level (the memoized `get()` makes TitleStrip's own load free), and
+`titleTeaser` supplies the alias. Consequence: **TitleStrip renders desktop-only** — on narrow
+the card states the identical claim, and the same sentence twice on one screen is worse than
+either alone.
+
+## Presentation
+
+- Card: 16px padding, 5–6px stack gap, subtle shadow; button is a flex ROW — text column +
+  a circled chevron (30px, `--line` border, `--accent` glyph on `--accent-soft`) replacing the
+  `open ▾` text entirely.
+- `.qcard-q`: `--accent`, .78rem, weight 650 (louder eyebrow).
+- `.qcard-fact`: 1.12rem, line-height 1.35, `text-wrap: balance` (full sentences wrap on two
+  lines comfortably).
+- Minis go full card width: sparkline and band scale to the column (CSS `width: 100%` on the
+  viz svgs; MiniSpark height 30).
+- Honesty rule unchanged: every number in a sentence is one its section shows.
+
+## Masthead (M1) — all viewports
+
+Order: `h1` → **value line** (new, plain): *"Check what your job really pays — by city, by
+real job title, adjusted for what living there costs."* → thesis (existing italic line,
+unchanged) → provenance, demoted to small type: `{role label} · {N} metros · BLS OEWS {year}`
+(keeps the adjusted-mode suffix).
+
+## Error handling deltas
+
+| Case | Behavior |
+|---|---|
+| titles.json fails at page level | tl-h card uses the fallback sentence; TitleStrip (desktop) already handles its own failure |
+| Any teaser fallback | Full-sentence fallbacks per table — still never blank/NaN |
+
+## Testing deltas
+
+- teasers tests updated to sentence outputs (happy + fallback per table, incl. the new
+  `titleTeaser` page-level use and trend up/down verb).
+- Heading sweep re-runs Task-6 style: e2e assertions to new questions; the page order-pin test
+  updates to the new seven questions.
+- Visual eyeball repeats (both themes, 390px, collapsed/expanded, metro-selected overflow path).
