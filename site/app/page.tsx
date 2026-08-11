@@ -168,8 +168,8 @@ export default function Page() {
           )}
         </div>
       </QuestionSection>
-      <QuestionSection anchorId="h2h-h" question="Where does your offer land?"
-                       fact="type it, compare any two metros" context="" viz={bandViz || undefined}
+      <QuestionSection anchorId="h2h-h" question="Are you underpaid?"
+                       fact="Where does your offer land?" context="type it, compare any two metros" viz={bandViz || undefined}
                        narrow={narrow} initialOpen={openId === 'h2h-h'}>
         <HeadToHead meta={meta} salaries={salaries} soc={state.role} adjusted={state.adjusted}
                     metroA={metroA} metroB={metroB} onSelect={p => update(p)} />
