@@ -2,6 +2,35 @@
 
 Newest decisions first. v1 (map + panel) shipped 2026-08-03.
 
+## Home restructure — question spine + mobile question index — LANDED 2026-08-10
+
+The deferred restructure from "Narrative reconciliation" (below), built to its own spec:
+`docs/superpowers/specs/2026-08-10-home-restructure-design.md` · plan
+`docs/superpowers/plans/2026-08-10-home-restructure.md`. Sections re-ordered and re-headed as
+reader questions (map hero kept per the D1 decision, a collapsible **TitleStrip** answering
+"what's your job actually called?" above it); the `/about` thesis line now sits under the
+masthead; a small **TrendsTeaser** section ("Is it holding up?") links to `/trends` carrying the
+role. On ≤720px viewports the sections collapse to a **question index** — cards with one-line
+computed answers (`site/lib/teasers.ts`, pure + unit-tested), children mounted only on expand;
+collapsed index ≈1,460px (< the 1,800px budget the e2e pins). Hash deep-links auto-expand their
+card on narrow and scroll on desktop.
+
+Decisions that will recur:
+- **Teaser honesty is enforced semantics, not copy**: a teaser may only state a number its
+  expanded section shows — this killed a "national median" teaser (the map shows no national
+  figure) and made `colTeaser` metric-aware (the slopegraph shows no ranking off the pay metric).
+  Thin similarity pairs COUNT in the teaser (label-never-hide, they're listed with chips).
+- `lib/data.ts` `get()` now **memoizes per URL** (evict on rejection) — TitleStrip and TitleLens
+  share one titles.json fetch; tests reset via `__clearDataCache()` in setup.ts.
+- A missing `trends.json` now degrades (no ghost line, teaser fallback) instead of blanking the
+  page — closes the ⚪ from the 2026-08-09 review, struck below.
+- `SLOPE_N` (18) hoisted to `lib/slopegraph.ts` as the shared teaser/section subset size.
+
+Follow-ups (minor, from the final branch review): the 720px literal lives in three places
+(`use-narrow.ts`, `globals.css`, the page hash-scroll effect) — export a `NARROW_QUERY` constant
+if it ever changes; `SectionNav.LINKS` and `page.tsx`'s `cardIds` duplicate the 7 section ids
+with no parity test.
+
 ## Adversarial correctness review — 2026-08-09 (week-of-08-02 work, unreviewed on public deploy)
 
 Read-only review of the `/trends` Phase B + employer-lens + pipeline work that shipped and
@@ -60,8 +89,9 @@ message actually names.
 
 **⚪ Minor:** national vs metro deflator base is unasserted across two independently-run emitters
 (`emit-trends.ts:29` / `emit-metro-trends.ts:28`, both 2025 today — one forgotten re-run compares
-2025-dollars to 2026-dollars); a missing `trends.json` fails the whole home page, not just the
-trend section (`site/app/page.tsx:30`); `/about` hardcodes "~542k H-1B filings" (run report says
+2025-dollars to 2026-dollars); ~~a missing `trends.json` fails the whole home page, not just the
+trend section (`site/app/page.tsx:30`)~~ FIXED 2026-08-10 (home restructure — degrades
+gracefully); `/about` hardcodes "~542k H-1B filings" (run report says
 540,871 → "~541k"), swallows fetch errors leaving a permanent "computing…" placeholder, and
 `ConflationFig` hardcodes bucket keys that silently revert FIG 2 to placeholder on a rename.
 
@@ -97,14 +127,14 @@ honesty material and the time dimension are the payoff. That ordering — answer
   reserved for cost of living**; inflation is expressed as "in <base> dollars". No inflation context
   uses the word anywhere in the site.
 
-**Deferred, wanted:**
-- **Re-order and re-label the home sections around questions, not chart types.** The nav currently
+**Deferred, wanted:** — ~~both~~ DONE 2026-08-10, see "Home restructure" at the top of this file.
+- ~~**Re-order and re-label the home sections around questions, not chart types.**~~ The nav currently
   reads *Map · Cost of living · Head to head · Job titles · Similar roles · City × role* — which
   names what each chart **is**. A reader arrives wanting *"am I underpaid?"* or *"should I move?"*.
   Proposed spine: What am I actually called? → What does it pay? → Where? → Is that real money? →
   Is it holding up? Note this is **more** valuable under the settled audience, not less: an
   answer-seeker scans for the question matching theirs. Genuine restructure, needs its own spec.
-- **Surface the thesis.** `/about` holds the best writing on the site — *"Official data tells you
+- ~~**Surface the thesis.**~~ `/about` holds the best writing on the site — *"Official data tells you
   the number. This tells you what the number leaves out."* — behind a small masthead link in a
   separate visual system. Lower priority under the "hook first" reading, but it is the payoff half
   of that strategy and currently nobody reaches it.
