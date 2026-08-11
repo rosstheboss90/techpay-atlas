@@ -9,6 +9,10 @@ describe('MiniSpark', () => {
     expect(container.querySelectorAll('polyline')).toHaveLength(2)
     expect(container.querySelector('circle')).not.toBeNull()
     expect(container.querySelector('svg')).toHaveAttribute('aria-hidden', 'true')
+    // Card-width scaling (globals.css pins the rendered box to 280×30 via CSS, non-proportional
+    // to the 280×30 viewBox) relies on preserveAspectRatio="none" so the line fills the box
+    // instead of letterboxing.
+    expect(container.querySelector('svg')).toHaveAttribute('preserveAspectRatio', 'none')
   })
   it('renders nothing with fewer than two real points', () => {
     const { container } = render(<MiniSpark series={[null, 12, null]} />)

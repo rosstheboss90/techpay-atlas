@@ -541,6 +541,10 @@ button, select, input { font-family: inherit; }
   .qcard-ctx { color: var(--ink-muted); font-size: .9rem; }
   .qcard-viz { display: block; margin-top: 6px; }
   .qcard-viz svg { width: 100%; height: auto; }
+  /* MiniSpark's viewBox (280×30) already matches the intended rendered aspect ratio, but pin it
+     explicitly rather than relying on `height: auto` — its non-scaling-stroke + preserveAspectRatio
+     "none" combination is tuned for a fixed 30px height, not whatever `auto` resolves to. */
+  .qcard-viz .mini-spark { width: 100%; height: 30px; }
   .qcard-chips { display: flex; gap: 4px; flex-wrap: wrap; }
   .qcard-chip { border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; font-size: .72rem; color: var(--ink-muted); }
   .qcard-chip b { color: var(--ink); font-weight: 650; font-variant-numeric: tabular-nums; }
