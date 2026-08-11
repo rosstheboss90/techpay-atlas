@@ -21,6 +21,9 @@ describe('QuestionSection', () => {
     await userEvent.click(btn)
     expect(screen.getByTestId('heavy')).toBeInTheDocument()
     expect(btn).toHaveAttribute('aria-expanded', 'true')
+    await userEvent.click(btn)
+    expect(screen.queryByTestId('heavy')).not.toBeInTheDocument()
+    expect(btn).toHaveAttribute('aria-expanded', 'false')
   })
 
   it('narrow: initialOpen mounts children from the start (hash deep-link)', () => {
@@ -31,5 +34,17 @@ describe('QuestionSection', () => {
   it('collapsed card carries the anchor id so nav/hash targets resolve', () => {
     const { container } = render(<QuestionSection anchorId="rsim-h" question="q" teaser="t" narrow>{child}</QuestionSection>)
     expect(container.querySelector('#rsim-h')).not.toBeNull()
+  })
+
+  it('anchor id is never duplicated: card owns it collapsed, child owns it open', async () => {
+    const { container } = render(
+      <QuestionSection anchorId="tl-h" question="q" teaser="t" narrow>
+        <h2 id="tl-h" data-testid="heading">section</h2>
+      </QuestionSection>,
+    )
+    expect(container.querySelectorAll('#tl-h')).toHaveLength(1)
+    await userEvent.click(screen.getByRole('button'))
+    expect(container.querySelectorAll('#tl-h')).toHaveLength(1)
+    expect(screen.getByTestId('heading')).toBeInTheDocument()
   })
 })
