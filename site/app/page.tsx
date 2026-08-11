@@ -69,7 +69,7 @@ export default function Page() {
     if (!meta) return
     const hash = window.location.hash.slice(1)
     if (!hash || window.matchMedia('(max-width: 720px)').matches) return
-    document.getElementById(hash)?.scrollIntoView()
+    document.getElementById(hash)?.scrollIntoView?.()
   }, [meta])
 
   useEffect(() => {

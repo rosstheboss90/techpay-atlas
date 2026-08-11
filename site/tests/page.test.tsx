@@ -75,4 +75,32 @@ describe('Page', () => {
 
     await waitFor(() => expect(screen.getByText(/Software Developers pay across/)).toBeInTheDocument())
   })
+
+  it('desktop hash deep-link scrolls to the target section after load', async () => {
+    window.history.replaceState(null, '', '/#h2h-h')
+    vi.stubGlobal('matchMedia', vi.fn((query: string) => ({
+      matches: false, media: query, onchange: null,
+      addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {},
+      dispatchEvent: () => false,
+    })))
+    __clearDataCache()
+    vi.stubGlobal('fetch', vi.fn((path: string) => Promise.resolve({
+      ok: true,
+      json: async () => (path.includes('salaries') ? salaries : path.includes('titles') ? titles
+        : path.includes('trends') ? trends : meta),
+    })))
+    const originalScrollIntoView = Element.prototype.scrollIntoView
+    const spy = vi.fn()
+    Element.prototype.scrollIntoView = spy
+
+    try {
+      render(<Page />)
+      await screen.findByText(/TechPay Atlas/)
+      await waitFor(() => expect(spy).toHaveBeenCalled())
+    } finally {
+      window.history.replaceState(null, '', '/')
+      Element.prototype.scrollIntoView = originalScrollIntoView
+      vi.unstubAllGlobals()
+    }
+  })
 })
