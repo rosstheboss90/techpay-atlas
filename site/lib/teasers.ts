@@ -13,7 +13,9 @@ export function shortMetro(name: string): string {
 /** The mobile question index's structured fact/context pair. `context` is always `''` as of the
  *  v2.1 full-sentence pass (the fact absorbed it) — the field stays for shape compatibility.
  *  Never states a number the expanded section doesn't show with its caveats (honesty rule — see
- *  the 2026-08-10 restructure spec and its 2026-08-11 Amendment v2.1). */
+ *  the 2026-08-10 restructure spec and its 2026-08-11 Amendment v2.1).
+ *  `context` is `''` as of v2.1 — field retained for shape stability; the card renders it only
+ *  when non-empty. */
 export interface Teaser { fact: string; context: string }
 
 /** Answer-first card content for the mobile question index. Each is pure, tolerates missing data,

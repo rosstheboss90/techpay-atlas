@@ -20,6 +20,12 @@ export function MiniSpark({ series }: { series: (number | null)[] }) {
   })
   const lastIdx = series.length - 1 - [...series].reverse().findIndex(v => v != null)
   const last = series[lastIdx] as number
+  // Dots are drawn as degenerate (near-zero-length) polylines whose round-capped STROKE is the
+  // dot, not <circle> — under the card's non-uniform CSS scaling (width: 100% vs a fixed height),
+  // a preserveAspectRatio="none" viewBox stretches X and Y by different factors, which would turn
+  // a circle's radius into an ellipse. A stroke width is immune to that (vector-effect keeps it
+  // constant in screen pixels on both axes), so the dot stays round at every card width.
+  const dot = (px: number, py: number) => `${px},${py} ${px + 0.01},${py}`
   return (
     <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" aria-hidden="true" className="mini-spark">
       {runs.filter(r => r.length > 1).map(r => (
@@ -27,9 +33,13 @@ export function MiniSpark({ series }: { series: (number | null)[] }) {
                   vectorEffect="non-scaling-stroke" />
       ))}
       {runs.filter(r => r.length === 1 && !(r[0].i === lastIdx)).map(r => (
-        <circle key={`pt-${r[0].i}`} cx={x(r[0].i)} cy={y(r[0].v)} r={2} className="mini-spark-pt" />
+        <polyline key={`pt-${r[0].i}`} points={dot(x(r[0].i), y(r[0].v))} fill="none"
+                  strokeLinecap="round" strokeWidth={4} vectorEffect="non-scaling-stroke"
+                  className="mini-spark-pt" />
       ))}
-      <circle cx={x(lastIdx)} cy={y(last)} r={2.5} />
+      <polyline points={dot(x(lastIdx), y(last))} fill="none"
+                strokeLinecap="round" strokeWidth={5} vectorEffect="non-scaling-stroke"
+                className="mini-spark-dot" />
     </svg>
   )
 }

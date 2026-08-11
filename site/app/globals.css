@@ -538,7 +538,6 @@ button, select, input { font-family: inherit; }
   .qcard-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
   .qcard-q { color: var(--accent); font-size: .78rem; letter-spacing: .09em; text-transform: uppercase; font-weight: 650; }
   .qcard-fact { font-size: 1.12rem; font-weight: 700; letter-spacing: -.01em; line-height: 1.35; text-wrap: balance; font-variant-numeric: tabular-nums; }
-  .qcard-ctx { color: var(--ink-muted); font-size: .9rem; }
   .qcard-viz { display: block; margin-top: 6px; }
   .qcard-viz svg { width: 100%; height: auto; }
   /* MiniSpark's viewBox (280×30) already matches the intended rendered aspect ratio, but pin it
@@ -549,8 +548,11 @@ button, select, input { font-family: inherit; }
   .qcard-chip { border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; font-size: .72rem; color: var(--ink-muted); }
   .qcard-chip b { color: var(--ink); font-weight: 650; font-variant-numeric: tabular-nums; }
   .mini-spark polyline { stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
-  .mini-spark circle { fill: var(--ink); }
-  .mini-spark .mini-spark-pt { fill: var(--accent); }
+  /* Dots are degenerate polylines too (see MiniSpark.tsx), so both rules below need the extra
+     class-selector specificity to win over the generic `.mini-spark polyline` stroke/width —
+     a bare `.mini-spark-dot`/`.mini-spark-pt` selector alone would lose that fight. */
+  .mini-spark .mini-spark-dot { stroke: var(--ink); stroke-width: 5; }
+  .mini-spark .mini-spark-pt { stroke: var(--accent); stroke-width: 4; }
   .qcard-chev {
     flex: none; width: 30px; height: 30px; border: 1.5px solid var(--line); border-radius: 50%;
     display: flex; align-items: center; justify-content: center; color: var(--accent);
