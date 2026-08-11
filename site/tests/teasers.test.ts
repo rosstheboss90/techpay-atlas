@@ -64,11 +64,15 @@ describe('colTeaser', () => {
   const salaries: Salaries = { '1': { '15-1252': row(150_000) }, '2': { '15-1252': row(160_000) } }
   it('names the metro that falls furthest once adjusted', () => {
     // San Jose: nominal rank 1, adjusted 160k/1.5 ≈ 106.7k < Cheapville 150k/0.9 ≈ 166.7k → rank 2
-    expect(colTeaser(metros, salaries, '15-1252'))
+    expect(colTeaser(metros, salaries, '15-1252', 'pay'))
       .toBe('San Jose falls 1 place once cost of living counts')
   })
   it('falls back when nothing falls', () => {
-    expect(colTeaser([metro('1', 'Cheapville, TX', 100)], { '1': { '15-1252': row(100_000) } }, '15-1252'))
+    expect(colTeaser([metro('1', 'Cheapville, TX', 100)], { '1': { '15-1252': row(100_000) } }, '15-1252', 'pay'))
+      .toBe('See who leapfrogs whom once cost of living counts')
+  })
+  it('makes no ranking claim when the section is not showing the pay metric', () => {
+    expect(colTeaser(metros, salaries, '15-1252', 'emp'))
       .toBe('See who leapfrogs whom once cost of living counts')
   })
 })

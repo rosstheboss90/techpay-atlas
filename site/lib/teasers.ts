@@ -1,9 +1,9 @@
-import type { Meta, MetroMeta, Salaries } from './types'
+import type { Meta, Metric, MetroMeta, Salaries } from './types'
 import type { TitlesJson } from './title-types'
 import type { TrendsJson } from './trends-types'
 import { fmtUsd } from './format'
 import { similarByPay } from './role-similarity'
-import { slopeRows, type SlopeRow } from './slopegraph'
+import { slopeRows, SLOPE_N, type SlopeRow } from './slopegraph'
 
 /** First city of a CBSA title: "San Jose-Sunnyvale-Santa Clara, CA" → "San Jose". */
 export function shortMetro(name: string): string {
@@ -37,8 +37,9 @@ export function payTeaser(trends: TrendsJson | null, salaries: Salaries, metros:
   return 'Percentiles for every metro on the map'
 }
 
-export function colTeaser(metros: MetroMeta[], salaries: Salaries, soc: string): string {
-  const worst = slopeRows(metros, salaries, soc, 18)
+export function colTeaser(metros: MetroMeta[], salaries: Salaries, soc: string, metric: Metric): string {
+  if (metric !== 'pay') return 'See who leapfrogs whom once cost of living counts'
+  const worst = slopeRows(metros, salaries, soc, SLOPE_N)
     .reduce<SlopeRow | null>((acc, r) => (r.delta < (acc?.delta ?? 0) ? r : acc), null)
   if (worst == null) return 'See who leapfrogs whom once cost of living counts'
   const n = -worst.delta
