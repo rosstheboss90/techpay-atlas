@@ -16,10 +16,11 @@ import { TitleLens } from '../components/TitleLens'
 import { TitleStrip } from '../components/TitleStrip'
 import { TrendsTeaser } from '../components/TrendsTeaser'
 import { sharedBandDomain } from '../lib/compare'
-import { loadMeta, loadSalaries, loadTrends } from '../lib/data'
+import { loadMeta, loadSalaries, loadTitles, loadTrends } from '../lib/data'
 import { fmtUsdCompact } from '../lib/format'
-import { colTeaser, payTeaser, similarTeaser, trendTeaser } from '../lib/teasers'
+import { colTeaser, payTeaser, similarTeaser, titleTeaser, trendTeaser } from '../lib/teasers'
 import type { Meta, Salaries } from '../lib/types'
+import type { TitlesJson } from '../lib/title-types'
 import type { TrendsJson } from '../lib/trends-types'
 import { useNarrow } from '../lib/use-narrow'
 import { DEFAULT_STATE, parseState, serializeState, type UrlState } from '../lib/url-state'
@@ -31,18 +32,24 @@ export default function Page() {
   // ghost line needs it on every metro selection, and re-fetching trends.json each time a metro
   // is clicked would be wasteful when it is one small file shared by every metro.
   const [trends, setTrends] = useState<TrendsJson | null>(null)
+  // titles is additive context for the tl-h card's dynamic fact (Amendment v2.1) — TitleStrip
+  // (desktop-only as of this amendment) loads titles.json itself too, but get() memoizes per
+  // URL so the two loads dedupe into one fetch. Best-effort like trends: a failed load leaves
+  // the tl-h card on its fallback sentence rather than taking the page down.
+  const [titles, setTitles] = useState<TitlesJson | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [state, setState] = useState<UrlState>(DEFAULT_STATE)
   const [dark, setDark] = useState(false)
   const narrow = useNarrow()
 
   useEffect(() => {
-    // trends is additive context (the MetroTrend ghost line + the /trends teaser), not core to
-    // the page — a failed trends.json fetch must not take the whole page down with it, so it is
-    // best-effort here and stays null on failure rather than rejecting the Promise.all.
-    Promise.all([loadMeta(), loadSalaries(), loadTrends().catch(() => null)])
-      .then(([m, s, t]) => {
-        setMeta(m); setSalaries(s); setTrends(t)
+    // trends/titles are additive context (the MetroTrend ghost line + the /trends teaser, and
+    // the tl-h card's dynamic fact), not core to the page — a failed fetch must not take the
+    // whole page down with it, so both are best-effort here and stay null on failure rather
+    // than rejecting the Promise.all.
+    Promise.all([loadMeta(), loadSalaries(), loadTrends().catch(() => null), loadTitles().catch(() => null)])
+      .then(([m, s, t, ti]) => {
+        setMeta(m); setSalaries(s); setTrends(t); setTitles(ti)
         const parsed = parseState(new URLSearchParams(window.location.search))
         setState({
           ...parsed,
@@ -112,7 +119,8 @@ export default function Page() {
   const teasers = {
     pay: payTeaser(salaries, meta.metros, state.role),
     col: colTeaser(meta.metros, salaries, state.role, state.metric),
-    trend: trendTeaser(trends, state.role),
+    trend: trendTeaser(trends, state.role, role.label),
+    title: titleTeaser(titles, state.role, role.label),
     similar: similarTeaser(meta, salaries, state.role),
   }
   // Mini-viz nodes for cards with real data-ink (spec: per-card mapping). Decorative — the card
@@ -144,11 +152,12 @@ export default function Page() {
       <header className="masthead">
         <div>
           <h1>TechPay Atlas</h1>
-          <p className="tagline">
-            {role.label} pay across {meta.metros.length} US metros — BLS OEWS {meta.year}
+          <p className="value">Check what your job really pays — by city, by real job title, adjusted for what living there costs.</p>
+          <p className="thesis">Official data tells you the number. This tells you what the number leaves out.</p>
+          <p className="tagline tagline-small">
+            {role.label} · {meta.metros.length} metros · BLS OEWS {meta.year}
             {state.adjusted ? `, adjusted for cost of living (BEA RPP ${meta.rppYear})` : ''}
           </p>
-          <p className="thesis">Official data tells you the number. This tells you what the number leaves out.</p>
         </div>
         <Link href="/about" className="masthead-link">About the data →</Link>
         <Link href="/trends" className="masthead-link">Pay over time →</Link>
@@ -156,11 +165,11 @@ export default function Page() {
       </header>
       {!narrow && <SectionNav />}
       <FilterBar roles={meta.roles} state={state} onChange={update} />
-      <TitleStrip soc={state.role} roleLabel={role.label} />
-      <QuestionSection anchorId="sec-map" question="What does it pay — and where?"
-                       fact={teasers.pay.fact} context={teasers.pay.context} viz={payViz || undefined}
+      {!narrow && <TitleStrip soc={state.role} roleLabel={role.label} />}
+      <QuestionSection anchorId="sec-map" question="Where does it pay the most?"
+                       fact={teasers.pay.fact} context="" viz={payViz || undefined}
                        narrow={narrow} initialOpen={openId === 'sec-map'}>
-        <h2 className="sec-q">What does it pay — and where?</h2>
+        <h2 className="sec-q">Where does it pay the most?</h2>
         <div id="sec-map" className={state.metro ? 'hero-row has-panel' : 'hero-row'}>
           <SalaryMap meta={meta} salaries={salaries} soc={state.role} metric={state.metric}
                      adjusted={state.adjusted} selected={state.metro} dark={dark}
@@ -172,36 +181,37 @@ export default function Page() {
         </div>
       </QuestionSection>
       <QuestionSection anchorId="h2h-h" question="Are you underpaid?"
-                       fact="Where does your offer land?" context="type it, compare any two metros" viz={bandViz || undefined}
+                       fact={`Type your offer to see where it lands, in any two of ${meta.metros.length} metros.`}
+                       context="" viz={bandViz || undefined}
                        narrow={narrow} initialOpen={openId === 'h2h-h'}>
         <HeadToHead meta={meta} salaries={salaries} soc={state.role} adjusted={state.adjusted}
                     metroA={metroA} metroB={metroB} onSelect={p => update(p)} />
       </QuestionSection>
-      <QuestionSection anchorId="slope-h" question="Is it real money there?"
-                       fact={teasers.col.fact} context={teasers.col.context}
+      <QuestionSection anchorId="slope-h" question="Does your salary go far there?"
+                       fact={teasers.col.fact} context=""
                        narrow={narrow} initialOpen={openId === 'slope-h'}>
         <RankSlopegraph meta={meta} salaries={salaries} soc={state.role} metric={state.metric}
                         onSelect={cbsa => update({ metro: cbsa })} />
       </QuestionSection>
-      <QuestionSection anchorId="trend-h" question="Is it holding up?"
-                       fact={teasers.trend.fact} context={teasers.trend.context} viz={sparkViz || undefined}
+      <QuestionSection anchorId="trend-h" question="Are wages beating inflation?"
+                       fact={teasers.trend.fact} context="" viz={sparkViz || undefined}
                        narrow={narrow} initialOpen={openId === 'trend-h'}>
         <TrendsTeaser trends={trends} soc={state.role} roleLabel={role.label} />
       </QuestionSection>
-      <QuestionSection anchorId="tl-h" question="What do these jobs actually get called?"
-                       fact="Real filed titles" context="seniority ladders, and who counts as what"
+      <QuestionSection anchorId="tl-h" question="What's this job really called?"
+                       fact={teasers.title.fact} context=""
                        narrow={narrow} initialOpen={openId === 'tl-h'}>
         <TitleLens meta={meta} cbsa={state.metro} adjusted={state.adjusted}
                    onSelectRole={soc => update({ role: soc })} />
       </QuestionSection>
       <QuestionSection anchorId="rsim-h" question="What else could you be?"
-                       fact={teasers.similar.fact} context={teasers.similar.context} viz={similarViz || undefined}
+                       fact={teasers.similar.fact} context="" viz={similarViz || undefined}
                        narrow={narrow} initialOpen={openId === 'rsim-h'}>
         <RoleSimilarity meta={meta} salaries={salaries} soc={state.role}
                         onSelectRole={soc => update({ role: soc })} />
       </QuestionSection>
-      <QuestionSection anchorId="hm-heading" question="Every metro × every role"
-                       fact={`${meta.metros.length} × ${meta.roles.length}`} context="the whole grid, one screen"
+      <QuestionSection anchorId="hm-heading" question="How does it all compare?"
+                       fact="Every metro and every role, in one grid." context=""
                        narrow={narrow} initialOpen={openId === 'hm-heading'}>
         <RoleHeatmap meta={meta} salaries={salaries} metric={state.metric} adjusted={state.adjusted}
                      dark={dark} selectedMetro={state.metro} selectedRole={state.role}

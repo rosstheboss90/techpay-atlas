@@ -5,11 +5,11 @@ import { useEffect, useState } from 'react'
  *  aria-labelledby), plus the map row. Keep in sync with the ids in page.tsx and
  *  the section components. */
 const LINKS = [
-  { id: 'sec-map', label: 'Pay, where?' },
+  { id: 'sec-map', label: 'Pays most?' },
   { id: 'h2h-h', label: 'Underpaid?' },
-  { id: 'slope-h', label: 'Real money?' },
-  { id: 'trend-h', label: 'Holding up?' },
-  { id: 'tl-h', label: 'Called what?' },
+  { id: 'slope-h', label: 'Goes far?' },
+  { id: 'trend-h', label: 'Inflation?' },
+  { id: 'tl-h', label: 'Really called?' },
   { id: 'rsim-h', label: 'What else?' },
   { id: 'hm-heading', label: 'The grid' },
 ]

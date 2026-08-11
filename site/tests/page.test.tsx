@@ -48,7 +48,7 @@ describe('Page', () => {
 
     render(<Page />)
 
-    await waitFor(() => expect(screen.getByText(/Software Developers pay across/)).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText(/Software Developers · 1 metros · BLS OEWS 2025/)).toBeInTheDocument())
     expect(document.querySelector('.metro-panel')).toBeNull()
   })
 
@@ -73,7 +73,7 @@ describe('Page', () => {
 
     render(<Page />)
 
-    await waitFor(() => expect(screen.getByText(/Software Developers pay across/)).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText(/Software Developers · 1 metros · BLS OEWS 2025/)).toBeInTheDocument())
   })
 
   // Scope note: scrollIntoView is stubbed on the prototype here to assert TARGETING (the effect
@@ -133,13 +133,13 @@ describe('Page', () => {
       await waitFor(() => expect(document.querySelectorAll('.qcard-q').length).toBe(7))
       const questions = [...document.querySelectorAll('.qcard-q')].map(n => n.textContent)
       expect(questions).toEqual([
-        'What does it pay — and where?',
+        'Where does it pay the most?',
         'Are you underpaid?',
-        'Is it real money there?',
-        'Is it holding up?',
-        'What do these jobs actually get called?',
+        'Does your salary go far there?',
+        'Are wages beating inflation?',
+        "What's this job really called?",
         'What else could you be?',
-        'Every metro × every role',
+        'How does it all compare?',
       ])
     } finally {
       window.history.replaceState(null, '', '/')

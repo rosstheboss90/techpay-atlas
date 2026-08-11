@@ -43,11 +43,13 @@ export function QuestionSection({ anchorId, question, fact, context, viz, narrow
     <section ref={ref} className="qcard" id={open ? undefined : anchorId}>
       <button type="button" className="qcard-btn" aria-expanded={open}
               aria-controls={`${anchorId}-body`} onClick={() => setOpen(o => !o)}>
-        <span className="qcard-q">{question}</span>
-        <span className="qcard-fact">{fact}</span>
-        {context && <span className="qcard-ctx">{context}</span>}
-        {viz != null && <span className="qcard-viz" aria-hidden="true">{viz}</span>}
-        <span className="qcard-tap" aria-hidden="true">{open ? 'close ▴' : 'open ▾'}</span>
+        <span className="qcard-main">
+          <span className="qcard-q">{question}</span>
+          <span className="qcard-fact">{fact}</span>
+          {context && <span className="qcard-ctx">{context}</span>}
+          {viz != null && <span className="qcard-viz" aria-hidden="true">{viz}</span>}
+        </span>
+        <span className="qcard-chev" aria-hidden="true">{open ? '▴' : '▾'}</span>
       </button>
       <div id={`${anchorId}-body`} className="qcard-body" hidden={!open}>{open && children}</div>
     </section>
