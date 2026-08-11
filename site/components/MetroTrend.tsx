@@ -145,7 +145,7 @@ export function MetroTrend({ metro, national, soc, roleLabel }: {
         </p>
       )}
       {endsEarly && (
-        <p className="panel-note">No data published for this metro after {lastPublished}.</p>
+        <p className="panel-note">No data published for {roleLabel} in this metro after {lastPublished}.</p>
       )}
       {yearCount < 3 && (
         <p className="panel-note">Only {yearCount} year{yearCount === 1 ? '' : 's'} of published data — not a trend.</p>

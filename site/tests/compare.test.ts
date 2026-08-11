@@ -19,9 +19,15 @@ describe('pctForSalary', () => {
     expect(pctForSalary(r, 80_000, null, false)).toEqual({ kind: 'below' })
     expect(pctForSalary(r, 250_000, null, false)).toEqual({ kind: 'above' })
   })
-  it('respects COL adjustment', () => {
-    // rpp 150 -> p50 150k becomes 100k adjusted; a 100k target now lands at the 50th
-    expect(pctForSalary(r, 100_000, 150, true)).toEqual({ kind: 'in', pct: 50 })
+  it('is invariant under COL adjustment — the rescale moves knots and salary together', () => {
+    // A salary's percentile within one metro's distribution doesn't change when both the
+    // distribution and the salary are divided by the same RPP. rpp 150: $100k is this row's
+    // p10 nominal, and it must still read as the 10th with adjustment on.
+    expect(pctForSalary(r, 100_000, 150, true)).toEqual({ kind: 'in', pct: 10 })
+    expect(pctForSalary(r, 135_000, 150, true)).toEqual(pctForSalary(r, 135_000, null, false))
+  })
+  it('is null in adjusted mode when rpp is unknown', () => {
+    expect(pctForSalary(r, 135_000, null, true)).toBeNull()
   })
   it('is null with fewer than two knots', () => {
     expect(pctForSalary(row({ p10: null, p25: null, p50: 150_000, p75: null, p90: null }), 150_000, null, false)).toBeNull()

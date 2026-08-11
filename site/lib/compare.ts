@@ -7,21 +7,26 @@ export type PctResult = { kind: 'below' } | { kind: 'above' } | { kind: 'in'; pc
 
 /**
  * Estimated percentile for a salary within a row's p10–p90, piecewise-linear over the five known
- * knots (COL-adjusted when asked). `below`/`above` when the salary sits outside p10–p90 — we don't
- * extrapolate a fabricated tail. Null when the row has fewer than two placeable knots.
+ * knots. The salary is a nominal dollar figure in this metro, so in adjusted mode it is rescaled
+ * with the knots — a percentile is invariant under COL adjustment, and comparing a raw salary to
+ * adjusted knots would overstate its standing. `below`/`above` when the salary sits outside
+ * p10–p90 — we don't extrapolate a fabricated tail. Null when the row has fewer than two
+ * placeable knots (or the salary itself can't be adjusted).
  */
 export function pctForSalary(row: SalaryRow, salary: number, rpp: number | null, adjusted: boolean): PctResult | null {
+  const s = adjust(salary, rpp, adjusted)
+  if (s == null) return null
   const knots = PCTS
     .map(([p, pct]) => ({ pct, v: adjust(row[p], rpp, adjusted) }))
     .filter((k): k is { pct: number; v: number } => k.v != null)
   if (knots.length < 2) return null
   const lo = knots[0], hi = knots[knots.length - 1]
-  if (salary < lo.v) return { kind: 'below' }
-  if (salary > hi.v) return { kind: 'above' }
+  if (s < lo.v) return { kind: 'below' }
+  if (s > hi.v) return { kind: 'above' }
   for (let i = 0; i < knots.length - 1; i++) {
     const a = knots[i], b = knots[i + 1]
-    if (salary >= a.v && salary <= b.v) {
-      const t = b.v === a.v ? 0 : (salary - a.v) / (b.v - a.v)
+    if (s >= a.v && s <= b.v) {
+      const t = b.v === a.v ? 0 : (s - a.v) / (b.v - a.v)
       return { kind: 'in', pct: Math.round(a.pct + t * (b.pct - a.pct)) }
     }
   }

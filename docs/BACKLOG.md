@@ -29,20 +29,24 @@ it at metro level. FIXED 2026-08-10 — build-metro-trends flags from p50 and nu
 "above $X" bounds with per-edge aria; archive lock test pins the San Jose/Phoenix/Santa Maria
 cells. Spec docs/superpowers/specs/2026-08-10-censored-medians-fix-design.md.
 
-**🟡 Head-to-head target-salary percentile is wrong in cost-of-living mode.**
+~~**🟡 Head-to-head target-salary percentile is wrong in cost-of-living mode.**~~
 `site/components/HeadToHead.tsx:135,139` · `site/lib/compare.ts:13-29`. In adjusted mode the
 percentile knots are divided by RPP/100 but the visitor's target salary is compared raw (pinned by
 `compare.test.ts:22-25`, so deliberate — but incoherent: a salary's percentile within one metro's
 distribution is invariant under rescaling). San Jose (RPP≈113), Software Developers, target $150k,
 COL on: bands shrink ~13% while the marker stays put, reporting the offer several percentile bands
 higher than its true standing. The nominal-mode answer is the only correct one; both are presented
-as fact.
+as fact. FIXED 2026-08-10 — `pctForSalary` adjusts the salary with the knots (percentile now
+invariant, pinned by an invariance test), `PercentileBand` adjusts its `marker` with the band, and
+an unadjustable marker/salary (rpp null in adjusted mode) hides / reads "not enough data" instead
+of rendering raw.
 
-**🟡 "No data published for this metro after {year}" is false for 776 metro×role pairs.**
+~~**🟡 "No data published for this metro after {year}" is false for 776 metro×role pairs.**~~
 `site/components/MetroTrend.tsx:118-120`. `endsEarly` is computed from the *selected role's* series
 but the sentence claims the *metro* stopped publishing. E.g. Elmira NY (21300) Software Developers
 ends 2024 while the "Pay by role" table directly above shows 2025 figures for other roles. Should
-read "for this role in this metro".
+read "for this role in this metro". FIXED 2026-08-10 — the note now names the role:
+"No data published for {roleLabel} in this metro after {year}."
 
 **🟡 The over-breadth tripwire only fires at ≥2.6× the largest real entity.**
 `pipeline/config.ts:34` (`maxEntityShare: 0.15`), `pipeline/run.ts:278-280`. The per-match integrity

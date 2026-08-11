@@ -175,7 +175,9 @@ describe('MetroTrend', () => {
     render(<MetroTrend metro={fixture} national={national} soc="15-1252" roleLabel="Software Developers" />)
     const endsEarlyNote = screen.getByText(/no data published/i)
     const censorNote = screen.getByText(/censored above/i)
-    expect(endsEarlyNote.textContent).toContain('No data published for this metro after 2024.')
+    // Named role, not "for this metro": other roles in the same metro can still have newer years
+    // (776 metro×role pairs in the 2026-08-09 review), so the claim must scope itself to the role.
+    expect(endsEarlyNote.textContent).toContain('No data published for Software Developers in this metro after 2024.')
     expect(censorNote.textContent).toContain('censored above $239,200 in 2024 — BLS')
   })
 })
