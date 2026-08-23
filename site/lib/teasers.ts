@@ -2,6 +2,7 @@ import type { Meta, Metric, MetroMeta, Salaries } from './types'
 import type { TitlesJson } from './title-types'
 import type { TrendsJson } from './trends-types'
 import { fmtUsd } from './format'
+import { metricValue } from './derive'
 import { similarByPay } from './role-similarity'
 import { slopeRows, SLOPE_N, type SlopeRow } from './slopegraph'
 
@@ -34,14 +35,15 @@ export function titleTeaser(titles: TitlesJson | null, soc: string, roleLabel: s
 }
 
 export function payTeaser(
-  salaries: Salaries, metros: MetroMeta[], soc: string,
+  salaries: Salaries, metros: MetroMeta[], soc: string, adjusted: boolean,
 ): Teaser & { top3: { city: string; p50: number }[] } {
   // The quoted number must be one the expanded section shows: the map/panel display each metro's
-  // own p50, never a national median (that series only ever appears, in real dollars, on the
-  // trend chart after selecting a metro) — so the teaser quotes the top metro's own median.
+  // own p50, never a national median — so the teaser quotes the top metro's own median. It must
+  // also agree with the MAP's current colouring, so in adjusted mode both the ranking and the
+  // printed figure use the RPP-adjusted value (metricValue is the same helper the map uses).
   const withP50: { name: string; v: number }[] = []
   for (const m of metros) {
-    const v = salaries[m.cbsa]?.[soc]?.p50
+    const v = metricValue(salaries[m.cbsa]?.[soc], m, 'pay', adjusted)
     if (v != null) withP50.push({ name: m.name, v })
   }
   if (withP50.length === 0) {
@@ -49,9 +51,9 @@ export function payTeaser(
   }
   const sorted = [...withP50].sort((a, b) => b.v - a.v)
   const top = sorted[0]
-  const top3 = sorted.slice(0, 3).map(m => ({ city: shortMetro(m.name), p50: m.v }))
+  const top3 = sorted.slice(0, 3).map(m => ({ city: shortMetro(m.name), p50: Math.round(m.v) }))
   return {
-    fact: `${shortMetro(top.name)} tops the map at ${fmtUsd(top.v)}.`,
+    fact: `${shortMetro(top.name)} tops the map at ${fmtUsd(Math.round(top.v))}.`,
     context: '',
     top3,
   }

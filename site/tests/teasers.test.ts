@@ -58,7 +58,7 @@ describe('payTeaser', () => {
   const metros = [metro('1', 'Cheapville, TX', 90), metro('2', 'San Jose-Sunnyvale-Santa Clara, CA', 113)]
   const salaries: Salaries = { '1': { '15-1252': row(100_000) }, '2': { '15-1252': row(210_000) } }
   it('quotes the top metro and ITS median — a number the map actually shows (honesty rule)', () => {
-    expect(payTeaser(salaries, metros, '15-1252')).toEqual({
+    expect(payTeaser(salaries, metros, '15-1252', false)).toEqual({
       fact: 'San Jose tops the map at $210,000.',
       context: '',
       top3: [
@@ -68,7 +68,7 @@ describe('payTeaser', () => {
     })
   })
   it('degrades to the generic line when no metro has a median', () => {
-    expect(payTeaser({}, metros, '15-1252')).toEqual({
+    expect(payTeaser({}, metros, '15-1252', false)).toEqual({
       fact: 'Percentiles for every metro on the map.',
       context: '',
       top3: [],
@@ -87,7 +87,7 @@ describe('payTeaser', () => {
       '3': { '15-1252': row(250_000) },
       '4': { '15-1252': row(100_000) },
     }
-    expect(payTeaser(salaries4, metros4, '15-1252')).toEqual({
+    expect(payTeaser(salaries4, metros4, '15-1252', false)).toEqual({
       fact: 'Seattle tops the map at $250,000.',
       context: '',
       top3: [
@@ -96,6 +96,34 @@ describe('payTeaser', () => {
         { city: 'Austin', p50: 100_000 },
       ],
     })
+  })
+})
+
+describe('payTeaser cost-of-living agreement', () => {
+  const metros = [
+    { cbsa: 'A', name: 'Expensive City, CA', state: 'CA', lat: 0, lng: 0, rpp: 130, lcaFilings: 0 },
+    { cbsa: 'B', name: 'Cheap City, TX', state: 'TX', lat: 0, lng: 0, rpp: 90, lcaFilings: 0 },
+  ]
+  const salaries = {
+    A: { S: { emp: 1, lq: 1, p10: 1, p25: 1, p50: 200000, p75: 1, p90: 1 } },
+    B: { S: { emp: 1, lq: 1, p10: 1, p25: 1, p50: 160000, p75: 1, p90: 1 } },
+  } as never
+
+  it('nominal mode names the highest raw payer', () => {
+    expect(payTeaser(salaries, metros as never, 'S', false).fact)
+      .toBe('Expensive City tops the map at $200,000.')
+  })
+
+  it('adjusted mode names the highest COL-adjusted payer — the one the map recolours as top', () => {
+    // A: 200000/1.30 = 153,846 · B: 160000/0.90 = 177,778 → B wins once RPP counts.
+    const t = payTeaser(salaries, metros as never, 'S', true)
+    expect(t.fact).toBe('Cheap City tops the map at $177,778.')
+    expect(t.top3[0].city).toBe('Cheap City')
+  })
+
+  it('falls back when no metro has a median for the role', () => {
+    expect(payTeaser({} as never, metros as never, 'S', true))
+      .toMatchObject({ fact: 'Percentiles for every metro on the map.', top3: [] })
   })
 })
 
