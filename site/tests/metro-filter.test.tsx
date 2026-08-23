@@ -38,12 +38,22 @@ describe('MetroFilter', () => {
     expect(onSelect).toHaveBeenCalledWith('12420')
   })
 
-  it('caps the list at `limit`', async () => {
-    const many = Array.from({ length: 20 }, (_, i) => ({
-      cbsa: String(i), name: `San Test ${i}, CA`, state: 'CA', lat: 0, lng: 0, rpp: 100, lcaFilings: 0,
-    }))
+  it('applies `limit` AFTER filtering, not before', async () => {
+    // The first three entries deliberately do not match. A buggy slice-then-filter would
+    // cut the list down to these three and return zero results; filter-then-slice returns 3.
+    const many = [
+      ...Array.from({ length: 3 }, (_, i) => ({
+        cbsa: `x${i}`, name: `Decoy ${i}, NV`, state: 'NV', lat: 0, lng: 0, rpp: 100, lcaFilings: 0,
+      })),
+      ...Array.from({ length: 12 }, (_, i) => ({
+        cbsa: String(i), name: `San Test ${i}, CA`, state: 'CA', lat: 0, lng: 0, rpp: 100, lcaFilings: 0,
+      })),
+    ]
     render(<MetroFilter metros={many} onSelect={() => {}} limit={3} />)
     await userEvent.type(screen.getByRole('searchbox'), 'san test')
-    expect(document.querySelectorAll('.mf-result')).toHaveLength(3)
+    const results = document.querySelectorAll('.mf-result')
+    expect(results).toHaveLength(3)
+    // And they must be the matching ones, not the decoys.
+    expect([...results].every(r => r.textContent!.includes('San Test'))).toBe(true)
   })
 })

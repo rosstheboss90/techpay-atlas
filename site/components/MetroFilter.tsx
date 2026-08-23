@@ -26,7 +26,7 @@ export function MetroFilter({ metros, onSelect, label = 'Find a city', limit = 8
       <input type="search" className="mf-input" value={query} aria-label={label} placeholder={label}
              onChange={e => setQuery(e.target.value)} />
       {q !== '' && matches.length === 0 && (
-        <p className="mf-empty">No metros match "{query.trim()}".</p>
+        <p className="mf-empty">No metros match “{query.trim()}”.</p>
       )}
       {matches.length > 0 && (
         <ul className="mf-results">
