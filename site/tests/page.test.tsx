@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import Page from '../app/page'
 import { __clearDataCache } from '../lib/data'
@@ -244,6 +244,42 @@ describe('Page', () => {
       const map = document.querySelector('.salary-map')!
       expect(map).toHaveAttribute('aria-hidden', 'true')
       expect(map.querySelector('circle[tabindex]')).toBeNull()
+      expect(map.querySelector('circle[role="button"]')).toBeNull()
+      expect(map.querySelector('circle[aria-label]')).toBeNull()
+
+      // The behavioural half: clicking a bubble must not select a metro.
+      const bubble = map.querySelector('circle')!
+      fireEvent.click(bubble)
+      expect(document.querySelector('.metro-panel')).toBeNull()
+    } finally {
+      window.history.replaceState(null, '', '/')
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('desktop: the map stays interactive — bubbles are focusable and labelled', async () => {
+    window.history.replaceState(null, '', '/')
+    vi.stubGlobal('matchMedia', vi.fn((query: string) => ({
+      matches: false, media: query, onchange: null,
+      addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {},
+      dispatchEvent: () => false,
+    })))
+    __clearDataCache()
+    vi.stubGlobal('fetch', vi.fn((path: string) => Promise.resolve({
+      ok: true,
+      json: async () => (path.includes('salaries') ? salaries : path.includes('titles') ? titles
+        : path.includes('trends') ? trends : meta),
+    })))
+
+    try {
+      render(<Page />)
+      await screen.findByText(/TechPay Atlas/)
+      await waitFor(() => expect(document.querySelector('.salary-map')).not.toBeNull())
+      const map = document.querySelector('.salary-map')!
+      expect(map).not.toHaveAttribute('aria-hidden')
+      expect(map).toHaveAttribute('role', 'group')
+      expect(map.querySelectorAll('circle[tabindex]').length).toBeGreaterThan(0)
+      expect(map.querySelector('circle[role="button"]')).not.toBeNull()
     } finally {
       window.history.replaceState(null, '', '/')
       vi.unstubAllGlobals()
