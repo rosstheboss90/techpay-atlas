@@ -196,7 +196,7 @@ export default function Page() {
       <QuestionSection question="Are wages beating inflation?"
                        fact={teasers.trend.fact}
                        narrow={narrow}>
-        <TrendsTeaser trends={trends} soc={state.role} roleLabel={role.label} />
+        <TrendsTeaser trends={trends} soc={state.role} roleLabel={role.label} narrow={narrow} />
       </QuestionSection>
       <QuestionSection question="What's this job really called?"
                        fact={teasers.title.fact}
