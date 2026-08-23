@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import Page from '../app/page'
 import { __clearDataCache } from '../lib/data'
 
@@ -214,6 +215,91 @@ describe('Page', () => {
       const footer = document.querySelector('footer.provenance')!
       expect(footer.querySelector('.thesis')).not.toBeNull()
       expect(footer.querySelectorAll('.masthead-link')).toHaveLength(3)
+    } finally {
+      window.history.replaceState(null, '', '/')
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('narrow: hero shows the top metro as a big number and the map is not interactive', async () => {
+    window.history.replaceState(null, '', '/')
+    vi.stubGlobal('matchMedia', vi.fn((query: string) => ({
+      matches: true, media: query, onchange: null,
+      addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {},
+      dispatchEvent: () => false,
+    })))
+    __clearDataCache()
+    vi.stubGlobal('fetch', vi.fn((path: string) => Promise.resolve({
+      ok: true,
+      json: async () => (path.includes('salaries') ? salaries : path.includes('titles') ? titles
+        : path.includes('trends') ? trends : meta),
+    })))
+
+    try {
+      render(<Page />)
+      await screen.findByText(/TechPay Atlas/)
+      await waitFor(() => expect(document.querySelectorAll('.qsec-q').length).toBe(7))
+      expect(document.querySelector('.hero-num')!.textContent).toMatch(/^\$[\d,]+$/)
+      expect(document.querySelector('.hero-place')).not.toBeNull()
+      const map = document.querySelector('.salary-map')!
+      expect(map).toHaveAttribute('aria-hidden', 'true')
+      expect(map.querySelector('circle[tabindex]')).toBeNull()
+    } finally {
+      window.history.replaceState(null, '', '/')
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('narrow: the explorer opens from the hero and is not mounted before that', async () => {
+    window.history.replaceState(null, '', '/')
+    vi.stubGlobal('matchMedia', vi.fn((query: string) => ({
+      matches: true, media: query, onchange: null,
+      addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {},
+      dispatchEvent: () => false,
+    })))
+    __clearDataCache()
+    vi.stubGlobal('fetch', vi.fn((path: string) => Promise.resolve({
+      ok: true,
+      json: async () => (path.includes('salaries') ? salaries : path.includes('titles') ? titles
+        : path.includes('trends') ? trends : meta),
+    })))
+
+    try {
+      render(<Page />)
+      await screen.findByText(/TechPay Atlas/)
+      await waitFor(() => expect(document.querySelectorAll('.qsec-q').length).toBe(7))
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      await userEvent.click(screen.getByRole('button', { name: /explore the map/i }))
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
+    } finally {
+      window.history.replaceState(null, '', '/')
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('narrow: hero omits the number entirely when no metro has a median for the role', async () => {
+    // Spec error-handling row: never a blank or NaN slot — the map and the fallback
+    // sentence stand alone.
+    window.history.replaceState(null, '', '/')
+    vi.stubGlobal('matchMedia', vi.fn((query: string) => ({
+      matches: true, media: query, onchange: null,
+      addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {},
+      dispatchEvent: () => false,
+    })))
+    __clearDataCache()
+    vi.stubGlobal('fetch', vi.fn((path: string) => Promise.resolve({
+      ok: true,
+      json: async () => (path.includes('salaries') ? {} : path.includes('titles') ? titles
+        : path.includes('trends') ? trends : meta),
+    })))
+
+    try {
+      render(<Page />)
+      await screen.findByText(/TechPay Atlas/)
+      await waitFor(() => expect(document.querySelectorAll('.qsec-q').length).toBe(7))
+      expect(document.querySelector('.hero-num')).toBeNull()
+      expect(document.querySelector('.qsec-deck')!.textContent)
+        .toBe('Percentiles for every metro on the map.')
     } finally {
       window.history.replaceState(null, '', '/')
       vi.unstubAllGlobals()

@@ -3,6 +3,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { FilterBar } from '../components/FilterBar'
 import { HeadToHead } from '../components/HeadToHead'
+import { MapExplorer } from '../components/MapExplorer'
+import { MetroFilter } from '../components/MetroFilter'
 import { MetroPanel } from '../components/MetroPanel'
 import { QuestionSection } from '../components/QuestionSection'
 import { RankSlopegraph } from '../components/RankSlopegraph'
@@ -14,6 +16,7 @@ import { TitleLens } from '../components/TitleLens'
 import { TitleStrip } from '../components/TitleStrip'
 import { TrendsTeaser } from '../components/TrendsTeaser'
 import { loadMeta, loadSalaries, loadTitles, loadTrends } from '../lib/data'
+import { fmtUsd } from '../lib/format'
 import { colTeaser, payTeaser, similarTeaser, titleTeaser, trendTeaser } from '../lib/teasers'
 import type { Meta, Salaries } from '../lib/types'
 import type { TitlesJson } from '../lib/title-types'
@@ -36,6 +39,7 @@ export default function Page() {
   const [error, setError] = useState<string | null>(null)
   const [state, setState] = useState<UrlState>(DEFAULT_STATE)
   const [dark, setDark] = useState(false)
+  const [explorerOpen, setExplorerOpen] = useState(false)
   const narrow = useNarrow()
 
   useEffect(() => {
@@ -148,15 +152,34 @@ export default function Page() {
                        fact={teasers.pay.fact}
                        narrow={narrow}>
         <h2 className="sec-q">Where does it pay the most?</h2>
+        {narrow && teasers.pay.top3.length > 0 && (
+          <div className="hero-readout">
+            <div className="hero-num">{fmtUsd(teasers.pay.top3[0].p50)}</div>
+            <div className="hero-place">{teasers.pay.top3[0].city}</div>
+            <div className="hero-sub">
+              highest median of {meta.metros.length} metros · {role.label}
+              {state.adjusted ? ', cost-of-living adjusted' : ''}
+            </div>
+          </div>
+        )}
         <div id="sec-map" className={state.metro ? 'hero-row has-panel' : 'hero-row'}>
           <SalaryMap meta={meta} salaries={salaries} soc={state.role} metric={state.metric}
                      adjusted={state.adjusted} selected={state.metro} dark={dark}
+                     interactive={!narrow}
                      onSelect={cbsa => update({ metro: cbsa })} />
           {state.metro && (
             <MetroPanel meta={meta} salaries={salaries} cbsa={state.metro} soc={state.role}
                         adjusted={state.adjusted} national={trends} onClose={() => update({ metro: null })} />
           )}
         </div>
+        {narrow && (
+          <div className="hero-actions">
+            <MetroFilter metros={meta.metros} onSelect={cbsa => update({ metro: cbsa })} />
+            <button type="button" className="hero-explore" onClick={() => setExplorerOpen(true)}>
+              Explore the map →
+            </button>
+          </div>
+        )}
       </QuestionSection>
       <QuestionSection question="Are you underpaid?"
                        fact={`Type your offer to see where it lands, in any two of ${meta.metros.length} metros.`}
@@ -194,6 +217,12 @@ export default function Page() {
                      dark={dark} selectedMetro={state.metro} selectedRole={state.role}
                      onSelect={p => update(p)} />
       </QuestionSection>
+      {narrow && explorerOpen && (
+        <MapExplorer meta={meta} salaries={salaries} soc={state.role} metric={state.metric}
+                     adjusted={state.adjusted} dark={dark}
+                     onSelect={cbsa => update({ metro: cbsa })}
+                     onClose={() => setExplorerOpen(false)} />
+      )}
       <footer className="provenance">
         {narrow && (
           <>

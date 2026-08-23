@@ -14,6 +14,11 @@ interface Props {
   selected: string | null
   dark: boolean
   onSelect: (cbsa: string | null) => void
+  /** Narrow's inline hero map is a poster, not a control surface — MapExplorer is where
+   *  selecting a city actually works there (touch accuracy). Defaults to `true` so every
+   *  existing desktop caller keeps its handlers, `tabIndex`, `role` and hover tooltip
+   *  exactly as before; only `page.tsx` passes `false`, on narrow. */
+  interactive?: boolean
 }
 
 interface Hover { cbsa: string; x: number; y: number }
@@ -32,7 +37,7 @@ function formatLegendValue(v: number, metric: Metric): string {
   return `${v.toFixed(1)}×`
 }
 
-export function SalaryMap({ meta, salaries, soc, metric, adjusted, selected, dark, onSelect }: Props) {
+export function SalaryMap({ meta, salaries, soc, metric, adjusted, selected, dark, onSelect, interactive = true }: Props) {
   const [hover, setHover] = useState<Hover | null>(null)
   const ramp = dark ? RAMP_DARK : RAMP_LIGHT
 
@@ -48,21 +53,27 @@ export function SalaryMap({ meta, salaries, soc, metric, adjusted, selected, dar
 
   return (
     <figure className="map-figure">
-      <svg viewBox={`0 0 ${MAP_W} ${MAP_H}`} role="group" aria-label="US metro map of tech pay" className="salary-map">
+      <svg viewBox={`0 0 ${MAP_W} ${MAP_H}`} className="salary-map"
+           {...(interactive
+             ? { role: 'group' as const, 'aria-label': 'US metro map of tech pay' }
+             : { 'aria-hidden': true as const })}>
         <path d={statesPath} className="map-states" />
         {bubbles.map(b => (
           <circle
             key={b.m.cbsa} cx={b.x} cy={b.y} r={b.r} fill={b.fill}
-            tabIndex={0} role="button"
-            aria-label={`${b.m.name}: ${formatMetricValue(b.v, metric, b.m.rpp == null, adjusted)}`}
             className={`map-bubble${selected === b.m.cbsa ? ' is-selected' : ''}`}
-            onMouseEnter={e => setHover({ cbsa: b.m.cbsa, x: e.clientX, y: e.clientY })}
-            onMouseMove={e => setHover({ cbsa: b.m.cbsa, x: e.clientX, y: e.clientY })}
-            onMouseLeave={() => setHover(null)}
-            onClick={() => select(b.m.cbsa)}
-            onKeyDown={e => {
-              if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(b.m.cbsa) }
-            }}
+            {...(interactive ? {
+              tabIndex: 0,
+              role: 'button',
+              'aria-label': `${b.m.name}: ${formatMetricValue(b.v, metric, b.m.rpp == null, adjusted)}`,
+              onMouseEnter: (e: React.MouseEvent) => setHover({ cbsa: b.m.cbsa, x: e.clientX, y: e.clientY }),
+              onMouseMove: (e: React.MouseEvent) => setHover({ cbsa: b.m.cbsa, x: e.clientX, y: e.clientY }),
+              onMouseLeave: () => setHover(null),
+              onClick: () => select(b.m.cbsa),
+              onKeyDown: (e: React.KeyboardEvent) => {
+                if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(b.m.cbsa) }
+              },
+            } : {})}
           />
         ))}
       </svg>
