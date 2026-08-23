@@ -24,7 +24,7 @@ export function QuestionSection({ question, fact, narrow, children }: Props) {
   return (
     <section className="qsec">
       <p className="qsec-q">{question}</p>
-      <p className="qsec-deck">{fact}</p>
+      {fact && <p className="qsec-deck">{fact}</p>}
       <div className="qsec-body">{children}</div>
     </section>
   )

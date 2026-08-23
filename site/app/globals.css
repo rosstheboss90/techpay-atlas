@@ -561,17 +561,35 @@ button, select, input { font-family: inherit; }
     clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap;
   }
 
-  /* Sticky control bar — the only persistent chrome (wayfinding option D). */
+  /* Sticky control bar — the only persistent chrome (wayfinding option D). Target ≈44px
+     including the border: one row, not two. The desktop .filter-bar rule (above, unscoped)
+     sets flex-wrap: wrap and is not otherwise overridden here — that's what was wrapping the
+     three controls to a second row and doubling the agreed chrome (measured 81px). Reset it
+     explicitly. */
   .filter-bar {
     position: sticky; top: 0; z-index: 20;
-    display: flex; flex-direction: row; align-items: center; gap: var(--s2);
+    display: flex; flex-direction: row; flex-wrap: nowrap; align-items: center; gap: var(--s2);
     background: var(--bg); border-bottom: 1px solid var(--line);
-    margin: 0 calc(var(--s4) * -1); padding: var(--s2) var(--s4);
+    margin: 0 calc(var(--s4) * -1); padding: 6px var(--s4);
   }
   .filter-bar .filter-label { display: none; }        /* the chip's value is self-describing */
   .filter-bar .filter-field, .filter-bar select { flex: 0 1 auto; width: auto; min-width: 0; }
   .filter-bar select, .col-toggle { font-size: var(--fs-meta); padding: 4px var(--s2); }
   .col-toggle { margin-left: auto; white-space: nowrap; }
+  /* Only the role select is allowed to grow/shrink — it carries the longest content (21 role
+     names). It flexes to fill whatever room the metric select and the toggle leave behind and
+     truncates with an ellipsis rather than wrapping the row; the metric select and the toggle
+     stay pinned to their own content width. */
+  .filter-bar .filter-field:first-child { flex: 1 1 auto; min-width: 0; }
+  .filter-bar .filter-field:first-child select {
+    width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  /* The metric field otherwise inherits flex-shrink:1 (and min-width:0) from the shared
+     .filter-field rule above, so under the same space pressure it was shrinking too — its
+     select has no ellipsis rule, so the browser was hard-clipping its text mid-word ("Medi")
+     instead of the intended clean ellipsis. Pin it to its own content width so only the role
+     select gives up space. */
+  .filter-bar .filter-field:last-of-type { flex: 0 0 auto; }
 
   .hero-readout { margin-top: var(--s4); }
   .hero-num {
@@ -635,6 +653,22 @@ button, select, input { font-family: inherit; }
     background: var(--bg);       /* opaque — cells must not show through the metro name */
     max-width: 14ch;
   }
+
+  /* Height-budget fixes (2026-08-23 review): two charts were sized to their DATA rather than
+     the viewport, so total page height depended on how many rows a role happened to have.
+     Cap both explicitly and let the existing scroll containers (already in place for the
+     horizontal axis) pick up the overflow on the other axis too. */
+
+  /* RankSlopegraph draws at its natural viewBox size (up to 1054×528 depending on row count).
+     Capping height and letting width track it via the SVG's intrinsic aspect ratio (from its
+     viewBox) keeps the chart legible and scrollable in .slope-scroll instead of pushing the
+     page 500+px taller on roles with many metros. */
+  .slope-scroll svg { height: 280px; width: auto; max-width: none; }
+
+  /* .hm-scroll already scrolls both axes (overflow: auto, set at its base rule above); it was
+     just uncapped on narrow, where max-height: 70vh resolves to ~590px of an ~840px viewport.
+     350px keeps the grid readable without eating most of the screen. */
+  .hm-scroll { max-height: 350px; }
 }
 
 /* .mini-spark ships wherever MiniSpark is used (now the trends-section chart at narrow width,

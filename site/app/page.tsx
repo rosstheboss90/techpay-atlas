@@ -149,7 +149,7 @@ export default function Page() {
       <FilterBar roles={meta.roles} state={state} onChange={update} />
       {!narrow && <TitleStrip soc={state.role} roleLabel={role.label} />}
       <QuestionSection question="Where does it pay the most?"
-                       fact={teasers.pay.fact}
+                       fact={narrow && teasers.pay.top3.length > 0 ? '' : teasers.pay.fact}
                        narrow={narrow}>
         <h2 className="sec-q">Where does it pay the most?</h2>
         {narrow && teasers.pay.top3.length > 0 && (
