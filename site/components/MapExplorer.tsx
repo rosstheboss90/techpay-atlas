@@ -33,6 +33,7 @@ export function MapExplorer({ meta, salaries, soc, metric, adjusted, dark, onSel
   const [picked, setPicked] = useState<{ name: string; value: string; rivals: number } | null>(null)
   const [missed, setMissed] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
+  const rootRef = useRef<HTMLDivElement>(null)
   const [box, setBox] = useState({ w: 0, h: 0 })
 
   const ramp = dark ? RAMP_DARK : RAMP_LIGHT
@@ -56,12 +57,27 @@ export function MapExplorer({ meta, salaries, soc, metric, adjusted, dark, onSel
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
 
+  // Minimal modal focus management (not a full focus trap): move focus into the dialog on
+  // open so screen reader / keyboard users land inside it, and restore focus to whatever
+  // triggered it on close so closing doesn't strand focus on <body>.
+  useEffect(() => {
+    const prev = document.activeElement as HTMLElement | null
+    rootRef.current?.focus()
+    return () => prev?.focus?.()
+  }, [])
+
   const scale = zoomScale(zoom, box.w, box.h)
 
   const choose = useCallback((cbsa: string) => { onSelect(cbsa); onClose() }, [onSelect, onClose])
 
   const onMapClick = (e: React.MouseEvent<SVGSVGElement>) => {
     const rect = e.currentTarget.getBoundingClientRect()
+    // Assumes .mx-map renders at its intrinsic proportions (width/MAP_W == height/MAP_H).
+    // A max-width constraint on this element would letterbox it — preserveAspectRatio scales
+    // both axes by the same factor while the box shrinks on only one, so rect.width/MAP_W and
+    // rect.height/MAP_H would diverge and every tap would be silently mis-mapped on Y. The
+    // stylesheet task must keep this element unconstrained (or this line must switch to
+    // rect.height/MAP_H, whichever axis is letterboxed) — see task-7 review.
     const s = rect.width / MAP_W
     const { hit, rivals } = pickAt(bubbles, (e.clientX - rect.left) / s, (e.clientY - rect.top) / s, s)
     if (!hit) { setPicked(null); setMissed(true); return }
@@ -74,7 +90,8 @@ export function MapExplorer({ meta, salaries, soc, metric, adjusted, dark, onSel
   }
 
   return (
-    <div className="mx" role="dialog" aria-modal="true" aria-label="Explore the map" data-zoom={zoom}>
+    <div className="mx" role="dialog" aria-modal="true" aria-label="Explore the map" data-zoom={zoom}
+         ref={rootRef} tabIndex={-1}>
       <div className="mx-bar">
         <MetroFilter metros={meta.metros} onSelect={choose} label="Find a city" />
         <div className="mx-zooms">
