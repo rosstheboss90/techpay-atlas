@@ -118,3 +118,63 @@ describe('RoleHeatmap', () => {
     })
   })
 })
+
+// 60 metros with strictly descending employment, so topMetrosByEmployment is deterministic
+// and metros outside both caps exist for the search test to reach.
+const hmRoles = [
+  { soc: 'S1', label: 'Role One', short: 'R1' },
+  { soc: 'S2', label: 'Role Two', short: 'R2' },
+]
+const hmCbsas = Array.from({ length: 60 }, (_, i) => String(40000 + i))
+
+const hmMeta = {
+  year: 2025, generated: '', topCodeValue: 239200, rppYear: 2024, lcaPeriod: '',
+  sources: { oews: '', lca: [], hud: '', zipMatchRate: 0.99 },
+  roles: hmRoles,
+  metros: hmCbsas.map((cbsa, i) => ({
+    cbsa, name: `Metro ${i}, XX`, state: 'XX', lat: 0, lng: 0, rpp: 100, lcaFilings: 0,
+  })),
+} as unknown as Meta
+
+const hmSalaries: Salaries = {}
+hmCbsas.forEach((cbsa, i) => {
+  hmSalaries[cbsa] = {}
+  for (const r of hmRoles) {
+    hmSalaries[cbsa][r.soc] = {
+      emp: 10000 - i * 100, lq: 1, p10: null, p25: null, p50: 120000 + i * 500, p75: null, p90: null,
+    }
+  }
+})
+
+const renderHmHeatmap = ({ narrow }: { narrow: boolean }) =>
+  render(<RoleHeatmap meta={hmMeta} salaries={hmSalaries} metric="pay" adjusted={false}
+                      dark={false} selectedMetro={null} selectedRole="S1"
+                      narrow={narrow} onSelect={() => {}} />)
+
+describe('RoleHeatmap narrow cap', () => {
+  it('narrow defaults to the phone cap and says so on the toggle', () => {
+    renderHmHeatmap({ narrow: true })          // fixture must supply > 15 metros
+    expect(screen.getByText(/^15 metros$/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /show all/i })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /show top 50/i })).not.toBeInTheDocument()
+  })
+
+  it('desktop keeps the 50-metro cap', () => {
+    renderHmHeatmap({ narrow: false })
+    expect(screen.getByText(/^50 metros$/)).toBeInTheDocument()
+  })
+
+  it('narrow: expanding shows every metro, and the toggle offers the phone cap back', () => {
+    renderHmHeatmap({ narrow: true })
+    fireEvent.click(screen.getByRole('button', { name: /show all/i }))
+    expect(screen.getByText(/^60 metros$/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /show top 15/i })).toBeInTheDocument()
+  })
+
+  it('search still reaches metros outside the cap', () => {
+    renderHmHeatmap({ narrow: true })
+    // "Metro 40" is 41st by employment — well outside both the 15 and 50 caps.
+    fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'Metro 40' } })
+    expect(screen.getByText(/^1 metros$/)).toBeInTheDocument()
+  })
+})

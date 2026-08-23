@@ -215,7 +215,7 @@ export default function Page() {
                        narrow={narrow}>
         <RoleHeatmap meta={meta} salaries={salaries} metric={state.metric} adjusted={state.adjusted}
                      dark={dark} selectedMetro={state.metro} selectedRole={state.role}
-                     onSelect={p => update(p)} />
+                     narrow={narrow} onSelect={p => update(p)} />
       </QuestionSection>
       {narrow && explorerOpen && (
         <MapExplorer meta={meta} salaries={salaries} soc={state.role} metric={state.metric}
