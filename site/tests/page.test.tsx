@@ -183,4 +183,40 @@ describe('Page', () => {
       vi.unstubAllGlobals()
     }
   })
+
+  it('narrow: masthead keeps only the h1 and value line; thesis and links move to the footer', async () => {
+    window.history.replaceState(null, '', '/')
+    vi.stubGlobal('matchMedia', vi.fn((query: string) => ({
+      matches: true, media: query, onchange: null,
+      addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {},
+      dispatchEvent: () => false,
+    })))
+    __clearDataCache()
+    vi.stubGlobal('fetch', vi.fn((path: string) => Promise.resolve({
+      ok: true,
+      json: async () => (path.includes('salaries') ? salaries : path.includes('titles') ? titles
+        : path.includes('trends') ? trends : meta),
+    })))
+
+    try {
+      render(<Page />)
+      await screen.findByText(/TechPay Atlas/)
+      await waitFor(() => expect(document.querySelectorAll('.qsec-q').length).toBe(7))
+
+      const masthead = document.querySelector('.masthead')!
+      expect(masthead.querySelector('h1')).not.toBeNull()
+      expect(masthead.querySelector('.value')).not.toBeNull()
+      expect(masthead.querySelector('.thesis')).toBeNull()
+      expect(masthead.querySelector('.masthead-link')).toBeNull()
+      // Desktop-only content must not leak into the narrow masthead.
+      expect(masthead.querySelector('.tagline-small')).toBeNull()
+
+      const footer = document.querySelector('footer.provenance')!
+      expect(footer.querySelector('.thesis')).not.toBeNull()
+      expect(footer.querySelectorAll('.masthead-link')).toHaveLength(3)
+    } finally {
+      window.history.replaceState(null, '', '/')
+      vi.unstubAllGlobals()
+    }
+  })
 })

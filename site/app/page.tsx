@@ -123,15 +123,23 @@ export default function Page() {
         <div>
           <h1>TechPay Atlas</h1>
           <p className="value">Check what your job really pays — by city, by real job title, adjusted for what living there costs.</p>
-          <p className="thesis">Official data tells you the number. This tells you what the number leaves out.</p>
-          <p className="tagline tagline-small">
-            {role.label} · {meta.metros.length} metros · BLS OEWS {meta.year}
-            {state.adjusted ? `, adjusted for cost of living (BEA RPP ${meta.rppYear})` : ''}
-          </p>
+          {!narrow && (
+            <>
+              <p className="thesis">Official data tells you the number. This tells you what the number leaves out.</p>
+              <p className="tagline tagline-small">
+                {role.label} · {meta.metros.length} metros · BLS OEWS {meta.year}
+                {state.adjusted ? `, adjusted for cost of living (BEA RPP ${meta.rppYear})` : ''}
+              </p>
+            </>
+          )}
         </div>
-        <Link href="/about" className="masthead-link">About the data →</Link>
-        <Link href="/trends" className="masthead-link">Pay over time →</Link>
-        <Link href="/employers" className="masthead-link">Employers →</Link>
+        {!narrow && (
+          <>
+            <Link href="/about" className="masthead-link">About the data →</Link>
+            <Link href="/trends" className="masthead-link">Pay over time →</Link>
+            <Link href="/employers" className="masthead-link">Employers →</Link>
+          </>
+        )}
       </header>
       {!narrow && <SectionNav />}
       <FilterBar roles={meta.roles} state={state} onChange={update} />
@@ -187,6 +195,20 @@ export default function Page() {
                      onSelect={p => update(p)} />
       </QuestionSection>
       <footer className="provenance">
+        {narrow && (
+          <>
+            <p className="thesis">Official data tells you the number. This tells you what the number leaves out.</p>
+            <p className="tagline tagline-small">
+              {role.label} · {meta.metros.length} metros · BLS OEWS {meta.year}
+              {state.adjusted ? `, adjusted for cost of living (BEA RPP ${meta.rppYear})` : ''}
+            </p>
+            <nav className="prov-links">
+              <Link href="/about" className="masthead-link">About the data →</Link>
+              <Link href="/trends" className="masthead-link">Pay over time →</Link>
+              <Link href="/employers" className="masthead-link">Employers →</Link>
+            </nav>
+          </>
+        )}
         Sources: BLS OEWS {meta.year} · BEA RPP {meta.rppYear} · DOL H-1B LCA {meta.lcaPeriod} · generated {meta.generated.slice(0, 10)}
       </footer>
     </main>
