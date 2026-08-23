@@ -146,4 +146,41 @@ describe('Page', () => {
       vi.unstubAllGlobals()
     }
   })
+
+  // Regression pin: QuestionSection itself never owns a DOM id — six of the seven anchors
+  // (h2h-h, slope-h, trend-h, tl-h, rsim-h, hm-heading) live on the child's own heading, and the
+  // seventh (sec-map) lives on a div page.tsx renders directly. Nothing structurally stops either
+  // side from also claiming an id: a section wrapper re-adding `id={anchorId}` would duplicate
+  // whichever child already carries it (six sections did, the moment narrow always mounts
+  // children), and dropping `id="sec-map"` from page.tsx's own div would leave the map section
+  // with NO anchor on desktop, since QuestionSection renders no wrapper there at all. This test
+  // covers both failure directions directly, on narrow, where the duplication was invisible to
+  // an isolated component test (whose stand-in child carries no id of its own).
+  it('narrow: every section anchor id resolves to exactly one element in the DOM', async () => {
+    window.history.replaceState(null, '', '/')
+    vi.stubGlobal('matchMedia', vi.fn((query: string) => ({
+      matches: true, media: query, onchange: null,
+      addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {},
+      dispatchEvent: () => false,
+    })))
+    __clearDataCache()
+    vi.stubGlobal('fetch', vi.fn((path: string) => Promise.resolve({
+      ok: true,
+      json: async () => (path.includes('salaries') ? salaries : path.includes('titles') ? titles
+        : path.includes('trends') ? trends : meta),
+    })))
+
+    try {
+      render(<Page />)
+      await screen.findByText(/TechPay Atlas/)
+      await waitFor(() => expect(document.querySelectorAll('.qsec-q').length).toBe(7))
+      const anchorIds = ['sec-map', 'h2h-h', 'slope-h', 'trend-h', 'tl-h', 'rsim-h', 'hm-heading']
+      for (const id of anchorIds) {
+        expect(document.querySelectorAll('#' + id).length).toBe(1)
+      }
+    } finally {
+      window.history.replaceState(null, '', '/')
+      vi.unstubAllGlobals()
+    }
+  })
 })

@@ -70,8 +70,9 @@ export default function Page() {
   }, [])
 
   // Hash deep-link: scroll once after the tree exists. Narrow and desktop share this behaviour —
-  // every QuestionSection renders its section (and owns its anchorId) unconditionally now, so
-  // there is no collapsed-card case to special-case around any more.
+  // every section's children always mount now, so there is no collapsed-card case to
+  // special-case around any more. The target ids live on the children themselves (their own
+  // headings, or #sec-map's div), never on QuestionSection.
   useEffect(() => {
     if (!meta) return
     const hash = window.location.hash.slice(1)
@@ -135,11 +136,11 @@ export default function Page() {
       {!narrow && <SectionNav />}
       <FilterBar roles={meta.roles} state={state} onChange={update} />
       {!narrow && <TitleStrip soc={state.role} roleLabel={role.label} />}
-      <QuestionSection anchorId="sec-map" question="Where does it pay the most?"
+      <QuestionSection question="Where does it pay the most?"
                        fact={teasers.pay.fact}
                        narrow={narrow}>
         <h2 className="sec-q">Where does it pay the most?</h2>
-        <div className={state.metro ? 'hero-row has-panel' : 'hero-row'}>
+        <div id="sec-map" className={state.metro ? 'hero-row has-panel' : 'hero-row'}>
           <SalaryMap meta={meta} salaries={salaries} soc={state.role} metric={state.metric}
                      adjusted={state.adjusted} selected={state.metro} dark={dark}
                      onSelect={cbsa => update({ metro: cbsa })} />
@@ -149,36 +150,36 @@ export default function Page() {
           )}
         </div>
       </QuestionSection>
-      <QuestionSection anchorId="h2h-h" question="Are you underpaid?"
+      <QuestionSection question="Are you underpaid?"
                        fact={`Type your offer to see where it lands, in any two of ${meta.metros.length} metros.`}
                        narrow={narrow}>
         <HeadToHead meta={meta} salaries={salaries} soc={state.role} adjusted={state.adjusted}
                     metroA={metroA} metroB={metroB} onSelect={p => update(p)} />
       </QuestionSection>
-      <QuestionSection anchorId="slope-h" question="Does your salary go far there?"
+      <QuestionSection question="Does your salary go far there?"
                        fact={teasers.col.fact}
                        narrow={narrow}>
         <RankSlopegraph meta={meta} salaries={salaries} soc={state.role} metric={state.metric}
                         onSelect={cbsa => update({ metro: cbsa })} />
       </QuestionSection>
-      <QuestionSection anchorId="trend-h" question="Are wages beating inflation?"
+      <QuestionSection question="Are wages beating inflation?"
                        fact={teasers.trend.fact}
                        narrow={narrow}>
         <TrendsTeaser trends={trends} soc={state.role} roleLabel={role.label} />
       </QuestionSection>
-      <QuestionSection anchorId="tl-h" question="What's this job really called?"
+      <QuestionSection question="What's this job really called?"
                        fact={teasers.title.fact}
                        narrow={narrow}>
         <TitleLens meta={meta} cbsa={state.metro} adjusted={state.adjusted}
                    onSelectRole={soc => update({ role: soc })} />
       </QuestionSection>
-      <QuestionSection anchorId="rsim-h" question="What else could you be?"
+      <QuestionSection question="What else could you be?"
                        fact={teasers.similar.fact}
                        narrow={narrow}>
         <RoleSimilarity meta={meta} salaries={salaries} soc={state.role}
                         onSelectRole={soc => update({ role: soc })} />
       </QuestionSection>
-      <QuestionSection anchorId="hm-heading" question="How does it all compare?"
+      <QuestionSection question="How does it all compare?"
                        fact="Every metro and every role, in one grid."
                        narrow={narrow}>
         <RoleHeatmap meta={meta} salaries={salaries} metric={state.metric} adjusted={state.adjusted}
