@@ -146,33 +146,30 @@ hmCbsas.forEach((cbsa, i) => {
   }
 })
 
-const renderHmHeatmap = ({ narrow }: { narrow: boolean }) =>
-  render(<RoleHeatmap meta={hmMeta} salaries={hmSalaries} metric="pay" adjusted={false}
-                      dark={false} selectedMetro={null} selectedRole="S1"
-                      narrow={narrow} onSelect={() => {}} />)
-
 describe('RoleHeatmap narrow cap', () => {
   it('narrow defaults to the phone cap and says so on the toggle', () => {
-    renderHmHeatmap({ narrow: true })          // fixture must supply > 15 metros
+    renderHeatmap({ narrow: true, meta: hmMeta, salaries: hmSalaries })          // fixture must supply > 15 metros
     expect(screen.getByText(/^15 metros$/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /show all/i })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /show top 50/i })).not.toBeInTheDocument()
   })
 
   it('desktop keeps the 50-metro cap', () => {
-    renderHmHeatmap({ narrow: false })
+    renderHeatmap({ narrow: false, meta: hmMeta, salaries: hmSalaries })
     expect(screen.getByText(/^50 metros$/)).toBeInTheDocument()
   })
 
   it('narrow: expanding shows every metro, and the toggle offers the phone cap back', () => {
-    renderHmHeatmap({ narrow: true })
+    renderHeatmap({ narrow: true, meta: hmMeta, salaries: hmSalaries })
     fireEvent.click(screen.getByRole('button', { name: /show all/i }))
     expect(screen.getByText(/^60 metros$/)).toBeInTheDocument()
+    // After expanding, the toggle must offer the ACTIVE cap back (15 on narrow, not a
+    // hardcoded 50) — this is the assertion that catches a hardcoded label.
     expect(screen.getByRole('button', { name: /show top 15/i })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /show top 50/i })).not.toBeInTheDocument()
   })
 
   it('search still reaches metros outside the cap', () => {
-    renderHmHeatmap({ narrow: true })
+    renderHeatmap({ narrow: true, meta: hmMeta, salaries: hmSalaries })
     // "Metro 40" is 41st by employment — well outside both the 15 and 50 caps.
     fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'Metro 40' } })
     expect(screen.getByText(/^1 metros$/)).toBeInTheDocument()
