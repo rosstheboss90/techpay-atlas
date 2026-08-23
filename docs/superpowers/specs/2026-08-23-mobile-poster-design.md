@@ -1,6 +1,6 @@
 # Mobile poster — uncollapsed sections, data-forward, map as poster + explorer
 
-**Date:** 2026-08-23 · **Status:** Draft for review
+**Date:** 2026-08-23 · **Status:** Approved
 
 ## Purpose
 
