@@ -508,8 +508,8 @@ button, select, input { font-family: inherit; }
   .page { padding: var(--s4) var(--s4) var(--s7); }
   .secnav { margin: 0 calc(var(--s4) * -1); padding: 0 var(--s4); }
   .masthead { border-bottom-width: 1px; }
-  .filter-bar select, .h2h-pick select, .h2h-target input, .hm-search { min-width: 0; width: 100%; }
-  .filter-field, .h2h-pick, .h2h-target { flex: 1 1 100%; }
+  .h2h-pick select, .h2h-target input, .hm-search { min-width: 0; width: 100%; }
+  .h2h-pick, .h2h-target { flex: 1 1 100%; }
   /* Two lines, not five: a 4-column grid is unreadable at 390px, but stacking
      every cell cost ~40px a row across 21 roles. Name+median, then bar+fact. */
   .rsim-row {
@@ -528,37 +528,124 @@ button, select, input { font-family: inherit; }
   .hm-rowh { max-width: 18ch; }
 
   .secnav { display: none; }
-  .qcard { border: var(--rule); border-radius: 10px; margin: var(--s3) 0; box-shadow: 0 1px 2px rgb(0 0 0 / 0.06); }
-  .qcard-body { overflow-x: auto; max-width: 100%; padding: 0 14px 12px; }
-  .qcard-btn {
-    display: flex; flex-direction: row; align-items: center; width: 100%;
-    text-align: left; font: inherit; color: var(--ink); background: none; border: none;
-    padding: 16px; cursor: pointer; gap: 12px;
+
+  /* ── Poster sections (2026-08-23) ─────────────────────────────────────
+     Nothing collapses; the charts are the page's visual language. Wide
+     content still scrolls in its own container at the source, never the
+     whole section — same rule as .slope-scroll / .role-scroll. */
+  .qsec { padding: var(--s6) 0 0; border-top: 1px solid var(--line-soft); margin-top: var(--s5); }
+  .qsec:first-of-type { border-top: none; margin-top: var(--s4); padding-top: var(--s4); }
+  .qsec-q {
+    font-size: .78rem; letter-spacing: .09em; text-transform: uppercase;
+    font-weight: 650; color: var(--accent); margin: 0;
   }
-  .qcard-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
-  .qcard-q { color: var(--accent); font-size: .78rem; letter-spacing: .09em; text-transform: uppercase; font-weight: 650; }
-  .qcard-fact { font-size: 1.12rem; font-weight: 700; letter-spacing: -.01em; line-height: 1.35; text-wrap: balance; font-variant-numeric: tabular-nums; }
-  .qcard-viz { display: block; margin-top: 6px; }
-  .qcard-viz svg { width: 100%; height: auto; }
-  /* MiniSpark's viewBox (280×30) already matches the intended rendered aspect ratio, but pin it
-     explicitly rather than relying on `height: auto` — its non-scaling-stroke + preserveAspectRatio
-     "none" combination is tuned for a fixed 30px height, not whatever `auto` resolves to. */
-  .qcard-viz .mini-spark { width: 100%; height: 30px; }
-  .qcard-chips { display: flex; gap: 4px; flex-wrap: wrap; }
-  .qcard-chip { border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; font-size: .72rem; color: var(--ink-muted); }
-  .qcard-chip b { color: var(--ink); font-weight: 650; font-variant-numeric: tabular-nums; }
-  .mini-spark polyline { stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
-  /* Dots are degenerate polylines too (see MiniSpark.tsx), so both rules below need the extra
-     class-selector specificity to win over the generic `.mini-spark polyline` stroke/width —
-     a bare `.mini-spark-dot`/`.mini-spark-pt` selector alone would lose that fight. */
-  .mini-spark .mini-spark-dot { stroke: var(--ink); stroke-width: 5; }
-  .mini-spark .mini-spark-pt { stroke: var(--accent); stroke-width: 4; }
-  .qcard-chev {
-    flex: none; width: 30px; height: 30px; border: 1.5px solid var(--line); border-radius: 50%;
-    display: flex; align-items: center; justify-content: center; color: var(--accent);
-    background: color-mix(in srgb, var(--accent) 12%, transparent); font-size: .85rem;
+  .qsec-deck {
+    font-size: 1.12rem; font-weight: 700; line-height: 1.35; letter-spacing: -.01em;
+    text-wrap: balance; font-variant-numeric: tabular-nums; margin: var(--s2) 0 0;
+  }
+  .qsec-body { margin-top: var(--s4); max-width: 100%; overflow-x: auto; }
+
+  /* Charts escape the page gutter. Same idiom as .secnav above. */
+  .qsec-body > figure,
+  .qsec-body .salary-map,
+  .tt-spark { margin-inline: calc(var(--s4) * -1); width: auto; }
+  .tt-spark .mini-spark { width: 100%; height: 44px; }
+
+  /* The eyebrow (p.qsec-q) now shows the question; the child's own <h2> would repeat it
+     verbatim. Hide it visually but KEEP it in the layout and the a11y tree — these headings
+     carry the section anchor ids, and a display:none element cannot be scrolled to. */
+  .qsec-body > section > header > h2,
+  .qsec-body > section > h2,
+  .qsec-body > h2.sec-q {
+    position: absolute; width: 1px; height: 1px; overflow: hidden;
+    clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap;
+  }
+
+  /* Sticky control bar — the only persistent chrome (wayfinding option D). */
+  .filter-bar {
+    position: sticky; top: 0; z-index: 20;
+    display: flex; flex-direction: row; align-items: center; gap: var(--s2);
+    background: var(--bg); border-bottom: 1px solid var(--line);
+    margin: 0 calc(var(--s4) * -1); padding: var(--s2) var(--s4);
+  }
+  .filter-bar .filter-label { display: none; }        /* the chip's value is self-describing */
+  .filter-bar .filter-field, .filter-bar select { flex: 0 1 auto; width: auto; min-width: 0; }
+  .filter-bar select, .col-toggle { font-size: var(--fs-meta); padding: 4px var(--s2); }
+  .col-toggle { margin-left: auto; white-space: nowrap; }
+
+  .hero-readout { margin-top: var(--s4); }
+  .hero-num {
+    font-size: 2.75rem; font-weight: 700; line-height: 1;
+    letter-spacing: -.045em; font-variant-numeric: tabular-nums;
+  }
+  .hero-place {
+    font-size: var(--fs-meta); letter-spacing: .11em; text-transform: uppercase;
+    font-weight: 650; margin-top: var(--s1);
+  }
+  .hero-sub { font-size: var(--fs-meta); color: var(--ink-muted); margin-top: 2px; }
+  .hero-actions { display: flex; flex-direction: column; gap: var(--s2); margin-top: var(--s3); }
+  .hero-explore {
+    align-self: flex-start; font: inherit; font-size: var(--fs-sm); font-weight: 650;
+    color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent);
+    border: 1px solid var(--line); border-radius: 999px; padding: var(--s2) var(--s4);
+    cursor: pointer;
+  }
+  .prov-links { display: flex; flex-wrap: wrap; gap: var(--s3); margin: var(--s3) 0; }
+
+  .mf-input {
+    width: 100%; font: inherit; font-size: var(--fs-body);
+    padding: var(--s2) var(--s3); border-radius: 8px;
+    border: var(--rule); background: var(--surface); color: var(--ink);
+  }
+  .mf-results { list-style: none; margin: var(--s2) 0 0; padding: 0; max-height: 40vh; overflow-y: auto; }
+  .mf-results li { border-top: 1px solid var(--line-soft); }
+  .mf-result {
+    width: 100%; text-align: left; font: inherit; font-size: var(--fs-sm);
+    /* 44px minimum row height — the one place on this page where a tap target is guaranteed. */
+    min-height: 44px; padding: var(--s2) var(--s1);
+    background: none; border: none; color: var(--ink); cursor: pointer;
+  }
+  .mf-empty { font-size: var(--fs-meta); color: var(--ink-muted); margin-top: var(--s2); }
+
+  .mx {
+    position: fixed; inset: 0; z-index: 50; background: var(--bg);
+    display: flex; flex-direction: column;
+  }
+  .mx-bar { padding: var(--s3) var(--s4); border-bottom: 1px solid var(--line); background: var(--surface); }
+  .mx-zooms { display: flex; gap: var(--s2); align-items: center; margin-top: var(--s2); flex-wrap: wrap; }
+  .mx-zoom, .mx-close {
+    font: inherit; font-size: var(--fs-meta); cursor: pointer;
+    border: var(--rule); border-radius: 999px; padding: 5px var(--s3);
+    background: var(--surface); color: var(--ink-muted);
+  }
+  .mx-zoom[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--surface); font-weight: 650; }
+  .mx-close { margin-left: auto; }
+  .mx-mapwrap { flex: 1; overflow: auto; overscroll-behavior: contain; background: var(--surface); }
+  .mx-map { display: block; }
+  .mx-read { padding: var(--s3) var(--s4); border-top: 1px solid var(--line); font-size: var(--fs-sm); }
+  .mx-ambig { color: var(--ink-muted); }
+
+  .rsim-more {
+    font: inherit; font-size: var(--fs-sm); font-weight: 650; color: var(--accent);
+    background: none; border: none; padding: var(--s3) 0 0; cursor: pointer;
+  }
+
+  .hm-table .hm-rowh {
+    position: sticky; left: 0; z-index: 1;
+    background: var(--bg);       /* opaque — cells must not show through the metro name */
+    max-width: 14ch;
   }
 }
+
+/* .mini-spark ships wherever MiniSpark is used (now the trends-section chart at narrow width,
+   previously the removed question-card viz) — kept outside the narrow media block so the
+   stroke rules apply at any viewport width. */
+.mini-spark polyline { stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+/* Dots are degenerate polylines too (see MiniSpark.tsx), so both rules below need the extra
+   class-selector specificity to win over the generic `.mini-spark polyline` stroke/width —
+   a bare `.mini-spark-dot`/`.mini-spark-pt` selector alone would lose that fight. */
+.mini-spark .mini-spark-dot { stroke: var(--ink); stroke-width: 5; }
+.mini-spark .mini-spark-pt { stroke: var(--accent); stroke-width: 4; }
 
 /* ── Pay trends (/trends) ────────────────────────────────────────────── */
 /* Sizing follows the house rule at the top of this file: the label column
