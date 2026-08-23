@@ -208,7 +208,7 @@ export default function Page() {
                        fact={teasers.similar.fact}
                        narrow={narrow}>
         <RoleSimilarity meta={meta} salaries={salaries} soc={state.role}
-                        onSelectRole={soc => update({ role: soc })} />
+                        onSelectRole={soc => update({ role: soc })} narrow={narrow} />
       </QuestionSection>
       <QuestionSection question="How does it all compare?"
                        fact="Every metro and every role, in one grid."
