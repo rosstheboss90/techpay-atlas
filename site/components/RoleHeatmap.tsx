@@ -14,10 +14,12 @@ interface Props {
   dark: boolean
   selectedMetro: string | null
   selectedRole: string
+  narrow?: boolean
   onSelect: (patch: { metro: string; role: string }) => void
 }
 
-const TOP_N = 50
+export const TOP_N = 50
+export const TOP_N_NARROW = 15
 
 function metricNoun(metric: Metric, adjusted: boolean): string {
   if (metric === 'pay') return adjusted ? 'Median pay, cost-of-living adjusted' : 'Median pay'
@@ -32,7 +34,7 @@ function cellText(row: SalaryRow | undefined, m: MetroMeta, metric: Metric, adju
   return row?.lq == null ? '—' : row.lq.toFixed(2)
 }
 
-export function RoleHeatmap({ meta, salaries, metric, adjusted, dark, selectedMetro, selectedRole, onSelect }: Props) {
+export function RoleHeatmap({ meta, salaries, metric, adjusted, dark, selectedMetro, selectedRole, narrow = false, onSelect }: Props) {
   const [sortSoc, setSortSoc] = useState(selectedRole)
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
   const [showAll, setShowAll] = useState(false)
@@ -40,16 +42,17 @@ export function RoleHeatmap({ meta, salaries, metric, adjusted, dark, selectedMe
 
   const ramp = dark ? RAMP_DARK : RAMP_LIGHT
   const roles = meta.roles
+  const cap = narrow ? TOP_N_NARROW : TOP_N
 
-  // Row set: a search matches across ALL metros (ignoring the top-N cap); otherwise top-N by
-  // employment unless "show all" is on. Then ordered by the active sort column.
+  // Row set: a search matches across ALL metros (ignoring the cap); otherwise top-N by
+  // employment (N depends on viewport) unless "show all" is on. Then ordered by the active sort column.
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase()
     const pool = q
       ? meta.metros.filter(m => m.name.toLowerCase().includes(q))
-      : showAll ? meta.metros : topMetrosByEmployment(meta.metros, salaries, TOP_N)
+      : showAll ? meta.metros : topMetrosByEmployment(meta.metros, salaries, cap)
     return sortMetros(pool, salaries, sortSoc, metric, adjusted, sortDir)
-  }, [meta.metros, salaries, query, showAll, sortSoc, sortDir, metric, adjusted])
+  }, [meta.metros, salaries, query, showAll, sortSoc, sortDir, metric, adjusted, cap])
 
   // One color domain per role column, over the currently-visible rows.
   const domains = useMemo(() => {
@@ -83,7 +86,7 @@ export function RoleHeatmap({ meta, salaries, metric, adjusted, dark, selectedMe
                aria-label="Filter metros by name" onChange={e => setQuery(e.target.value)} />
         {!query.trim() && (
           <button type="button" className="hm-toggle" aria-pressed={showAll} onClick={() => setShowAll(s => !s)}>
-            {showAll ? `Show top ${TOP_N}` : `Show all ${meta.metros.length}`}
+            {showAll ? `Show top ${cap}` : `Show all ${meta.metros.length}`}
           </button>
         )}
         <span className="hm-count">{rows.length} metros</span>

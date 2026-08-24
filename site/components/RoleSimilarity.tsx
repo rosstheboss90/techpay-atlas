@@ -1,14 +1,17 @@
 'use client'
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import type { Meta, Salaries } from '../lib/types'
 import { fmtUsd } from '../lib/format'
 import { similarByPay } from '../lib/role-similarity'
+
+export const NARROW_CAP = 5
 
 interface Props {
   meta: Meta
   salaries: Salaries
   soc: string
   onSelectRole: (soc: string) => void
+  narrow?: boolean
 }
 
 /** Phrase the other role's pay relative to the anchor, from the median anchor/other ratio. */
@@ -19,9 +22,12 @@ function directionText(ratio: number): string {
   return rel > 0 ? `pays ~${pct}% more` : `pays ~${pct}% less`
 }
 
-export function RoleSimilarity({ meta, salaries, soc, onSelectRole }: Props) {
+export function RoleSimilarity({ meta, salaries, soc, onSelectRole, narrow = false }: Props) {
   const anchorLabel = meta.roles.find(r => r.soc === soc)?.label ?? soc
   const sims = useMemo(() => similarByPay(meta, salaries, soc), [meta, salaries, soc])
+  const [expanded, setExpanded] = useState(false)
+  const capped = narrow && !expanded && sims.length > NARROW_CAP
+  const shown = capped ? sims.slice(0, NARROW_CAP) : sims
 
   return (
     <section className="rsim" aria-labelledby="rsim-h">
@@ -37,7 +43,7 @@ export function RoleSimilarity({ meta, salaries, soc, onSelectRole }: Props) {
         <p className="rsim-empty">Not enough overlap to compare this role.</p>
       ) : (
         <ol className="rsim-list">
-          {sims.map(s => {
+          {shown.map(s => {
             const within = Math.round((1 - s.overlap) * 100)
             return (
               <li key={s.soc} className="rsim-row">
@@ -50,6 +56,11 @@ export function RoleSimilarity({ meta, salaries, soc, onSelectRole }: Props) {
             )
           })}
         </ol>
+      )}
+      {capped && (
+        <button type="button" className="rsim-more" onClick={() => setExpanded(true)}>
+          See all {sims.length} roles →
+        </button>
       )}
     </section>
   )

@@ -28,4 +28,39 @@ describe('TrendsTeaser', () => {
     expect(screen.getByText(/Trend data unavailable/)).toBeInTheDocument()
     expect(screen.queryByRole('link')).not.toBeInTheDocument()
   })
+
+  it('renders the real-terms sparkline above the sentence when narrow', () => {
+    const trends = {
+      years: [2019, 2020, 2021, 2022, 2023, 2024, 2025], headlineFrom: 2021,
+      roles: { S: { changeReal: -0.057, real: [100, 102, 101, 99, 97, 96, 94], nominal: [] } },
+    } as never
+    const { container } = render(<TrendsTeaser trends={trends} soc="S" roleLabel="Software Developers" narrow />)
+    expect(container.querySelector('.mini-spark')).not.toBeNull()
+  })
+
+  it('omits the sparkline when the series has fewer than two real points, even when narrow', () => {
+    const trends = {
+      years: [2019, 2020], headlineFrom: 2019,
+      roles: { S: { changeReal: 0, real: [null, 100], nominal: [] } },
+    } as never
+    const { container } = render(<TrendsTeaser trends={trends} soc="S" roleLabel="Software Developers" narrow />)
+    expect(container.querySelector('.mini-spark')).toBeNull()
+    expect(container.textContent).toContain('Software Developers')
+  })
+
+  it('omits the sparkline entirely when trends failed to load', () => {
+    const { container } = render(<TrendsTeaser trends={null} soc="S" roleLabel="Software Developers" narrow />)
+    expect(container.querySelector('.mini-spark')).toBeNull()
+    expect(container.textContent).toContain('Trend data unavailable.')
+  })
+
+  it('omits the sparkline on desktop even with a good series (narrow=false)', () => {
+    const trends = {
+      years: [2019, 2020, 2021, 2022, 2023, 2024, 2025], headlineFrom: 2021,
+      roles: { S: { changeReal: -0.057, real: [100, 102, 101, 99, 97, 96, 94], nominal: [] } },
+    } as never
+    const { container } = render(<TrendsTeaser trends={trends} soc="S" roleLabel="Software Developers" narrow={false} />)
+    expect(container.querySelector('.mini-spark')).toBeNull()
+    expect(container.textContent).toContain('Software Developers are down 5.7% in real terms since 2021.')
+  })
 })

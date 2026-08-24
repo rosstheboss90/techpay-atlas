@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { render, screen, fireEvent, within } from '@testing-library/react'
-import { RoleSimilarity } from '../components/RoleSimilarity'
+import { RoleSimilarity, NARROW_CAP } from '../components/RoleSimilarity'
 import { MIN_SHARED } from '../lib/role-similarity'
 import type { Meta, Salaries, SalaryRow } from '../lib/types'
 
@@ -49,5 +49,58 @@ describe('RoleSimilarity', () => {
   it('shows the empty state when the anchor has no comparable roles', () => {
     render(<RoleSimilarity meta={meta} salaries={salaries} soc="Z" onSelectRole={() => {}} />)
     expect(screen.getByText(/not enough overlap/i)).toBeInTheDocument()
+  })
+})
+
+// One anchor ('A') plus seven comparison roles, each present in every metro so all seven
+// clear MIN_SHARED and the list is long enough for the cap to bite.
+const MANY_SOCS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
+const manyCbsas = Array.from({ length: MIN_SHARED + 3 }, (_, i) => String(30000 + i))
+
+const manyMeta = {
+  year: 2025, generated: '', topCodeValue: 239200, rppYear: 2024, lcaPeriod: '',
+  sources: { oews: '', lca: [], hud: '', zipMatchRate: 0.99 },
+  roles: MANY_SOCS.map(soc => ({ soc, label: `Role ${soc}`, short: soc })),
+  metros: manyCbsas.map(cbsa => ({ cbsa, name: `Metro ${cbsa}`, state: 'XX', lat: 0, lng: 0, rpp: 100, lcaFilings: 0 })),
+} as unknown as Meta
+
+const manySalaries: Salaries = {}
+manyCbsas.forEach((cbsa, i) => {
+  manySalaries[cbsa] = {}
+  MANY_SOCS.forEach((soc, j) => { manySalaries[cbsa][soc] = p(100000 + j * 5000 + i * 100) })
+})
+
+const renderWithManyRoles = ({ narrow }: { narrow: boolean }) =>
+  render(<RoleSimilarity meta={manyMeta} salaries={manySalaries} soc="A"
+                         onSelectRole={() => {}} narrow={narrow} />)
+
+describe('RoleSimilarity narrow cap', () => {
+  it('desktop shows every similar role and offers no expander', () => {
+    const { container } = renderWithManyRoles({ narrow: false })
+    expect(container.querySelectorAll('.rsim-row').length).toBe(MANY_SOCS.length - 1)
+    expect(screen.queryByRole('button', { name: /see all/i })).not.toBeInTheDocument()
+  })
+
+  it('narrow shows five, states the TRUE total, and expands in place', () => {
+    const { container } = renderWithManyRoles({ narrow: true })
+    const total = MANY_SOCS.length - 1                       // 7 comparison roles
+    expect(container.querySelectorAll('.rsim-row')).toHaveLength(NARROW_CAP)
+
+    // "Capped, never hidden": the control states the full count, not the shown count.
+    const more = screen.getByRole('button', { name: /see all \d+ roles/i })
+    expect(more.textContent).toContain(String(total))
+    expect(more.textContent).not.toContain(String(NARROW_CAP))
+
+    fireEvent.click(more)
+    expect(container.querySelectorAll('.rsim-row')).toHaveLength(total)
+    expect(screen.queryByRole('button', { name: /see all/i })).not.toBeInTheDocument()
+  })
+
+  it('narrow does not cap a list that is already short', () => {
+    const { container } = render(
+      <RoleSimilarity meta={meta} salaries={salaries} soc="A" onSelectRole={() => {}} narrow />,
+    )
+    expect(container.querySelectorAll('.rsim-row').length).toBeLessThanOrEqual(NARROW_CAP)
+    expect(screen.queryByRole('button', { name: /see all/i })).not.toBeInTheDocument()
   })
 })

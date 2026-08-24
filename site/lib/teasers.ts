@@ -2,6 +2,7 @@ import type { Meta, Metric, MetroMeta, Salaries } from './types'
 import type { TitlesJson } from './title-types'
 import type { TrendsJson } from './trends-types'
 import { fmtUsd } from './format'
+import { metricValue } from './derive'
 import { similarByPay } from './role-similarity'
 import { slopeRows, SLOPE_N, type SlopeRow } from './slopegraph'
 
@@ -34,24 +35,33 @@ export function titleTeaser(titles: TitlesJson | null, soc: string, roleLabel: s
 }
 
 export function payTeaser(
-  salaries: Salaries, metros: MetroMeta[], soc: string,
+  salaries: Salaries, metros: MetroMeta[], soc: string, adjusted: boolean, metric: Metric,
 ): Teaser & { top3: { city: string; p50: number }[] } {
   // The quoted number must be one the expanded section shows: the map/panel display each metro's
-  // own p50, never a national median (that series only ever appears, in real dollars, on the
-  // trend chart after selecting a metro) — so the teaser quotes the top metro's own median.
+  // own p50, never a national median — so the teaser quotes the top metro's own median. It must
+  // also agree with the MAP's current colouring, so in adjusted mode both the ranking and the
+  // printed figure use the RPP-adjusted value (metricValue is the same helper the map uses).
+  //
+  // Same reason it degrades on any non-pay metric (the idiom colTeaser already uses): with the
+  // map colouring by employment or concentration, a dollar median names a leader that section
+  // does not highlight and prints a figure it shows nowhere — the legend would read
+  // "12,100–121,000 jobs · employment" beside a 44px "$213,110". `top3` is empty in that case,
+  // which is also what stops page.tsx rendering the hero readout, so the section falls back to
+  // this one generic sentence rather than stating two different things at once.
+  const generic: Teaser & { top3: { city: string; p50: number }[] } =
+    { fact: 'Percentiles for every metro on the map.', context: '', top3: [] }
+  if (metric !== 'pay') return generic
   const withP50: { name: string; v: number }[] = []
   for (const m of metros) {
-    const v = salaries[m.cbsa]?.[soc]?.p50
+    const v = metricValue(salaries[m.cbsa]?.[soc], m, 'pay', adjusted)
     if (v != null) withP50.push({ name: m.name, v })
   }
-  if (withP50.length === 0) {
-    return { fact: 'Percentiles for every metro on the map.', context: '', top3: [] }
-  }
+  if (withP50.length === 0) return generic
   const sorted = [...withP50].sort((a, b) => b.v - a.v)
   const top = sorted[0]
-  const top3 = sorted.slice(0, 3).map(m => ({ city: shortMetro(m.name), p50: m.v }))
+  const top3 = sorted.slice(0, 3).map(m => ({ city: shortMetro(m.name), p50: Math.round(m.v) }))
   return {
-    fact: `${shortMetro(top.name)} tops the map at ${fmtUsd(top.v)}.`,
+    fact: `${shortMetro(top.name)} tops the map at ${fmtUsd(Math.round(top.v))}.`,
     context: '',
     top3,
   }

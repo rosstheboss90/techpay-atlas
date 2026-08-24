@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import Page from '../app/page'
 import { __clearDataCache } from '../lib/data'
 
@@ -108,10 +109,10 @@ describe('Page', () => {
     }
   })
 
-  // Regression pin: page.tsx assembles seven QuestionSection call sites by hand (question/fact/
-  // context/viz per card) — nothing structurally stops a prop from landing on the wrong call site
-  // (e.g. the h2h-h card's `question` was dropped and every prop below it shifted a slot). Narrow
-  // mode renders each card's eyebrow as `.qcard-q`, so pin all seven texts, in order, against the
+  // Regression pin: page.tsx assembles seven QuestionSection call sites by hand (question/fact
+  // per section) — nothing structurally stops a prop from landing on the wrong call site (e.g.
+  // the h2h-h card's `question` was dropped and every prop below it shifted a slot). Narrow mode
+  // renders each section's eyebrow as `.qsec-q`, so pin all seven texts, in order, against the
   // seven section questions the rest of the site (Task 6 headings, e2e) also pins.
   it('narrow: all seven question-index cards carry their own question, not a neighbor\'s', async () => {
     window.history.replaceState(null, '', '/')
@@ -130,8 +131,8 @@ describe('Page', () => {
     try {
       render(<Page />)
       await screen.findByText(/TechPay Atlas/)
-      await waitFor(() => expect(document.querySelectorAll('.qcard-q').length).toBe(7))
-      const questions = [...document.querySelectorAll('.qcard-q')].map(n => n.textContent)
+      await waitFor(() => expect(document.querySelectorAll('.qsec-q').length).toBe(7))
+      const questions = [...document.querySelectorAll('.qsec-q')].map(n => n.textContent)
       expect(questions).toEqual([
         'Where does it pay the most?',
         'Are you underpaid?',
@@ -147,12 +148,16 @@ describe('Page', () => {
     }
   })
 
-  // Regression pin: MiniSpark itself renders null under 2 real points, but the OLD sparkViz
-  // guard (`sparkSeries != null && <MiniSpark .../>`) still handed QuestionSection a truthy
-  // element — so .qcard-viz mounted around an empty svg-less wrapper. Per the spec's error
-  // table, a sparse series should omit the viz wrapper entirely, matching the other cards'
-  // `|| undefined` pattern.
-  it('narrow: a trend series with fewer than 2 real points omits the trend card\'s viz wrapper', async () => {
+  // Regression pin: QuestionSection itself never owns a DOM id — six of the seven anchors
+  // (h2h-h, slope-h, trend-h, tl-h, rsim-h, hm-heading) live on the child's own heading, and the
+  // seventh (sec-map) lives on a div page.tsx renders directly. Nothing structurally stops either
+  // side from also claiming an id: a section wrapper re-adding `id={anchorId}` would duplicate
+  // whichever child already carries it (six sections did, the moment narrow always mounts
+  // children), and dropping `id="sec-map"` from page.tsx's own div would leave the map section
+  // with NO anchor on desktop, since QuestionSection renders no wrapper there at all. This test
+  // covers both failure directions directly, on narrow, where the duplication was invisible to
+  // an isolated component test (whose stand-in child carries no id of its own).
+  it('narrow: every section anchor id resolves to exactly one element in the DOM', async () => {
     window.history.replaceState(null, '', '/')
     vi.stubGlobal('matchMedia', vi.fn((query: string) => ({
       matches: true, media: query, onchange: null,
@@ -160,23 +165,177 @@ describe('Page', () => {
       dispatchEvent: () => false,
     })))
     __clearDataCache()
-    const sparseTrends = {
-      ...trends,
-      roles: { '15-1252': { ...trends.roles['15-1252'], real: [null, 134120] } },
-    }
     vi.stubGlobal('fetch', vi.fn((path: string) => Promise.resolve({
       ok: true,
       json: async () => (path.includes('salaries') ? salaries : path.includes('titles') ? titles
-        : path.includes('trends') ? sparseTrends : meta),
+        : path.includes('trends') ? trends : meta),
     })))
 
     try {
       render(<Page />)
       await screen.findByText(/TechPay Atlas/)
-      await waitFor(() => expect(document.querySelectorAll('.qcard-q').length).toBe(7))
-      expect(document.querySelector('#trend-h .qcard-viz')).toBeNull()
-      // Sanity: at least one other card's viz DOES mount, so this isn't a global viz suppression.
-      expect(document.querySelector('#sec-map .qcard-viz')).not.toBeNull()
+      await waitFor(() => expect(document.querySelectorAll('.qsec-q').length).toBe(7))
+      const anchorIds = ['sec-map', 'h2h-h', 'slope-h', 'trend-h', 'tl-h', 'rsim-h', 'hm-heading']
+      for (const id of anchorIds) {
+        expect(document.querySelectorAll('#' + id).length).toBe(1)
+      }
+    } finally {
+      window.history.replaceState(null, '', '/')
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('narrow: masthead keeps only the h1 and value line; thesis and links move to the footer', async () => {
+    window.history.replaceState(null, '', '/')
+    vi.stubGlobal('matchMedia', vi.fn((query: string) => ({
+      matches: true, media: query, onchange: null,
+      addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {},
+      dispatchEvent: () => false,
+    })))
+    __clearDataCache()
+    vi.stubGlobal('fetch', vi.fn((path: string) => Promise.resolve({
+      ok: true,
+      json: async () => (path.includes('salaries') ? salaries : path.includes('titles') ? titles
+        : path.includes('trends') ? trends : meta),
+    })))
+
+    try {
+      render(<Page />)
+      await screen.findByText(/TechPay Atlas/)
+      await waitFor(() => expect(document.querySelectorAll('.qsec-q').length).toBe(7))
+
+      const masthead = document.querySelector('.masthead')!
+      expect(masthead.querySelector('h1')).not.toBeNull()
+      expect(masthead.querySelector('.value')).not.toBeNull()
+      expect(masthead.querySelector('.thesis')).toBeNull()
+      expect(masthead.querySelector('.masthead-link')).toBeNull()
+      // Desktop-only content must not leak into the narrow masthead.
+      expect(masthead.querySelector('.tagline-small')).toBeNull()
+
+      const footer = document.querySelector('footer.provenance')!
+      expect(footer.querySelector('.thesis')).not.toBeNull()
+      expect(footer.querySelectorAll('.masthead-link')).toHaveLength(3)
+    } finally {
+      window.history.replaceState(null, '', '/')
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('narrow: hero shows the top metro as a big number and the map is not interactive', async () => {
+    window.history.replaceState(null, '', '/')
+    vi.stubGlobal('matchMedia', vi.fn((query: string) => ({
+      matches: true, media: query, onchange: null,
+      addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {},
+      dispatchEvent: () => false,
+    })))
+    __clearDataCache()
+    vi.stubGlobal('fetch', vi.fn((path: string) => Promise.resolve({
+      ok: true,
+      json: async () => (path.includes('salaries') ? salaries : path.includes('titles') ? titles
+        : path.includes('trends') ? trends : meta),
+    })))
+
+    try {
+      render(<Page />)
+      await screen.findByText(/TechPay Atlas/)
+      await waitFor(() => expect(document.querySelectorAll('.qsec-q').length).toBe(7))
+      expect(document.querySelector('.hero-num')!.textContent).toMatch(/^\$[\d,]+$/)
+      expect(document.querySelector('.hero-place')).not.toBeNull()
+      const map = document.querySelector('.salary-map')!
+      expect(map).toHaveAttribute('aria-hidden', 'true')
+      expect(map.querySelector('circle[tabindex]')).toBeNull()
+      expect(map.querySelector('circle[role="button"]')).toBeNull()
+      expect(map.querySelector('circle[aria-label]')).toBeNull()
+
+      // The behavioural half: clicking a bubble must not select a metro.
+      const bubble = map.querySelector('circle')!
+      fireEvent.click(bubble)
+      expect(document.querySelector('.metro-panel')).toBeNull()
+    } finally {
+      window.history.replaceState(null, '', '/')
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('desktop: the map stays interactive — bubbles are focusable and labelled', async () => {
+    window.history.replaceState(null, '', '/')
+    vi.stubGlobal('matchMedia', vi.fn((query: string) => ({
+      matches: false, media: query, onchange: null,
+      addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {},
+      dispatchEvent: () => false,
+    })))
+    __clearDataCache()
+    vi.stubGlobal('fetch', vi.fn((path: string) => Promise.resolve({
+      ok: true,
+      json: async () => (path.includes('salaries') ? salaries : path.includes('titles') ? titles
+        : path.includes('trends') ? trends : meta),
+    })))
+
+    try {
+      render(<Page />)
+      await screen.findByText(/TechPay Atlas/)
+      await waitFor(() => expect(document.querySelector('.salary-map')).not.toBeNull())
+      const map = document.querySelector('.salary-map')!
+      expect(map).not.toHaveAttribute('aria-hidden')
+      expect(map).toHaveAttribute('role', 'group')
+      expect(map.querySelectorAll('circle[tabindex]').length).toBeGreaterThan(0)
+      expect(map.querySelector('circle[role="button"]')).not.toBeNull()
+    } finally {
+      window.history.replaceState(null, '', '/')
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('narrow: the explorer opens from the hero and is not mounted before that', async () => {
+    window.history.replaceState(null, '', '/')
+    vi.stubGlobal('matchMedia', vi.fn((query: string) => ({
+      matches: true, media: query, onchange: null,
+      addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {},
+      dispatchEvent: () => false,
+    })))
+    __clearDataCache()
+    vi.stubGlobal('fetch', vi.fn((path: string) => Promise.resolve({
+      ok: true,
+      json: async () => (path.includes('salaries') ? salaries : path.includes('titles') ? titles
+        : path.includes('trends') ? trends : meta),
+    })))
+
+    try {
+      render(<Page />)
+      await screen.findByText(/TechPay Atlas/)
+      await waitFor(() => expect(document.querySelectorAll('.qsec-q').length).toBe(7))
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      await userEvent.click(screen.getByRole('button', { name: /explore the map/i }))
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
+    } finally {
+      window.history.replaceState(null, '', '/')
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('narrow: hero omits the number entirely when no metro has a median for the role', async () => {
+    // Spec error-handling row: never a blank or NaN slot — the map and the fallback
+    // sentence stand alone.
+    window.history.replaceState(null, '', '/')
+    vi.stubGlobal('matchMedia', vi.fn((query: string) => ({
+      matches: true, media: query, onchange: null,
+      addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {},
+      dispatchEvent: () => false,
+    })))
+    __clearDataCache()
+    vi.stubGlobal('fetch', vi.fn((path: string) => Promise.resolve({
+      ok: true,
+      json: async () => (path.includes('salaries') ? {} : path.includes('titles') ? titles
+        : path.includes('trends') ? trends : meta),
+    })))
+
+    try {
+      render(<Page />)
+      await screen.findByText(/TechPay Atlas/)
+      await waitFor(() => expect(document.querySelectorAll('.qsec-q').length).toBe(7))
+      expect(document.querySelector('.hero-num')).toBeNull()
+      expect(document.querySelector('.qsec-deck')!.textContent)
+        .toBe('Percentiles for every metro on the map.')
     } finally {
       window.history.replaceState(null, '', '/')
       vi.unstubAllGlobals()

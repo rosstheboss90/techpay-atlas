@@ -10,3 +10,7 @@ site/e2e-scratch/
 site/AGENTS.md
 site/CLAUDE.md
 .worktrees/
+# Claude Code's native worktree tool places worktrees here, not in .worktrees/ —
+# each one is a full checkout plus node_modules. Also covers .superpowers/ scratch.
+.claude/
+.superpowers/

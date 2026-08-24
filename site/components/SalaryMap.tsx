@@ -1,19 +1,9 @@
 'use client'
 import { useMemo, useState } from 'react'
-import { geoAlbersUsa, geoPath } from 'd3-geo'
-import { extent } from 'd3-array'
-import { feature } from 'topojson-client'
-import statesTopo from 'us-atlas/states-10m.json'
 import type { Metric, Meta, Salaries } from '../lib/types'
-import { metricValue } from '../lib/derive'
 import { fmtNum, fmtUsdCompact } from '../lib/format'
-import { RAMP_DARK, RAMP_LIGHT, bubbleColor, bubbleRadius } from '../lib/map-scales'
-
-const W = 975, H = 610
-const projection = geoAlbersUsa().scale(1300).translate([W / 2, H / 2])
-// topojson-client's types are loose over raw JSON; the cast is confined to this line.
-const states = feature(statesTopo as never, (statesTopo as unknown as { objects: { states: never } }).objects.states)
-const statesD = geoPath(projection)(states as never) ?? ''
+import { buildBubbles, MAP_H, MAP_W, statesPath } from '../lib/map-bubbles'
+import { RAMP_DARK, RAMP_LIGHT, bubbleRadius } from '../lib/map-scales'
 
 interface Props {
   meta: Meta
@@ -24,6 +14,11 @@ interface Props {
   selected: string | null
   dark: boolean
   onSelect: (cbsa: string | null) => void
+  /** Narrow's inline hero map is a poster, not a control surface — MapExplorer is where
+   *  selecting a city actually works there (touch accuracy). Defaults to `true` so every
+   *  existing desktop caller keeps its handlers, `tabIndex`, `role` and hover tooltip
+   *  exactly as before; only `page.tsx` passes `false`, on narrow. */
+  interactive?: boolean
 }
 
 interface Hover { cbsa: string; x: number; y: number }
@@ -42,28 +37,14 @@ function formatLegendValue(v: number, metric: Metric): string {
   return `${v.toFixed(1)}×`
 }
 
-export function SalaryMap({ meta, salaries, soc, metric, adjusted, selected, dark, onSelect }: Props) {
+export function SalaryMap({ meta, salaries, soc, metric, adjusted, selected, dark, onSelect, interactive = true }: Props) {
   const [hover, setHover] = useState<Hover | null>(null)
   const ramp = dark ? RAMP_DARK : RAMP_LIGHT
 
-  const { bubbles, domain, maxEmp } = useMemo(() => {
-    const placed = meta.metros
-      .map(m => {
-        const xy = projection([m.lng, m.lat])
-        if (!xy) return null   // geoAlbersUsa cannot place PR — omitted by design
-        const row = salaries[m.cbsa]?.[soc]
-        return { m, x: xy[0], y: xy[1], v: metricValue(row, m, metric, adjusted), emp: row?.emp ?? null }
-      })
-      .filter((b): b is NonNullable<typeof b> => b !== null)
-    const maxEmp = Math.max(1, ...placed.map(b => b.emp ?? 0))
-    const [lo, hi] = extent(placed.map(b => b.v).filter((v): v is number => v != null))
-    const domain: [number, number] = lo == null || hi == null ? [0, 1] : [lo, hi]
-    // Large bubbles render first so small metros stay hoverable on top.
-    const bubbles = placed
-      .map(b => ({ ...b, r: bubbleRadius(b.emp, maxEmp), fill: bubbleColor(b.v, domain, ramp) }))
-      .sort((a, b) => b.r - a.r)
-    return { bubbles, domain, maxEmp }
-  }, [meta, salaries, soc, metric, adjusted, ramp])
+  const { bubbles, domain, maxEmp } = useMemo(
+    () => buildBubbles(meta, salaries, soc, metric, adjusted, ramp),
+    [meta, salaries, soc, metric, adjusted, ramp],
+  )
 
   const hovered = hover ? bubbles.find(b => b.m.cbsa === hover.cbsa) : null
   const smallEmp = Math.round(maxEmp / 10)
@@ -72,21 +53,27 @@ export function SalaryMap({ meta, salaries, soc, metric, adjusted, selected, dar
 
   return (
     <figure className="map-figure">
-      <svg viewBox={`0 0 ${W} ${H}`} role="group" aria-label="US metro map of tech pay" className="salary-map">
-        <path d={statesD} className="map-states" />
+      <svg viewBox={`0 0 ${MAP_W} ${MAP_H}`} className="salary-map"
+           {...(interactive
+             ? { role: 'group' as const, 'aria-label': 'US metro map of tech pay' }
+             : { 'aria-hidden': true as const })}>
+        <path d={statesPath} className="map-states" />
         {bubbles.map(b => (
           <circle
             key={b.m.cbsa} cx={b.x} cy={b.y} r={b.r} fill={b.fill}
-            tabIndex={0} role="button"
-            aria-label={`${b.m.name}: ${formatMetricValue(b.v, metric, b.m.rpp == null, adjusted)}`}
             className={`map-bubble${selected === b.m.cbsa ? ' is-selected' : ''}`}
-            onMouseEnter={e => setHover({ cbsa: b.m.cbsa, x: e.clientX, y: e.clientY })}
-            onMouseMove={e => setHover({ cbsa: b.m.cbsa, x: e.clientX, y: e.clientY })}
-            onMouseLeave={() => setHover(null)}
-            onClick={() => select(b.m.cbsa)}
-            onKeyDown={e => {
-              if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(b.m.cbsa) }
-            }}
+            {...(interactive ? {
+              tabIndex: 0,
+              role: 'button',
+              'aria-label': `${b.m.name}: ${formatMetricValue(b.v, metric, b.m.rpp == null, adjusted)}`,
+              onMouseEnter: (e: React.MouseEvent) => setHover({ cbsa: b.m.cbsa, x: e.clientX, y: e.clientY }),
+              onMouseMove: (e: React.MouseEvent) => setHover({ cbsa: b.m.cbsa, x: e.clientX, y: e.clientY }),
+              onMouseLeave: () => setHover(null),
+              onClick: () => select(b.m.cbsa),
+              onKeyDown: (e: React.KeyboardEvent) => {
+                if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(b.m.cbsa) }
+              },
+            } : {})}
           />
         ))}
       </svg>
