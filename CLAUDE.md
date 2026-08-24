@@ -118,6 +118,18 @@ serves only the current reference period, so it cannot replace the OEWS file dow
 - **Tests live next to what they cover** and gate every change: `pipeline/tests/*.test.ts`
   and `site/tests/*`. Run the relevant `npm test` (and `npm run e2e` for site UI changes)
   before committing. Pure `lib/` functions are unit-tested in isolation; keep them pure.
+- ⚠️ **Two `npm run e2e` traps, both of which cost real time on 2026-08-23:**
+  - **A stale dev server on :3020 produces failures that look exactly like a regression.**
+    Playwright reuses an already-listening server, and an orphaned `next dev` survives a killed
+    terminal or background task. The signature is **4 failures clustered in
+    `e2e/employers.spec.ts`** (its pages 500 against the stale build) while the code is fine.
+    Before believing an e2e failure, check the port is yours:
+    `Get-NetTCPConnection -LocalPort 3020 -State Listen` → `Stop-Process -Id <pid> -Force`,
+    then re-run. It bit twice in one session, and both times the same four tests passed clean
+    afterwards. Failures clustered in one spec file that your diff doesn't touch are the tell.
+  - **`npm run e2e` rewrites `site/next-env.d.ts`, which is tracked.** Revert it
+    (`git checkout -- site/next-env.d.ts`) and check `git status` before committing, or the
+    file rides along in an unrelated commit.
 - **The pipeline fails loudly, never silently.** `THRESHOLDS` in `pipeline/config.ts` are
   tripwires (metro count, ZIP-match rate, title-family overlap, RPP coverage, …). Stale output
   is deleted only **after** every assertion passes — a failed run never destroys the last good
