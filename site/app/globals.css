@@ -575,14 +575,19 @@ button, select, input { font-family: inherit; }
     clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap;
   }
 
-  /* Sticky control bar — the only persistent chrome (wayfinding option D). Target ≈44px
-     including the border: one row, not two. The desktop .filter-bar rule (above, unscoped)
-     sets flex-wrap: wrap and is not otherwise overridden here — that's what was wrapping the
-     three controls to a second row and doubling the agreed chrome (measured 81px). Reset it
-     explicitly. */
+  /* Sticky control bar — the only persistent chrome (wayfinding option D).
+     TWO rows, deliberately: the role select owns the first one outright.
+     The single-row version squeezed it to "Soft…" on a real phone, because the metric select
+     and the cost-of-living toggle are pinned to their content width and the role was the only
+     control left able to give. That was backwards — the role is what the entire page is
+     filtered by, and its labels run to 42 characters ("Computer & Information Research
+     Scientists", ~282px at this size), which no shared row can ever hold. The second row costs
+     ~33px of chrome; the page budget has the headroom and a legible primary control is worth
+     more than the saving. */
   .filter-bar {
     position: sticky; top: 0; z-index: 20;
-    display: flex; flex-direction: row; flex-wrap: nowrap; align-items: center; gap: var(--s2);
+    display: flex; flex-direction: row; flex-wrap: wrap; align-items: center;
+    gap: 6px var(--s2);
     background: var(--bg); border-bottom: 1px solid var(--line);
     margin: 0 calc(var(--s4) * -1); padding: 6px var(--s4);
   }
@@ -590,19 +595,19 @@ button, select, input { font-family: inherit; }
   .filter-bar .filter-field, .filter-bar select { flex: 0 1 auto; width: auto; min-width: 0; }
   .filter-bar select, .col-toggle { font-size: var(--fs-meta); padding: 4px var(--s2); }
   .col-toggle { margin-left: auto; white-space: nowrap; }
-  /* Only the role select is allowed to grow/shrink — it carries the longest content (21 role
-     names). It flexes to fill whatever room the metric select and the toggle leave behind and
-     truncates with an ellipsis rather than wrapping the row; the metric select and the toggle
-     stay pinned to their own content width. */
-  .filter-bar .filter-field:first-child { flex: 1 1 auto; min-width: 0; }
+  /* Row 1, full width — `flex-basis: 100%` is what forces the wrap, so the metric select and
+     the toggle share row 2 rather than competing with the role for row 1. */
+  .filter-bar .filter-field:first-child { flex: 1 1 100%; min-width: 0; }
+  .filter-bar .filter-field:first-child select { width: 100%; }
+  /* Kept as a floor, not as the normal case: below ~330px even a full row cannot hold the
+     longest label, and an ellipsis beats a hard mid-word clip. */
   .filter-bar .filter-field:first-child select {
-    width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
   /* The metric field otherwise inherits flex-shrink:1 (and min-width:0) from the shared
-     .filter-field rule above, so under the same space pressure it was shrinking too — its
-     select has no ellipsis rule, so the browser was hard-clipping its text mid-word ("Medi")
-     instead of the intended clean ellipsis. Pin it to its own content width so only the role
-     select gives up space. */
+     .filter-field rule above, so under space pressure it shrank too — its select has no
+     ellipsis rule, so the browser hard-clipped its text mid-word ("Medi"). Pin it to its own
+     content width. */
   .filter-bar .filter-field:last-of-type { flex: 0 0 auto; }
 
   .hero-readout { margin-top: var(--s4); }
