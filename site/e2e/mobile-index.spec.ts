@@ -23,11 +23,15 @@ test('mobile: page height budget', async ({ page }) => {
 
   // TitleLens fetches titles.json lazily behind an IntersectionObserver and only mounts
   // once the section scrolls into view, so measuring right after goto() pins a page state
-  // no real user sees after scrolling. Scroll to the bottom to bring it (and anything else
-  // lazy) on screen, let the fetch/layout settle, then scroll back to the top before
-  // measuring — this is the fully-loaded page height, not the pre-fetch one.
-  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight))
-  await page.waitForLoadState('networkidle')
+  // no real user sees after scrolling.
+  //
+  // Force the lazy fetch and wait for the DOM it produces — NOT waitForLoadState, which
+  // resolves against the cached post-goto flag (goto() already reached networkidle before
+  // we ever scroll) and would silently let this test measure the pre-fetch page. .tl-rows
+  // does not exist until titles.json resolves (TitleLens.tsx renders a "Loading…" paragraph
+  // in its place until then), which makes it a deterministic post-load marker.
+  await page.locator('#tl-h').scrollIntoViewIfNeeded()
+  await expect(page.locator('.tl-rows')).toBeVisible()
   await page.evaluate(() => window.scrollTo(0, 0))
 
   // 5,100px reflects the fully-loaded page, including the title lens's rows once
