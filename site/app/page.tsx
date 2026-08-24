@@ -8,6 +8,7 @@ import { MetroFilter } from '../components/MetroFilter'
 import { MetroPanel } from '../components/MetroPanel'
 import { QuestionSection } from '../components/QuestionSection'
 import { RankSlopegraph } from '../components/RankSlopegraph'
+import { SlopeExplorer } from '../components/SlopeExplorer'
 import { RoleHeatmap } from '../components/RoleHeatmap'
 import { RoleSimilarity } from '../components/RoleSimilarity'
 import { SalaryMap } from '../components/SalaryMap'
@@ -40,6 +41,7 @@ export default function Page() {
   const [state, setState] = useState<UrlState>(DEFAULT_STATE)
   const [dark, setDark] = useState(false)
   const [explorerOpen, setExplorerOpen] = useState(false)
+  const [rankingOpen, setRankingOpen] = useState(false)
   const narrow = useNarrow()
 
   useEffect(() => {
@@ -192,6 +194,13 @@ export default function Page() {
                        narrow={narrow}>
         <RankSlopegraph meta={meta} salaries={salaries} soc={state.role} metric={state.metric}
                         onSelect={cbsa => update({ metro: cbsa })} />
+        {/* The inline chart stays at SLOPE_N (18) — the crossing lines are the story. The full
+            ranking is a table, because a slopegraph stops being readable past ~25 rows. */}
+        {narrow && state.metric === 'pay' && (
+          <button type="button" className="hero-explore" onClick={() => setRankingOpen(true)}>
+            See the full ranking →
+          </button>
+        )}
       </QuestionSection>
       <QuestionSection question="Are wages beating inflation?"
                        fact={teasers.trend.fact}
@@ -222,6 +231,10 @@ export default function Page() {
                      adjusted={state.adjusted} dark={dark}
                      onSelect={cbsa => update({ metro: cbsa })}
                      onClose={() => setExplorerOpen(false)} />
+      )}
+      {narrow && rankingOpen && (
+        <SlopeExplorer meta={meta} salaries={salaries} soc={state.role}
+                       roleLabel={role.label} onClose={() => setRankingOpen(false)} />
       )}
       <footer className="provenance">
         {narrow && (

@@ -93,3 +93,32 @@ test('mobile: hash deep-link scrolls to its section', async ({ page }) => {
   const top = await page.locator('#rsim-h').evaluate(el => el.getBoundingClientRect().top)
   expect(Math.abs(top)).toBeLessThan(200)
 })
+
+test('mobile: the full ranking opens, re-ranks on count change, and finds a city', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: /see the full ranking/i }).click()
+
+  const dlg = page.getByRole('dialog')
+  await expect(dlg).toBeVisible()
+  await expect(dlg.locator('.sx-table tbody tr')).toHaveCount(25)
+  await expect(dlg.locator('.sx-basis')).toContainText('25 metros shown')
+
+  // The ranks are recomputed for the visible set, not sliced from a fixed list — so a metro's
+  // rise/fall must actually change when the set widens. If this ever stops being true, the
+  // caption is lying and this assertion is the thing that catches it.
+  const laDelta = dlg.locator('.sx-table tbody tr', { hasText: 'Los Angeles' }).locator('.sx-delta')
+  const at25 = await laDelta.textContent()
+
+  await dlg.getByRole('button', { name: /^All \d+$/ }).click()
+  await expect(dlg.locator('.sx-basis')).toContainText('metros shown')
+  const atAll = await laDelta.textContent()
+  expect(atAll).not.toBe(at25)
+
+  // Filter jumps to a city outside the default cap and highlights its row.
+  await dlg.getByRole('searchbox').fill('Boise')
+  await dlg.getByRole('button', { name: /Boise/ }).click()
+  await expect(dlg.locator('.sx-table tr.is-hit')).toContainText('Boise')
+
+  await dlg.getByRole('button', { name: /close/i }).click()
+  await expect(dlg).toBeHidden()
+})
