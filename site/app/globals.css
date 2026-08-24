@@ -669,6 +669,26 @@ button, select, input { font-family: inherit; }
      just uncapped on narrow, where max-height: 70vh resolves to ~590px of an ~840px viewport.
      350px keeps the grid readable without eating most of the screen. */
   .hm-scroll { max-height: 350px; }
+
+  /* TitleLens (TitleLens.tsx) fetches titles.json lazily behind an IntersectionObserver: before
+     it fires the section is one "Loading title data…" line; after it fires the rows area alone
+     ran to ~1,500px across 8 rows. That's not just an oversized section — it moves every anchor
+     below it, because a hash deep-link scrolls to the target BEFORE the observer above it fires,
+     then the lens grows underneath and nothing re-scrolls. A max-height alone would cap the
+     GROWN state but leave the section only ~221px until the fetch resolves, so anchors below it
+     would still jump. Fix with a floor AND a ceiling so the section is the same height whether or
+     not titles.json has loaded:
+     - ceiling: cap the scrollable rows area itself and let it scroll internally, same idiom as
+       .hm-scroll above.
+     - floor: reserve that same total on the qsec-body wrapping THIS section. QuestionSection
+       gives every section the same .qsec-body class, so an unscoped min-height would reserve
+       space under every section on the page — scope it with :has(#tl-h), the heading this
+       section (and only this section) contains. The pre-load DOM has no .tl-rows to put a
+       min-height on (TitleLens.tsx renders a "Loading…" paragraph instead of the rows div), so
+       the reservation has to live on a container present in BOTH states; .qsec-body is the
+       nearest one. Both numbers were measured against the loaded state, not guessed. */
+  .tl-rows { max-height: 300px; overflow-y: auto; }
+  .qsec-body:has(#tl-h) { min-height: 520px; }
 }
 
 /* .mini-spark ships wherever MiniSpark is used (now the trends-section chart at narrow width,

@@ -2,29 +2,90 @@ import { expect, test } from '@playwright/test'
 
 test.use({ viewport: { width: 390, height: 844 } })
 
-test('mobile: collapsed index, tap-to-expand, height budget', async ({ page }) => {
+test('mobile: every section renders its real chart, uncollapsed', async ({ page }) => {
   await page.goto('/')
   await expect(page.getByRole('heading', { name: 'TechPay Atlas' })).toBeVisible()
 
-  // Heavy sections are not mounted while collapsed.
-  await expect(page.locator('.h2h')).toHaveCount(0)
-
-  // The "fits ~2 screens" promise, pinned (spec: < 1800px collapsed at 390px).
-  const height = await page.evaluate(() => document.querySelector('main.page')!.scrollHeight)
-  expect(height).toBeLessThan(1800)
-
-  // Tap expands the card and the real chart renders inside it.
-  await page.getByRole('button', { name: /Are you underpaid\?/ }).click()
-  await expect(page.locator('.h2h .pct-band').first()).toBeVisible()
+  // The whole point of the redesign: heavy sections are mounted without any interaction.
+  await expect(page.locator('.h2h')).toHaveCount(1)
+  await expect(page.locator('.salary-map')).toBeVisible()
+  await expect(page.locator('.rsim')).toHaveCount(1)
+  await expect(page.locator('.heatmap')).toHaveCount(1)
+  await expect(page.locator('.qsec')).toHaveCount(7)
+  // Scoped to the app's own content root: `next dev` injects an "Open Next.js Dev Tools"
+  // button outside <main>, which the unscoped role query would otherwise false-positive on.
+  await expect(page.locator('main.page').getByRole('button', { name: /open|expand/i })).toHaveCount(0)
 })
 
-test('mobile: hash deep-link auto-expands its section', async ({ page }) => {
+test('mobile: page height budget', async ({ page }) => {
+  await page.goto('/')
+  await expect(page.locator('.qsec')).toHaveCount(7)
+
+  // TitleLens fetches titles.json lazily behind an IntersectionObserver and only mounts
+  // once the section scrolls into view, so measuring right after goto() pins a page state
+  // no real user sees after scrolling. Scroll to the bottom to bring it (and anything else
+  // lazy) on screen, let the fetch/layout settle, then scroll back to the top before
+  // measuring — this is the fully-loaded page height, not the pre-fetch one.
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight))
+  await page.waitForLoadState('networkidle')
+  await page.evaluate(() => window.scrollTo(0, 0))
+
+  // 5,100px reflects the fully-loaded page, including the title lens's rows once
+  // titles.json has fetched. Exceeding this is a signal to RE-WEIGHT sections, not to
+  // raise the pin — the budget is the design decision.
+  const height = await page.evaluate(() => document.querySelector('main.page')!.scrollHeight)
+  expect(height).toBeLessThan(5100)
+})
+
+test('mobile: the similar-roles section stays capped', async ({ page }) => {
+  await page.goto('/')
+  const rsim = page.locator('.rsim')
+  await expect(rsim).toBeVisible()
+
+  // This section measured 2,063px uncapped — a third of the whole page. Pin it directly:
+  // a regression here is invisible in the total until it is large.
+  const h = await rsim.evaluate(el => (el as HTMLElement).getBoundingClientRect().height)
+  expect(h).toBeLessThan(700)
+
+  await page.getByRole('button', { name: /see all \d+ roles/i }).click()
+  const expanded = await rsim.evaluate(el => (el as HTMLElement).getBoundingClientRect().height)
+  expect(expanded).toBeGreaterThan(h)
+})
+
+test('mobile: explorer opens, filters, selects, and lands on the metro panel', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: /explore the map/i }).click()
+
+  const dlg = page.getByRole('dialog')
+  await expect(dlg).toBeVisible()
+  await expect(dlg).toHaveAttribute('data-zoom', 'fit')
+
+  await dlg.getByRole('button', { name: '2×' }).click()
+  await expect(dlg).toHaveAttribute('data-zoom', '2x')
+
+  await dlg.getByRole('searchbox').fill('San Jose')
+  await dlg.getByRole('button', { name: /San Jose/ }).click()
+
+  await expect(dlg).toBeHidden()
+  await expect(page.locator('.metro-panel')).toBeVisible()
+})
+
+test('mobile: hash deep-link scrolls to its section', async ({ page }) => {
   await page.goto('/#rsim-h')
-  // .rsim is briefly visible during the desktop-first render before the narrow state settles,
-  // so visibility alone could pass on a broken deep-link. Wait for narrow to have settled
-  // (another section collapsed to nothing) and pin the hash card's expanded state directly.
-  await expect(page.locator('.h2h')).toHaveCount(0)
-  await expect(page.getByRole('button', { name: /What else could you be\?/ }))
-    .toHaveAttribute('aria-expanded', 'true')
   await expect(page.locator('.rsim')).toBeVisible()
+
+  // globals.css sets `html { scroll-behavior: smooth }`, so the hash-scroll effect's
+  // scrollIntoView() animates instead of jumping. Reading the position immediately races
+  // that animation and lands on an arbitrary mid-scroll value — poll scrollY until two
+  // consecutive reads agree (settled) before measuring the real, settled position.
+  let last = -1
+  for (let i = 0; i < 50; i++) {
+    const y = await page.evaluate(() => window.scrollY)
+    if (y === last) break
+    last = y
+    await page.waitForTimeout(100)
+  }
+
+  const top = await page.locator('#rsim-h').evaluate(el => el.getBoundingClientRect().top)
+  expect(Math.abs(top)).toBeLessThan(200)
 })
