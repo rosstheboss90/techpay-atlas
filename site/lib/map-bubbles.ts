@@ -9,7 +9,7 @@ import { bubbleColor, bubbleRadius } from './map-scales'
 export const MAP_W = 975
 export const MAP_H = 610
 
-export const projection = geoAlbersUsa().scale(1300).translate([MAP_W / 2, MAP_H / 2])
+const projection = geoAlbersUsa().scale(1300).translate([MAP_W / 2, MAP_H / 2])
 
 // topojson-client's types are loose over raw JSON; the cast is confined to this line.
 const states = feature(statesTopo as never, (statesTopo as unknown as { objects: { states: never } }).objects.states)

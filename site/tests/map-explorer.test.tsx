@@ -110,6 +110,47 @@ describe('MapExplorer', () => {
     expect(text).not.toMatch(/San Jose|Austin/)
   })
 
+  it('a tap then a confirm selects that metro and closes — the tap alone does not', async () => {
+    const onSelect = vi.fn(); const onClose = vi.fn()
+    const { container } = setup({ onSelect, onClose })
+    const svg = container.querySelector('.mx-map') as SVGSVGElement
+    clickAt(svg, sanJose.x, sanJose.y)
+    // Identifying is not selecting: the readout has to be confirmable, so the user can read the
+    // ambiguity warning and re-aim instead of having the choice made for them.
+    expect(onSelect).not.toHaveBeenCalled()
+    expect(onClose).not.toHaveBeenCalled()
+
+    await userEvent.click(screen.getByRole('button', { name: /San Jose/ }))
+    expect(onSelect).toHaveBeenCalledWith('41940')
+    expect(onClose).toHaveBeenCalled()
+  })
+
+  it('a tap that misses offers nothing to confirm', async () => {
+    const onSelect = vi.fn()
+    const { container } = setup({ onSelect })
+    const svg = container.querySelector('.mx-map') as SVGSVGElement
+    clickAt(svg, MAP_W - 1, MAP_H - 1)
+    expect(document.querySelector('.mx-confirm')).toBeNull()
+    // Nor is the readout itself clickable — a miss must not be convertible into a nearest guess.
+    await userEvent.click(document.querySelector('.mx-read') as HTMLElement)
+    expect(onSelect).not.toHaveBeenCalled()
+  })
+
+  it('confirming an AMBIGUOUS pick is possible, with the rival count on the control itself', async () => {
+    const dist = Math.hypot(sanJose.x - austin.x, sanJose.y - austin.y)
+    const scale = (PATCH_PX / dist) * 0.9
+    const onSelect = vi.fn()
+    const { container } = setup({ onSelect })
+    const svg = container.querySelector('.mx-map') as SVGSVGElement
+    clickAt(svg, sanJose.x, sanJose.y, scale)
+    // Spec error table: "Tap with rivals inside the patch → Selection proceeds and names the
+    // rival count." The warning must live on the confirming control, not merely near it.
+    const confirm = document.querySelector('.mx-confirm')!
+    expect(confirm.querySelector('.mx-ambig')).not.toBeNull()
+    await userEvent.click(confirm as HTMLElement)
+    expect(onSelect).toHaveBeenCalledWith('41940')
+  })
+
   it('an ambiguous tap reports the rival count', () => {
     // A scale small enough that both fixture metros land inside one 22px thumb patch —
     // derived from their real projected distance, not a hardcoded coordinate pair.

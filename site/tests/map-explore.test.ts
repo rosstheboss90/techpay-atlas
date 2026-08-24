@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { MAP_H, MAP_W, type Bubble } from '../lib/map-bubbles'
-import { pickAt, zoomScale, PATCH_PX } from '../lib/map-explore'
+import { pickAt, recentreAfterZoom, zoomScale, PATCH_PX, type ScrollView } from '../lib/map-explore'
 
 const bub = (cbsa: string, x: number, y: number): Bubble => ({
   m: { cbsa, name: `${cbsa} City, CA`, state: 'CA', lat: 0, lng: 0, rpp: 100, lcaFilings: 0 },
@@ -23,6 +23,72 @@ describe('zoomScale', () => {
       expect(Number.isFinite(s)).toBe(true)
       expect(s).toBeGreaterThan(0)
     }
+  })
+})
+
+describe('recentreAfterZoom', () => {
+  // The real measurement that motivated this: Fit-height at scrollLeft 350 in a 360px-wide
+  // container over an 1,088px map — the viewport centre sits at 48.7% of the country. Clicking
+  // 2x grows the extent to 2,177px; leaving scrollLeft alone drops that centre to 24.3%.
+  const fit: ScrollView = {
+    scrollLeft: 350, scrollTop: 120,
+    clientWidth: 360, clientHeight: 610,
+    scrollWidth: 1088, scrollHeight: 900,
+  }
+  const centreOf = (scroll: number, client: number, extent: number) => (scroll + client / 2) / extent
+
+  it('keeps the same point of the map under the centre of the viewport', () => {
+    const before = centreOf(fit.scrollLeft, fit.clientWidth, fit.scrollWidth)
+    const { scrollLeft } = recentreAfterZoom(fit, {
+      clientWidth: 360, clientHeight: 610, scrollWidth: 2177, scrollHeight: 1220,
+    })
+    expect(centreOf(scrollLeft, 360, 2177)).toBeCloseTo(before, 6)
+    // And is nowhere near the do-nothing answer, which is the bug this replaces.
+    expect(centreOf(fit.scrollLeft, 360, 2177)).toBeCloseTo(0.243, 3)
+  })
+
+  it('recentres both axes, not just the horizontal one', () => {
+    const before = centreOf(fit.scrollTop, fit.clientHeight, fit.scrollHeight)
+    const { scrollTop } = recentreAfterZoom(fit, {
+      clientWidth: 360, clientHeight: 610, scrollWidth: 2177, scrollHeight: 1220,
+    })
+    expect(centreOf(scrollTop, 610, 1220)).toBeCloseTo(before, 6)
+  })
+
+  it('is a no-op when the extent does not change', () => {
+    expect(recentreAfterZoom(fit, {
+      clientWidth: fit.clientWidth, clientHeight: fit.clientHeight,
+      scrollWidth: fit.scrollWidth, scrollHeight: fit.scrollHeight,
+    })).toEqual({ scrollLeft: 350, scrollTop: 120 })
+  })
+
+  it('clamps to the scrollable range rather than returning an unreachable offset', () => {
+    // Centre near the right edge, then zoom OUT: the ideal offset is past the new maximum.
+    const atEdge: ScrollView = { ...fit, scrollLeft: 1088 - 360, scrollTop: 0 }
+    const { scrollLeft } = recentreAfterZoom(atEdge, {
+      clientWidth: 360, clientHeight: 610, scrollWidth: 500, scrollHeight: 900,
+    })
+    expect(scrollLeft).toBeLessThanOrEqual(500 - 360)
+    expect(scrollLeft).toBeGreaterThanOrEqual(0)
+  })
+
+  it('never returns a negative offset when the content is smaller than the viewport', () => {
+    const { scrollLeft, scrollTop } = recentreAfterZoom(
+      { ...fit, scrollLeft: 0, scrollTop: 0 },
+      { clientWidth: 360, clientHeight: 610, scrollWidth: 200, scrollHeight: 100 },
+    )
+    expect(scrollLeft).toBe(0)
+    expect(scrollTop).toBe(0)
+  })
+
+  it('returns the origin for an unmeasured container instead of NaN', () => {
+    const zero: ScrollView = {
+      scrollLeft: 0, scrollTop: 0, clientWidth: 0, clientHeight: 0, scrollWidth: 0, scrollHeight: 0,
+    }
+    expect(recentreAfterZoom(zero, { clientWidth: 0, clientHeight: 0, scrollWidth: 0, scrollHeight: 0 }))
+      .toEqual({ scrollLeft: 0, scrollTop: 0 })
+    expect(recentreAfterZoom(fit, { clientWidth: 360, clientHeight: 610, scrollWidth: 0, scrollHeight: 0 }))
+      .toEqual({ scrollLeft: 0, scrollTop: 0 })
   })
 })
 

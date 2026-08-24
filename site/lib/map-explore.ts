@@ -18,6 +18,47 @@ export function zoomScale(zoom: Zoom, wrapW: number, wrapH: number): number {
   return zoom === '2x' ? fit * 2 : fit
 }
 
+/** A scroll container's viewport, in the numbers the DOM reports for it. */
+export interface ScrollView {
+  scrollLeft: number
+  scrollTop: number
+  clientWidth: number
+  clientHeight: number
+  scrollWidth: number
+  scrollHeight: number
+}
+
+/** The scroll extent alone, after a zoom step has resized the content. */
+export type ScrollExtent = Omit<ScrollView, 'scrollLeft' | 'scrollTop'>
+
+function recentreAxis(scroll: number, client: number, extent: number, nextClient: number, nextExtent: number): number {
+  // An unmeasured or empty container has no centre to preserve — scroll to the origin rather
+  // than dividing by zero and writing NaN into scrollLeft (which the DOM silently coerces to 0
+  // anyway, but only after the arithmetic has stopped meaning anything).
+  if (extent <= 0 || nextExtent <= 0) return 0
+  const centre = (scroll + client / 2) / extent      // fraction of the WHOLE map, not the viewport
+  const max = Math.max(0, nextExtent - nextClient)
+  return Math.min(max, Math.max(0, centre * nextExtent - nextClient / 2))
+}
+
+/** Where to scroll a zoomed map so the point that was at the centre of the viewport stays there.
+ *
+ *  Zoom steps change the rendered size of the map but not the container's scroll offset, so
+ *  without this the viewport keeps its pixel offset while the content grows underneath it and
+ *  the centre slides toward the origin: measured at scrollLeft 350 with the extent growing
+ *  1088 → 2177 (Fit → 2×), the centre fell from 48.7% of the map to 24.3% — a user zooming in on
+ *  the Boston/NY cluster to separate the rivals the readout just warned about lands a third of a
+ *  country west of where they were looking.
+ *
+ *  Pure, and separate from the component, because jsdom lays nothing out: the real container has
+ *  no measurable scroll extent in a component test, so this arithmetic is only testable here. */
+export function recentreAfterZoom(prev: ScrollView, next: ScrollExtent): { scrollLeft: number; scrollTop: number } {
+  return {
+    scrollLeft: recentreAxis(prev.scrollLeft, prev.clientWidth, prev.scrollWidth, next.clientWidth, next.scrollWidth),
+    scrollTop: recentreAxis(prev.scrollTop, prev.clientHeight, prev.scrollHeight, next.clientHeight, next.scrollHeight),
+  }
+}
+
 export interface Pick {
   hit: Bubble | null
   /** Other metros inside the same thumb patch. Non-zero means the selection was ambiguous. */

@@ -114,7 +114,7 @@ export default function Page() {
   const metroB = state.vs ?? (comparePair[0] && comparePair[0] !== metroA ? comparePair[0] : comparePair[1])
 
   const teasers = {
-    pay: payTeaser(salaries, meta.metros, state.role, state.adjusted),
+    pay: payTeaser(salaries, meta.metros, state.role, state.adjusted, state.metric),
     col: colTeaser(meta.metros, salaries, state.role, state.metric),
     trend: trendTeaser(trends, state.role, role.label),
     title: titleTeaser(titles, state.role, role.label),
@@ -201,7 +201,7 @@ export default function Page() {
       <QuestionSection question="What's this job really called?"
                        fact={teasers.title.fact}
                        narrow={narrow}>
-        <TitleLens meta={meta} cbsa={state.metro} adjusted={state.adjusted}
+        <TitleLens meta={meta} cbsa={state.metro} adjusted={state.adjusted} narrow={narrow}
                    onSelectRole={soc => update({ role: soc })} />
       </QuestionSection>
       <QuestionSection question="What else could you be?"

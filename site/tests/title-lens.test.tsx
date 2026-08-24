@@ -70,6 +70,24 @@ describe('TitleLens', () => {
     expect(screen.getByRole('button', { name: 'PM & Product' })).toHaveAttribute('aria-pressed', 'true')
   })
 
+  it('narrow states how many title groups the capped rows area holds; desktop is unchanged', async () => {
+    stubFetchOk()
+    const { unmount } = render(
+      <TitleLens meta={meta} cbsa={null} adjusted={false} narrow onSelectRole={() => {}} />)
+    await waitFor(() => expect(screen.getByText('Technical Program Manager')).toBeInTheDocument())
+    // The fixture family has 2 buckets; the count must come from the data, not a literal.
+    expect(screen.getByText(/^2 title groups/)).toBeInTheDocument()
+    // Every row is still rendered — the count is a discoverability affordance for the scroller,
+    // not a cap. "Capped, never hidden" stays true.
+    expect(screen.getByText('DevOps Engineer')).toBeInTheDocument()
+    unmount()
+
+    stubFetchOk()
+    render(<TitleLens meta={meta} cbsa={null} adjusted={false} onSelectRole={() => {}} />)
+    await waitFor(() => expect(screen.getByText('Technical Program Manager')).toBeInTheDocument())
+    expect(screen.queryByText(/title groups/)).toBeNull()
+  })
+
   it('shows an inline error card on fetch failure; page unaffected', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 500 }))
     render(<TitleLens meta={meta} cbsa={null} adjusted={false} onSelectRole={() => {}} />)

@@ -543,13 +543,27 @@ button, select, input { font-family: inherit; }
     font-size: 1.12rem; font-weight: 700; line-height: 1.35; letter-spacing: -.01em;
     text-wrap: balance; font-variant-numeric: tabular-nums; margin: var(--s2) 0 0;
   }
-  .qsec-body { margin-top: var(--s4); max-width: 100%; overflow-x: auto; }
+  /* NOT a scroll container. A horizontal scroller here cannot reach inline-start overflow at
+     all, so the 16px a full-bleed chart bleeds off the left was clipped permanently while the
+     16px on the right turned into a real scrollbar under the section (measured: trends body
+     scrollWidth 359 vs clientWidth 343). Wide content scrolls in its own container at the
+     source — .slope-scroll, .role-scroll and .hm-scroll all already do exactly that. */
+  .qsec-body { margin-top: var(--s4); max-width: 100%; }
 
-  /* Charts escape the page gutter. Same idiom as .secnav above. */
-  .qsec-body > figure,
-  .qsec-body .salary-map,
+  /* Charts escape the page gutter. Same idiom as .secnav above.
+     .map-figure, not `> figure`: the map's <figure> is a GRANDCHILD (page.tsx wraps it in
+     <div id="sec-map">, which owns the section's anchor), so the child combinator matched
+     nothing and the hero map kept the desktop inset-card treatment the spec replaced. Bleeding
+     the figure — rather than the .salary-map svg inside it — is also what stops the map's land
+     crossing the card's own rounded border. */
+  .qsec-body .map-figure,
   .tt-spark { margin-inline: calc(var(--s4) * -1); width: auto; }
   .tt-spark .mini-spark { width: 100%; height: 44px; }
+  /* Full-bleed means the frame goes too: side borders and rounded corners on a box that reaches
+     both screen edges read as a clipped card, not a poster. The legend keeps the page gutter so
+     its text still lines up with the surrounding copy. */
+  .qsec-body .map-figure { border-inline: none; border-radius: 0; padding-inline: 0; }
+  .qsec-body .map-figure .map-legend { padding-inline: var(--s4); }
 
   /* The eyebrow (p.qsec-q) now shows the question; the child's own <h2> would repeat it
      verbatim. Hide it visually but KEEP it in the layout and the a11y tree — these headings
@@ -641,7 +655,19 @@ button, select, input { font-family: inherit; }
   .mx-mapwrap { flex: 1; overflow: auto; overscroll-behavior: contain; background: var(--surface); }
   .mx-map { display: block; }
   .mx-read { padding: var(--s3) var(--s4); border-top: 1px solid var(--line); font-size: var(--fs-sm); }
+  /* The confirm control. The tap names a metro; this commits it — and it carries the ambiguity
+     warning itself, so "3 other metros under your thumb" is on the very button that selects. */
+  .mx-confirm {
+    display: flex; flex-direction: column; gap: var(--s1); width: 100%; text-align: left;
+    font: inherit; font-size: var(--fs-sm); cursor: pointer;
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+    border: 1px solid var(--line); border-radius: 10px; padding: var(--s2) var(--s3);
+    color: var(--ink);
+  }
+  .mx-confirm-cta { color: var(--accent); font-weight: 650; }
   .mx-ambig { color: var(--ink-muted); }
+
+  .tl-count { font-size: var(--fs-meta); color: var(--ink-muted); margin: var(--s2) 0 0; }
 
   .rsim-more {
     font: inherit; font-size: var(--fs-sm); font-weight: 650; color: var(--accent);

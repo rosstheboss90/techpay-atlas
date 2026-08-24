@@ -11,9 +11,15 @@ interface Props {
   cbsa: string | null
   adjusted: boolean
   onSelectRole: (soc: string) => void
+  /** Narrow caps `.tl-rows` at a fixed height (globals.css — the cap is what keeps the lazy
+   *  fetch from moving every anchor below this section), so the row list scrolls internally with
+   *  nothing to say how much is down there. The count below is that missing affordance; it is
+   *  narrow-only because desktop's list is uncapped and already shows every row. Defaults to
+   *  `false` so desktop renders exactly as before. */
+  narrow?: boolean
 }
 
-export function TitleLens({ meta, cbsa, adjusted, onSelectRole }: Props) {
+export function TitleLens({ meta, cbsa, adjusted, onSelectRole, narrow = false }: Props) {
   const rootRef = useRef<HTMLElement>(null)
   const fetchedRef = useRef(false)
   const [titles, setTitles] = useState<TitlesJson | null>(null)
@@ -94,6 +100,18 @@ export function TitleLens({ meta, cbsa, adjusted, onSelectRole }: Props) {
               </button>
             ))}
           </div>
+          {narrow && activeFamily && (
+            // Same idiom as RoleHeatmap's `{rows.length} metros`: state the count the list
+            // holds, from the data, so the capped scroller is discoverable rather than looking
+            // like it ends at the fold. Every row is still rendered and reachable — capped,
+            // never hidden.
+            <p className="tl-count">
+              {activeFamily.buckets.length} title group{activeFamily.buckets.length === 1 ? '' : 's'}
+              {/* One group always fits the capped rows area (a row is ~179px of a 300px cap), so
+                  the scroll hint is only true — and only shown — from two upwards. */}
+              {activeFamily.buckets.length > 1 ? ' · scroll the list' : ''}
+            </p>
+          )}
           <div className="tl-rows">
             {activeFamily?.buckets.map(b => (
               <TitleBucketRow key={b.key} bucket={b} domain={domain} cbsa={cbsa}
