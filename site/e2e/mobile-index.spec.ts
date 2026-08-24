@@ -109,8 +109,17 @@ test('mobile: the full ranking opens, re-ranks on count change, and finds a city
   const laDelta = dlg.locator('.sx-table tbody tr', { hasText: 'Los Angeles' }).locator('.sx-delta')
   const at25 = await laDelta.textContent()
 
-  await dlg.getByRole('button', { name: /^All \d+$/ }).click()
-  await expect(dlg.locator('.sx-basis')).toContainText('metros shown')
+  // Read N off the button so the wait below can assert the SPECIFIC post-click count. Waiting on
+  // "metros shown" alone would be a no-op — that string is in the caption at every count, so the
+  // assertion passes before React has re-rendered and the delta below gets read stale. That is
+  // how this test failed in CI while passing locally: 375 rows take longer to commit than 25.
+  const allBtn = dlg.getByRole('button', { name: /^All \d+$/ })
+  const allCount = (await allBtn.textContent())!.match(/\d+/)![0]
+
+  await allBtn.click()
+  await expect(dlg.locator('.sx-basis')).toContainText(`${allCount} metros shown`)
+  await expect(dlg.locator('.sx-table tbody tr')).toHaveCount(Number(allCount))
+
   const atAll = await laDelta.textContent()
   expect(atAll).not.toBe(at25)
 
