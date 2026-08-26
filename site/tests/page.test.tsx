@@ -341,4 +341,57 @@ describe('Page', () => {
       vi.unstubAllGlobals()
     }
   })
+
+  it('narrow: the full-ranking overlay opens from the slope section and is not mounted before that', async () => {
+    window.history.replaceState(null, '', '/')
+    vi.stubGlobal('matchMedia', vi.fn((query: string) => ({
+      matches: true, media: query, onchange: null,
+      addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {},
+      dispatchEvent: () => false,
+    })))
+    __clearDataCache()
+    vi.stubGlobal('fetch', vi.fn((path: string) => Promise.resolve({
+      ok: true,
+      json: async () => (path.includes('salaries') ? salaries : path.includes('titles') ? titles
+        : path.includes('trends') ? trends : meta),
+    })))
+
+    try {
+      render(<Page />)
+      await screen.findByText(/TechPay Atlas/)
+      await waitFor(() => expect(document.querySelectorAll('.qsec-q').length).toBe(7))
+
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      await userEvent.click(screen.getByRole('button', { name: /see the full ranking/i }))
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
+    } finally {
+      window.history.replaceState(null, '', '/')
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('desktop: no full-ranking button — the overlay is a narrow-only affordance', async () => {
+    window.history.replaceState(null, '', '/')
+    vi.stubGlobal('matchMedia', vi.fn((query: string) => ({
+      matches: false, media: query, onchange: null,
+      addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {},
+      dispatchEvent: () => false,
+    })))
+    __clearDataCache()
+    vi.stubGlobal('fetch', vi.fn((path: string) => Promise.resolve({
+      ok: true,
+      json: async () => (path.includes('salaries') ? salaries : path.includes('titles') ? titles
+        : path.includes('trends') ? trends : meta),
+    })))
+
+    try {
+      render(<Page />)
+      await screen.findByText(/TechPay Atlas/)
+      await waitFor(() => expect(document.querySelector('.slope')).not.toBeNull())
+      expect(screen.queryByRole('button', { name: /see the full ranking/i })).not.toBeInTheDocument()
+    } finally {
+      window.history.replaceState(null, '', '/')
+      vi.unstubAllGlobals()
+    }
+  })
 })

@@ -674,6 +674,59 @@ button, select, input { font-family: inherit; }
 
   .tl-count { font-size: var(--fs-meta); color: var(--ink-muted); margin: var(--s2) 0 0; }
 
+  /* ── Full cost-of-living ranking (SlopeExplorer) ─────────────────────
+     Same overlay shell as .mx so the two large views are one learned pattern. Table rather
+     than a taller slopegraph: crossing lines stop being readable past ~25 rows. */
+  .sx {
+    position: fixed; inset: 0; z-index: 50; background: var(--bg);
+    display: flex; flex-direction: column;
+  }
+  .sx-bar { padding: var(--s3) var(--s4); border-bottom: 1px solid var(--line); background: var(--surface); }
+  .sx-head { display: flex; align-items: baseline; gap: var(--s3); margin-bottom: var(--s2); }
+  .sx-title { font-size: var(--fs-sm); font-weight: 650; margin: 0; letter-spacing: -.01em; }
+  .sx-close {
+    margin-left: auto; font: inherit; font-size: var(--fs-meta); cursor: pointer;
+    border: var(--rule); border-radius: 999px; padding: 5px var(--s3);
+    background: var(--surface); color: var(--ink-muted);
+  }
+  .sx-counts { display: flex; gap: var(--s2); align-items: center; margin-top: var(--s2); flex-wrap: wrap; }
+  .sx-count {
+    font: inherit; font-size: var(--fs-meta); cursor: pointer;
+    border: var(--rule); border-radius: 999px; padding: 5px var(--s3);
+    background: var(--surface); color: var(--ink-muted);
+  }
+  .sx-count[aria-pressed="true"] {
+    background: var(--accent); border-color: var(--accent); color: var(--surface); font-weight: 650;
+  }
+  .sx-basis { padding: var(--s2) var(--s4) 0; font-size: var(--fs-micro); color: var(--ink-muted); }
+  .sx-note { padding: var(--s2) var(--s4) 0; font-size: var(--fs-meta); color: var(--ink-2); }
+
+  .sx-scroll { flex: 1; overflow: auto; overscroll-behavior: contain; padding: var(--s2) var(--s4) var(--s5); }
+  .sx-table { width: 100%; border-collapse: collapse; font-size: var(--fs-meta); }
+  .sx-table th, .sx-table td { padding: var(--s2) 0; border-bottom: 1px solid var(--line-soft); }
+  .sx-table thead th {
+    position: sticky; top: 0; background: var(--bg); z-index: 1;
+    text-align: right; font-size: var(--fs-micro); text-transform: uppercase;
+    letter-spacing: .05em; color: var(--ink-muted); font-weight: 600;
+  }
+  .sx-table thead th:first-child { text-align: left; }
+  .sx-metro {
+    text-align: left; font-weight: 500; color: var(--ink);
+    max-width: 14ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .sx-num { text-align: right; font-variant-numeric: tabular-nums; padding-left: var(--s2) !important; }
+  .sx-cap { color: var(--ink-muted); }
+  .sx-delta {
+    text-align: right; font-variant-numeric: tabular-nums; color: var(--ink-muted);
+    padding-left: var(--s2) !important; white-space: nowrap;
+  }
+  /* Reuses the slopegraph's own rise/fall encoding — no new colour is introduced. */
+  .sx-delta.up { color: var(--accent); }
+  .sx-delta.down { color: var(--soc-2); }
+  .sx-table tr.is-hit th, .sx-table tr.is-hit td {
+    background: color-mix(in srgb, var(--accent) 14%, transparent);
+  }
+
   .rsim-more {
     font: inherit; font-size: var(--fs-sm); font-weight: 650; color: var(--accent);
     background: none; border: none; padding: var(--s3) 0 0; cursor: pointer;
