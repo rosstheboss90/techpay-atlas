@@ -92,6 +92,9 @@ export function SlopeExplorer({ meta, salaries, soc, roleLabel, onClose }: Props
   return (
     <div className="sx" role="dialog" aria-modal="true" aria-label={`Full cost-of-living ranking for ${roleLabel}`}
          tabIndex={-1} ref={rootRef}>
+      {/* .sx positions, .sx-panel holds the content — an edge-to-edge sheet on a phone, a
+          centred card on a wide screen, from the same markup. */}
+      <div className="sx-panel">
       <div className="sx-bar">
         <div className="sx-head">
           <h2 className="sx-title">Full ranking · {roleLabel}</h2>
@@ -148,6 +151,7 @@ export function SlopeExplorer({ meta, salaries, soc, roleLabel, onClose }: Props
             ))}
           </tbody>
         </table>
+      </div>
       </div>
     </div>
   )

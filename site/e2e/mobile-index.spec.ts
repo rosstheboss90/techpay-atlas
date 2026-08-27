@@ -131,3 +131,32 @@ test('mobile: the full ranking opens, re-ranks on count change, and finds a city
   await dlg.getByRole('button', { name: /close/i }).click()
   await expect(dlg).toBeHidden()
 })
+
+// The narrow tests above run under this file's 390px test.use(). The ranking overlay is no
+// longer narrow-only, so this describe overrides the viewport to pin the desktop half.
+test.describe('desktop', () => {
+  test.use({ viewport: { width: 1440, height: 900 } })
+
+  test('desktop: the full ranking opens as a centred panel, and the trends sparkline renders', async ({ page }) => {
+    await page.goto('/')
+
+    // The trends section used to be a heading, a sentence and a link with no chart at all.
+    await expect(page.locator('.trend-teaser .mini-spark')).toBeVisible()
+
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+    await page.getByRole('button', { name: /see the full ranking/i }).click()
+
+    const dlg = page.getByRole('dialog')
+    await expect(dlg).toBeVisible()
+    await expect(dlg.locator('.sx-table tbody tr')).toHaveCount(25)
+
+    // A card, not the phone's edge-to-edge sheet: the panel must be narrower than the viewport.
+    const panel = dlg.locator('.sx-panel')
+    const box = (await panel.boundingBox())!
+    expect(box.width).toBeLessThan(900)
+    expect(box.x).toBeGreaterThan(100)
+
+    await dlg.getByRole('button', { name: /close/i }).click()
+    await expect(dlg).toBeHidden()
+  })
+})

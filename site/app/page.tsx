@@ -195,9 +195,13 @@ export default function Page() {
         <RankSlopegraph meta={meta} salaries={salaries} soc={state.role} metric={state.metric}
                         onSelect={cbsa => update({ metro: cbsa })} />
         {/* The inline chart stays at SLOPE_N (18) — the crossing lines are the story. The full
-            ranking is a table, because a slopegraph stops being readable past ~25 rows. */}
-        {narrow && state.metric === 'pay' && (
-          <button type="button" className="hero-explore" onClick={() => setRankingOpen(true)}>
+            ranking is a table, because a slopegraph stops being readable past ~25 rows.
+            Both viewports: desktop shows 18 of 375 metros with no other way to reach the rest,
+            and has MORE room for a table, so the case is stronger there, not weaker. Still
+            gated on the pay metric — the slopegraph renders no chart on the others, so there
+            would be nothing to rank. */}
+        {state.metric === 'pay' && (
+          <button type="button" className="ranking-open" onClick={() => setRankingOpen(true)}>
             See the full ranking →
           </button>
         )}
@@ -205,7 +209,7 @@ export default function Page() {
       <QuestionSection question="Are wages beating inflation?"
                        fact={teasers.trend.fact}
                        narrow={narrow}>
-        <TrendsTeaser trends={trends} soc={state.role} roleLabel={role.label} narrow={narrow} />
+        <TrendsTeaser trends={trends} soc={state.role} roleLabel={role.label} />
       </QuestionSection>
       <QuestionSection question="What's this job really called?"
                        fact={teasers.title.fact}
@@ -232,7 +236,7 @@ export default function Page() {
                      onSelect={cbsa => update({ metro: cbsa })}
                      onClose={() => setExplorerOpen(false)} />
       )}
-      {narrow && rankingOpen && (
+      {rankingOpen && (
         <SlopeExplorer meta={meta} salaries={salaries} soc={state.role}
                        roleLabel={role.label} onClose={() => setRankingOpen(false)} />
       )}

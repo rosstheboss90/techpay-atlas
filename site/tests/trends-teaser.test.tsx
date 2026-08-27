@@ -34,7 +34,7 @@ describe('TrendsTeaser', () => {
       years: [2019, 2020, 2021, 2022, 2023, 2024, 2025], headlineFrom: 2021,
       roles: { S: { changeReal: -0.057, real: [100, 102, 101, 99, 97, 96, 94], nominal: [] } },
     } as never
-    const { container } = render(<TrendsTeaser trends={trends} soc="S" roleLabel="Software Developers" narrow />)
+    const { container } = render(<TrendsTeaser trends={trends} soc="S" roleLabel="Software Developers" />)
     expect(container.querySelector('.mini-spark')).not.toBeNull()
   })
 
@@ -43,24 +43,28 @@ describe('TrendsTeaser', () => {
       years: [2019, 2020], headlineFrom: 2019,
       roles: { S: { changeReal: 0, real: [null, 100], nominal: [] } },
     } as never
-    const { container } = render(<TrendsTeaser trends={trends} soc="S" roleLabel="Software Developers" narrow />)
+    const { container } = render(<TrendsTeaser trends={trends} soc="S" roleLabel="Software Developers" />)
     expect(container.querySelector('.mini-spark')).toBeNull()
     expect(container.textContent).toContain('Software Developers')
   })
 
   it('omits the sparkline entirely when trends failed to load', () => {
-    const { container } = render(<TrendsTeaser trends={null} soc="S" roleLabel="Software Developers" narrow />)
+    const { container } = render(<TrendsTeaser trends={null} soc="S" roleLabel="Software Developers" />)
     expect(container.querySelector('.mini-spark')).toBeNull()
     expect(container.textContent).toContain('Trend data unavailable.')
   })
 
-  it('omits the sparkline on desktop even with a good series (narrow=false)', () => {
+  it('renders the sparkline with no viewport prop — it is not a phone-only idea', () => {
+    // Was previously pinned the other way: the sparkline used to be gated narrow-only, purely
+    // to hold the "desktop must not change" constraint of the branch that added it. Measured on
+    // the deployed desktop page, this section was 50px tall against neighbours of 660-911px —
+    // the only section carrying no data ink. The gate is gone; the viewports differ in CSS only.
     const trends = {
       years: [2019, 2020, 2021, 2022, 2023, 2024, 2025], headlineFrom: 2021,
       roles: { S: { changeReal: -0.057, real: [100, 102, 101, 99, 97, 96, 94], nominal: [] } },
     } as never
-    const { container } = render(<TrendsTeaser trends={trends} soc="S" roleLabel="Software Developers" narrow={false} />)
-    expect(container.querySelector('.mini-spark')).toBeNull()
+    const { container } = render(<TrendsTeaser trends={trends} soc="S" roleLabel="Software Developers" />)
+    expect(container.querySelector('.mini-spark')).not.toBeNull()
     expect(container.textContent).toContain('Software Developers are down 5.7% in real terms since 2021.')
   })
 })
