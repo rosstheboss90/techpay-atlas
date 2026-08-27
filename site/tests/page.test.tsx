@@ -370,7 +370,10 @@ describe('Page', () => {
     }
   })
 
-  it('desktop: no full-ranking button — the overlay is a narrow-only affordance', async () => {
+  it('desktop: the full-ranking button IS present and opens the overlay', async () => {
+    // Inverted deliberately. This previously pinned the button as narrow-only, which was a
+    // scope constraint of the branch that added it, not a design decision: desktop shows 18 of
+    // 375 metros with no other route to the rest, and has more room for a table.
     window.history.replaceState(null, '', '/')
     vi.stubGlobal('matchMedia', vi.fn((query: string) => ({
       matches: false, media: query, onchange: null,
@@ -388,10 +391,44 @@ describe('Page', () => {
       render(<Page />)
       await screen.findByText(/TechPay Atlas/)
       await waitFor(() => expect(document.querySelector('.slope')).not.toBeNull())
-      expect(screen.queryByRole('button', { name: /see the full ranking/i })).not.toBeInTheDocument()
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      await userEvent.click(screen.getByRole('button', { name: /see the full ranking/i }))
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
+      // The panel wrapper is what makes the same markup a sheet on a phone and a card here.
+      expect(document.querySelector('.sx .sx-panel')).not.toBeNull()
     } finally {
       window.history.replaceState(null, '', '/')
       vi.unstubAllGlobals()
+    }
+  })
+
+  it('the full-ranking button is absent on a non-pay metric, at both widths', async () => {
+    // The slopegraph renders no chart unless the metric is pay, so there would be nothing to
+    // rank. Pinned at both widths because the gate is now metric-only, not viewport-and-metric.
+    for (const isNarrow of [true, false]) {
+      window.history.replaceState(null, '', '/?metric=emp')
+      vi.stubGlobal('matchMedia', vi.fn((query: string) => ({
+        matches: isNarrow, media: query, onchange: null,
+        addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {},
+        dispatchEvent: () => false,
+      })))
+      __clearDataCache()
+      vi.stubGlobal('fetch', vi.fn((path: string) => Promise.resolve({
+        ok: true,
+        json: async () => (path.includes('salaries') ? salaries : path.includes('titles') ? titles
+          : path.includes('trends') ? trends : meta),
+      })))
+
+      try {
+        const { unmount } = render(<Page />)
+        await screen.findByText(/TechPay Atlas/)
+        await waitFor(() => expect(document.querySelector('.filter-bar')).not.toBeNull())
+        expect(screen.queryByRole('button', { name: /see the full ranking/i })).not.toBeInTheDocument()
+        unmount()
+      } finally {
+        window.history.replaceState(null, '', '/')
+        vi.unstubAllGlobals()
+      }
     }
   })
 })
