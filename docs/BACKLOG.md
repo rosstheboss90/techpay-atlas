@@ -2,6 +2,79 @@
 
 Newest decisions first. v1 (map + panel) shipped 2026-08-03.
 
+## Refactor scan — 2026-08-27 (PRs #23–#28 ground)
+
+Read-only scan over `7d93dc7..HEAD` — everything that landed after the mobile poster merged
+(PRs #23–#28: the role-select row, the full cost-of-living ranking, the two e2e traps, the
+TitleLens desktop fix, and the desktop half of the ranking + sparkline). Nothing is fixed here;
+every anchor below was re-verified at `1a0e294`. Seven findings, none blocking, roughly in
+duplication-cost order.
+
+- ⚪ **The overlay lifecycle is copy-pasted into `SlopeExplorer` — including a bug already on this
+  backlog.** `SlopeExplorer.tsx:51-55` (focus save/restore) and `:57-61` (window `keydown` →
+  Escape) are verbatim copies of `MapExplorer.tsx:64-68` and `:55-59`; these are the site's *only*
+  two `keydown` listeners and its only two `role="dialog"` roots. So the follow-up already
+  recorded below — "Escape closes the map explorer while you are typing in its search box
+  (window-level listener, no target check)" — now exists **twice**: `SlopeExplorer.tsx:103` mounts
+  the same `MetroFilter`, whose `type="search"` input the browser also clears on Escape. The
+  recorded bug has to be fixed in two places. Worse, `MapExplorer.tsx:61-63`'s three-line
+  rationale ("minimal modal focus management, not a full focus trap") was *not* copied, so the
+  reasoning survives in only one of the two copies. → Extract a `useOverlay(onClose, rootRef)`
+  hook into `lib/`, and land the target check once, inside it.
+- ⚪ **The PR #25 race-fix idiom was never applied to its sibling.** `e2e/heatmap.spec.ts:24` reads
+  `expect(await rows.count()).toBeGreaterThan(topCount)` immediately after the "Show all" click on
+  `:23` — a non-retrying read of a table that re-renders **50 → 393** rows (`RoleHeatmap.tsx:21`
+  `TOP_N = 50`; the button says "Show all 393"). That is precisely the class the rule below was
+  written for — *after an action, a wait whose condition was already true is not a wait* — and a
+  **larger** row jump than the 25 → 375 case that actually failed in CI. Playwright retries
+  `expect(locator).toHaveCount()`; it does not retry `expect(await locator.count())`.
+  `e2e/role-similarity.spec.ts:12` has the same form, but only after `goto`, so its risk is much
+  lower. → Retrying locator assertion, the way the full-ranking test was fixed.
+- ⚪ **`tests/trends-teaser.test.tsx` runs the same test twice, and three names describe a prop that
+  no longer exists.** The cases at `:32` and `:57` build a byte-identical fixture and assert the
+  same `.mini-spark` presence — the second adds one `toContain` and nothing else. Separately, `:32`
+  ("when narrow"), `:41` ("even when narrow") and the comment at `:58-61` still describe a viewport
+  gate, but `TrendsTeaser.tsx:18-20` takes `{ trends, soc, roleLabel }`: there is no `narrow` prop
+  left to gate on. → Delete the older duplicate; drop "narrow" from the survivors' names.
+- ⚪ **A desktop test lives in `e2e/mobile-index.spec.ts` and overrides the file's viewport to get
+  there.** The file opens with `test.use({ viewport: { width: 390, height: 844 } })` on `:3`, and
+  `:137` opens a `test.describe('desktop', …)` that re-`test.use`s 1440×900. Every other spec runs
+  desktop by default, and `slopegraph.spec.ts` is already the desktop spec for `.slope`. The cost
+  is the stale-dev-server triage rule in `CLAUDE.md` — "failures clustered in one spec file your
+  diff doesn't touch are the tell" — which now points at the wrong file whenever a desktop
+  regression surfaces under a mobile filename. → Move the desktop half to `slopegraph.spec.ts`, or
+  to a new `full-ranking.spec.ts`.
+- ⚪ **The trends sparkline's desktop sizing is filed inside the full-ranking overlay's media
+  block.** `globals.css:808-809` sizes `.tt-spark` at the tail of the `@media (min-width: 721px)`
+  opened on `:793`, whose header comment (`:790-792`) is entirely about the `.sx` overlay's scrim
+  and centred panel. A *second* desktop block opens 28 lines later on `:837` for TitleLens, so
+  there is no "one desktop block" argument holding it there. The narrow side already felt the seam
+  and left a pointer comment on `:562` — "the desktop sizing lives outside this block". → Give
+  `.tt-spark` its own `min-width: 721px` block next to the trend-teaser rules, and drop the pointer.
+- ⚪ **Each new `page.test.tsx` case re-copies the matchMedia + fetch stub — 13 copies now.**
+  `grep -c "vi.stubGlobal('fetch'" tests/page.test.tsx` → **13**. The three newest (`:345`, `:373`,
+  `:405`) repeat the same ~11-line block verbatim; only the `matches` boolean and the URL vary. A
+  change to the fixture shape is a 13-site edit, and the block is long enough that the single line
+  which differs between two neighbouring tests is easy to miss on review. → One
+  `renderPage({ narrow, url })` helper.
+- ⚪ **`SlopeExplorer` computes the full ranking twice whenever "All N" is selected.**
+  `SlopeExplorer.tsx:41` (`all`, at `Number.MAX_SAFE_INTEGER`) and `:46` (`rows`, at `count`) are
+  separate memos, and `count` is capped at `all.length` (`:84`, `:89`). At "All N" the second call
+  therefore redoes byte-identical work — two tie-broken sorts plus a Map build over 375 metros. The
+  per-count recompute at *smaller* counts is deliberate and documented on `:28-32`; only the
+  `count >= all.length` boundary is redundant. → Have `rows` return `all` at that boundary.
+
+### One absence worth recording
+
+The TitleLens desktop height fix (`globals.css:838-839` — `.tl-rows` max-height 720px,
+`.title-lens` min-height 880px) is **single-homed**: neither number is mirrored into `tests/` or
+`e2e/`, so re-tuning it is a one-line edit with no second copy to forget. The corollary is that
+nothing pins the *behaviour* either. `e2e/mobile-index.spec.ts:77-95` pins the narrow hash
+deep-link (`goto('/#rsim-h')`, poll `scrollY` until two reads agree, assert `|top| < 200`), but the
+desktop `test.describe` on `:137` checks only the sparkline and the panel geometry — so a
+regression of the 1,502px deep-link miss PR #27 fixed would land **silently**. Recorded as an
+observation, not a work item; the narrow test is the template if it ever becomes worth pinning.
+
 ## Mobile poster — the phone page stops collapsing — LANDED 2026-08-23/24
 
 Third user pass on the mobile view: "rethink it to be more eye-catching." Measured at 390px, the
