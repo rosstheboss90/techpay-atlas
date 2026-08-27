@@ -775,6 +775,27 @@ button, select, input { font-family: inherit; }
   .qsec-body:has(#tl-h) { min-height: 520px; }
 }
 
+/* ── Title lens: the same layout-shift fix, for DESKTOP ──────────────────
+   The narrow fix above was scoped to ≤720px, which left the bug live at the width where the
+   section is BIGGEST. Measured on the deployed site at 1440px with a cold cache: a hash
+   deep-link to #rsim-h lands 1,572px from the top instead of its 70px scroll-margin — a
+   1,502px miss — because TitleLens fetches after the scroll and grows ~1,500px above the
+   target. That breaks SectionNav's "What else?" and "The grid" links and any shared
+   #rsim-h / #hm-heading URL.
+
+   It hides on a warm cache: titles.json then resolves fast enough to land before the scroll,
+   so a repeat visitor never sees it and a first-time visitor following a link always can.
+
+   Same shape as the narrow fix — ceiling on the scrollable rows, floor on a container that
+   exists in BOTH states — but a different floor selector: QuestionSection renders no
+   .qsec-body on desktop (it returns bare children), so the reservation goes on .title-lens,
+   the section root TitleLens renders around both its "Loading…" placeholder and its rows.
+   Both numbers measured against the loaded state, not guessed. */
+@media (min-width: 721px) {
+  .tl-rows { max-height: 720px; overflow-y: auto; }
+  .title-lens { min-height: 880px; }
+}
+
 /* .mini-spark ships wherever MiniSpark is used (now the trends-section chart at narrow width,
    previously the removed question-card viz) — kept outside the narrow media block so the
    stroke rules apply at any viewport width. */
