@@ -2,6 +2,111 @@
 
 Newest decisions first. v1 (map + panel) shipped 2026-08-03.
 
+## Mobile poster — the phone page stops collapsing — LANDED 2026-08-23/24
+
+Third user pass on the mobile view: "rethink it to be more eye-catching." Measured at 390px, the
+collapsed index spent **442px of the 844px first screen on chrome** before any content, and the
+whole page rendered **2 SVG elements** — the map, heatmap and slopegraph that give this site its
+identity produced zero pixels until tapped. Spec
+`docs/superpowers/specs/2026-08-23-mobile-poster-design.md` · plan
+`docs/superpowers/plans/2026-08-23-mobile-poster.md`. Shipped as PR #22, then #23 and #24.
+
+Nothing collapses now. Every section renders its real chart; the map is a full-bleed hero with a
+44px number; city selection moved to a name filter plus a fullscreen explorer. Desktop (≥721px)
+is unchanged throughout — verified live at 900px and 1280px.
+
+### Decisions that will recur
+
+- **The map is not an input at phone scale, and enlarging targets makes it worse.** Measured
+  against all 387 real metro positions with a realistic 8px touch error: median bubble radius at
+  390px is **1.0px**, **0 of 387** reach even a 22px target, and **99%** share a thumb patch with
+  a neighbour. Aimed taps select the intended city **2.5%** of the time. Transparent 22px hit
+  targets reach only **23.5%**, and nearest-bubble-wins **26.4%** — i.e. both convert honest
+  misses into *silent wrong answers*, which on this site is the worst outcome available. Offering
+  everything under the thumb scores 100% but the median list is **14 cities**. Only zoom changes
+  the ratio, because touch error is a property of the finger: fullscreen fit-height + filter +
+  2× reaches ~97%. Hence poster inline, explorer for selection. Don't re-litigate with a bigger
+  hit area.
+- **Slopegraph ranks are subset-relative** (`lib/slopegraph.ts:19-23`), so any view that changes
+  the row count changes every number. "Los Angeles falls 6 places" is true *of the top 18*. The
+  full-ranking table therefore calls `slopeRows(…, n)` per count rather than slicing a cached
+  list, and the caption names the set. `tests/slopegraph.test.ts` pins that a metro's delta
+  genuinely differs by count (−1 among 2 vs −3 among 4) — the caption is only honest while it holds.
+- **A lazily-loaded section needs a FIXED height, not a cap.** `TitleLens` fetches behind an
+  `IntersectionObserver`: its section was 221px before loading and **1,763px** after, so the page
+  grew 4,275 → 5,817px depending on scroll position, *and* a hash deep-link to anything below it
+  landed **2,775px** off target because the content it had scrolled past grew underneath it. A
+  ceiling alone fixes the budget and leaves the anchors sliding. Floor + ceiling
+  (`.qsec-body:has(#tl-h)` min-height + `.tl-rows` max-height) makes before and after identical —
+  measured 520.0px either side — which kills both bugs at once.
+- **Bound what is unbounded rather than tuning constants.** The page blew its height budget; the
+  fix capped the slopegraph SVG and `.hm-scroll` instead of lowering `TOP_N_NARROW`/`SLOPE_N`, so
+  the height no longer depends on how much data a role happens to have.
+- **Capped, never hidden** extended: every truncation states its FULL count and expands in place.
+  `RoleHeatmap` was already the reference implementation (cap + live count + "Show all 393" +
+  search that reaches past the cap); `RoleSimilarity` and the toggle labels were brought in line.
+  A toggle label must read from the *active* cap, never a hardcoded number.
+- **Ambiguity is labelled, never laundered.** A map tap in the explorer identifies; a separate
+  confirm commits; and when rivals share the thumb patch the readout says how many.
+
+### Shape and numbers
+
+Chosen from three costed page shapes (faithful 5,687px / re-weighted / curated edit) — the
+re-weighted one. Final page **~4,637px ≈ 5.5 screens** at 390px, against 1,583px collapsed and
+6,392px for a naive uncollapse. Note the spec's headline estimate of 3,898px was **wrong**: it
+budgeted `tl-h` at 340px when `.tl-rows` alone is 1,429px, which is arithmetically impossible.
+The e2e pin was corrected to `< 5,100` and now measures the **loaded** page (it forces the lazy
+fetch via `.tl-rows` visibility rather than `waitForLoadState`, which resolves against a cached
+flag and measured a state no scrolled user occupies). Proven to bite: red at 5,817px with the
+two CSS rules removed, green at 4,776px with them in.
+
+### Follow-ups — deferred, none blocking
+
+- ⚪ `explorerOpen` is not reset when the viewport flips to desktop, so resizing away and back
+  silently re-opens the map overlay. One line.
+- ⚪ Escape closes the map explorer while you are typing in its search box (window-level listener,
+  no target check) — it also clears the input, so the two effects compound.
+- ⚪ Two `aria-label="Find a city"` inputs coexist while the explorer is open (hero + overlay), and
+  the page behind the `aria-modal` dialog is not marked inert. Screen readers honour `aria-modal`,
+  so exposure is small.
+- ⚪ `recentreAxis`'s degenerate guard is `extent <= 0`, which NaN does not satisfy. Not reachable
+  from real DOM metrics; a `Number.isFinite` would make the stated contract true.
+- ⚪ `.mx-confirm-head` is a dead class with no CSS rule. `opacity={0.92}` on `.mx-bubble` is a
+  presentation attribute that belongs in the stylesheet.
+- ⚪ Thesis + tagline JSX is duplicated in `page.tsx` (narrow and desktop branches) — a copy edit
+  must be made twice.
+- ⚪ Test gaps, all deliberate: nothing pins the thin-sample chip on *capped* similarity rows;
+  nothing pins the desktop masthead keeping its thesis/tagline/links; the `/ s` scale division in
+  the explorer's tap path is pinned by only one of the three tap tests (the one stubbing a
+  non-unity scale).
+- ⚪ Owed eyeball: the **full ranking table** and **light mode** on a real device. The poster and
+  the sticky bar have been seen on the user's phone; these two have only been checked in emulation.
+
+## Role select gets its own row — LANDED 2026-08-24 (PR #23)
+
+Reported from a real phone: the role select rendered as **"Soft…"**. The single-row sticky bar
+pinned the metric select and the cost-of-living toggle to their content width, leaving the role —
+the control the entire page is filtered by — as the only one able to give up space, at ~82px of a
+~342px row. No shared row can hold these values: the longest label is **42 characters**
+("Computer & Information Research Scientists", ~282px). The role now owns row one; metric and
+toggle share row two. Costs ~34px of sticky chrome (41 → 75px). Ellipsis kept as a floor below
+~330px, not as the normal case.
+
+## Full cost-of-living ranking — LANDED 2026-08-24 (PR #24)
+
+"See the full ranking →" (narrow, pay metric only) opens a fullscreen **table** — not a taller
+slopegraph, which stops being readable past ~25 rows and is meaningless at 100+. Metro · nominal ·
+adjusted · rank change, with `MetroFilter` reused to jump to a city (widening the set if it sits
+outside the current count) and Top 25 / 50 / 100 / **All N** counts, N computed from the data
+since it differs per role. A metro with no cost-of-living index has no adjusted position at all —
+selecting one names it and explains why rather than silently doing nothing.
+
+⚠️ **A CI-only e2e failure worth remembering.** The test waited on
+`expect(.sx-basis).toContainText('metros shown')` after changing the count — but that string is in
+the caption at *every* count, so the wait resolved before React re-rendered and the delta was read
+stale, comparing a value against itself. 25 rows committed fast enough locally to hide it; CI,
+rendering 375, did not. **After an action, a wait whose condition was already true is not a wait.**
+
 ## Cards v2.1 — sentence facts, new questions, M1 masthead — LANDED 2026-08-11
 
 Second user pass on the answer-first cards (all eight presentation/verbiage flags picked in
@@ -53,11 +158,16 @@ Decisions that will recur:
 - The tl-h card deliberately keeps a static fact (TitleStrip directly above already states the
   bucket alias — duplicating titles.json wiring for a duplicate claim fails YAGNI).
 
-🔶 Follow-up (pre-existing, surfaced by the final branch review): `payTeaser` ignores the
+~~🔶 Follow-up (pre-existing, surfaced by the final branch review): `payTeaser` ignores the
 cost-of-living toggle — with COL on, the sec-map card's fact and top-3 chips can name a
 different "top" metro than the recolored map shows. Pre-dates this branch, but the chip UI
 makes it more salient. Fix shape: pass `adjusted` + rpp through `payTeaser` (fact would then
-need the "adjusted" labeling rules).
+need the "adjusted" labeling rules).~~
+FIXED 2026-08-23 (mobile poster, below). `payTeaser` now takes `adjusted` and ranks via the same
+`metricValue` the map colours with, so ranking and printed figure share one basis by
+construction. It also gained `metric` and degrades to its generic sentence on non-pay metrics —
+the poster promotes this fact to a 44px number, and with "Color by" on Employment the old
+version printed a dollar median the section shows nowhere.
 
 ## Home restructure — question spine + mobile question index — LANDED 2026-08-10
 
